@@ -6,6 +6,7 @@ import {
   getRecipientDashboardFromSeed,
   seed,
 } from "@/lib/seed";
+import { getAccessToken } from "@/lib/auth";
 import type {
   AdminDashboardResponse,
   DonorDashboardResponse,
@@ -19,8 +20,16 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
+    const accessToken = await getAccessToken();
+    const headers = new Headers(init?.headers);
+
+    if (accessToken) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
+      headers,
       cache: "no-store",
     });
 
