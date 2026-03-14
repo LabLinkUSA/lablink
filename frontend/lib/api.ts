@@ -1,14 +1,7 @@
-import {
-  getAdminDashboardFromSeed,
-  getDonorDashboardFromSeed,
-  getListingDetailFromSeed,
-  getPublicListingsFromSeed,
-  getRecipientDashboardFromSeed,
-  seed,
-} from "@/lib/seed";
 import { getAccessToken } from "@/lib/auth";
 import type {
   AdminDashboardResponse,
+  AuthenticatedUser,
   DonorDashboardResponse,
   Listing,
   ListingDetailResponse,
@@ -16,7 +9,7 @@ import type {
   RequestBoardPost,
 } from "@/lib/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
@@ -43,56 +36,56 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null>
   }
 }
 
+export async function getCurrentProfile(): Promise<AuthenticatedUser | null> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    return null;
+  }
+
+  return fetchJson<AuthenticatedUser>("/auth/me");
+}
+
 export async function getPublicListings(): Promise<Listing[]> {
   const apiResult = await fetchJson<Listing[]>("/public/listings");
-  return apiResult ?? getPublicListingsFromSeed();
+  return apiResult ?? [];
 }
 
 export async function getListingDetail(listingId: string): Promise<ListingDetailResponse | null> {
-  const apiResult = await fetchJson<ListingDetailResponse>(`/public/listings/${listingId}`);
-  return apiResult ?? getListingDetailFromSeed(listingId);
+  return fetchJson<ListingDetailResponse>(`/public/listings/${listingId}`);
 }
 
-export async function getDonorDashboard(): Promise<DonorDashboardResponse> {
-  const apiResult = await fetchJson<DonorDashboardResponse>("/donor/dashboard", {
-    headers: {
-      "X-LabLink-Role": "donor_lab",
-      "X-User-Id": "user_donor_alex",
-    },
-  });
+export async function getDonorDashboard(): Promise<DonorDashboardResponse | null> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    return null;
+  }
 
-  return apiResult ?? getDonorDashboardFromSeed();
+  return fetchJson<DonorDashboardResponse>("/donor/dashboard");
 }
 
-export async function getDonorRequestBoard(): Promise<RequestBoardPost[]> {
-  const apiResult = await fetchJson<RequestBoardPost[]>("/donor/request-board", {
-    headers: {
-      "X-LabLink-Role": "donor_lab",
-      "X-User-Id": "user_donor_alex",
-    },
-  });
+export async function getDonorRequestBoard(): Promise<RequestBoardPost[] | null> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    return null;
+  }
 
-  return apiResult ?? seed.request_board_posts;
+  return fetchJson<RequestBoardPost[]>("/donor/request-board");
 }
 
-export async function getRecipientDashboard(): Promise<RecipientDashboardResponse> {
-  const apiResult = await fetchJson<RecipientDashboardResponse>("/recipient/dashboard", {
-    headers: {
-      "X-LabLink-Role": "recipient_institution",
-      "X-User-Id": "user_recipient_maya",
-    },
-  });
+export async function getRecipientDashboard(): Promise<RecipientDashboardResponse | null> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    return null;
+  }
 
-  return apiResult ?? getRecipientDashboardFromSeed();
+  return fetchJson<RecipientDashboardResponse>("/recipient/dashboard");
 }
 
-export async function getAdminDashboard(): Promise<AdminDashboardResponse> {
-  const apiResult = await fetchJson<AdminDashboardResponse>("/admin/dashboard", {
-    headers: {
-      "X-LabLink-Role": "admin",
-      "X-User-Id": "user_admin_riley",
-    },
-  });
+export async function getAdminDashboard(): Promise<AdminDashboardResponse | null> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    return null;
+  }
 
-  return apiResult ?? getAdminDashboardFromSeed();
+  return fetchJson<AdminDashboardResponse>("/admin/dashboard");
 }

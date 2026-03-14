@@ -87,11 +87,21 @@ export default async function HomePage() {
               See all listings
             </Link>
           </div>
-          <div className="listing-grid">
-            {featuredListings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
+          {featuredListings.length > 0 ? (
+            <div className="listing-grid">
+              {featuredListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h3>No public listings yet</h3>
+              <p>
+                Donor institutions have not published any approved equipment yet. Once listings go live, they will
+                appear here first.
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

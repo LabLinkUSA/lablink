@@ -13,7 +13,6 @@ from app.schemas.domain import (
     Role,
     ThreadDetailResponse,
 )
-from app.services.demo_data import get_demo_repository
 
 router = APIRouter(prefix="/recipient", tags=["recipient"])
 
@@ -22,7 +21,13 @@ router = APIRouter(prefix="/recipient", tags=["recipient"])
 def get_recipient_dashboard(actor: AuthenticatedUser = Depends(require_actor)) -> RecipientDashboardResponse:
     if actor.user.role != Role.RECIPIENT_INSTITUTION:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
-    return get_demo_repository().recipient_dashboard(actor)
+    return RecipientDashboardResponse(
+        institution=actor.institution,
+        requests=[],
+        saved_listings=[],
+        threads=[],
+        request_board_posts=[],
+    )
 
 
 @router.post("/requests", response_model=EquipmentRequest, status_code=status.HTTP_201_CREATED)
@@ -32,14 +37,14 @@ def create_request(
 ) -> EquipmentRequest:
     if actor.user.role != Role.RECIPIENT_INSTITUTION:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
-    return get_demo_repository().create_request(actor, payload)
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Database-backed equipment requests are not implemented yet.")
 
 
 @router.get("/threads/{thread_id}", response_model=ThreadDetailResponse)
 def get_thread(thread_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> ThreadDetailResponse:
     if actor.user.role not in {Role.RECIPIENT_INSTITUTION, Role.ADMIN, Role.DONOR_LAB}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Authorized role required.")
-    return get_demo_repository().get_thread_detail(thread_id)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Thread {thread_id} not found.")
 
 
 @router.post("/threads/{thread_id}/messages", response_model=Message, status_code=status.HTTP_201_CREATED)
@@ -50,7 +55,7 @@ def create_message(
 ) -> Message:
     if actor.user.role not in {Role.RECIPIENT_INSTITUTION, Role.ADMIN, Role.DONOR_LAB}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Authorized role required.")
-    return get_demo_repository().create_message(actor, thread_id, payload)
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Database-backed messaging is not implemented yet.")
 
 
 @router.post("/request-board", response_model=RequestBoardPost, status_code=status.HTTP_201_CREATED)
@@ -60,5 +65,4 @@ def create_request_board_post(
 ) -> RequestBoardPost:
     if actor.user.role != Role.RECIPIENT_INSTITUTION:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
-    return get_demo_repository().create_request_board_post(actor, payload)
-
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Database-backed request board posting is not implemented yet.")

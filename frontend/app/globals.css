@@ -98,6 +98,26 @@ img {
   color: var(--muted);
 }
 
+.header-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.header-profile-copy {
+  display: grid;
+  justify-items: end;
+}
+
+.header-profile-copy strong {
+  font-size: 0.95rem;
+}
+
+.header-profile-copy small {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
 .site-nav a:hover {
   color: var(--text);
 }

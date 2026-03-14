@@ -1,9 +1,33 @@
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { StatusPill } from "@/components/status-pill";
-import { getRecipientDashboard } from "@/lib/api";
+import { getCurrentProfile, getRecipientDashboard } from "@/lib/api";
 
 export default async function RecipientPage() {
-  const dashboard = await getRecipientDashboard();
+  const [profile, dashboard] = await Promise.all([getCurrentProfile(), getRecipientDashboard()]);
+
+  if (profile && profile.user.role !== "recipient_institution") {
+    return (
+      <section className="page-section">
+        <div className="shell empty-state">
+          <span className="eyebrow">Access limited</span>
+          <h1>Recipient access is only available to recipient institution accounts.</h1>
+          <p>Your current profile is signed in as {profile.user.role.replaceAll("_", " ")}.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <section className="page-section">
+        <div className="shell empty-state">
+          <span className="eyebrow">Recipient view</span>
+          <h1>Your recipient dashboard is not ready yet.</h1>
+          <p>Finish onboarding and wait for institution verification before using recipient workflows.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="page-section">
@@ -89,4 +113,3 @@ export default async function RecipientPage() {
     </section>
   );
 }
-

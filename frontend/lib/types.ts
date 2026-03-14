@@ -156,3 +156,21 @@ export interface AdminDashboardResponse {
   recent_actions: AdminAction[];
 }
 
+export interface OnboardingCreate {
+  full_name: string;
+  role: Role;
+  institution_name: string;
+  institution_location: string;
+  institution_description: string;
+}
+
+export interface OnboardingResponse {
+  user: User;
+  institution: Institution;
+  created: boolean;
+}
+
+export interface AuthenticatedUser {
+  user: User;
+  institution: Institution;
+}

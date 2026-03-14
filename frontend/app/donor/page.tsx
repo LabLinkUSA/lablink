@@ -1,10 +1,38 @@
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { StatusPill } from "@/components/status-pill";
+import { getCurrentProfile, getDonorDashboard, getDonorRequestBoard } from "@/lib/api";
 import { titleCaseStatus } from "@/lib/format";
-import { getDonorDashboard, getDonorRequestBoard } from "@/lib/api";
 
 export default async function DonorPage() {
-  const [dashboard, requestBoardPosts] = await Promise.all([getDonorDashboard(), getDonorRequestBoard()]);
+  const [profile, dashboard, requestBoardPosts] = await Promise.all([
+    getCurrentProfile(),
+    getDonorDashboard(),
+    getDonorRequestBoard(),
+  ]);
+
+  if (profile && profile.user.role !== "donor_lab") {
+    return (
+      <section className="page-section">
+        <div className="shell empty-state">
+          <span className="eyebrow">Access limited</span>
+          <h1>Donor access is only available to donor lab accounts.</h1>
+          <p>Your current profile is signed in as {profile.user.role.replaceAll("_", " ")}.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!dashboard || !requestBoardPosts) {
+    return (
+      <section className="page-section">
+        <div className="shell empty-state">
+          <span className="eyebrow">Donor view</span>
+          <h1>Your donor dashboard is not ready yet.</h1>
+          <p>Finish onboarding and make sure your institution has donor lab access before using this workspace.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="page-section">

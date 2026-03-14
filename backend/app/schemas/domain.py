@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import StrEnum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -209,6 +209,12 @@ class AuthenticatedUser(BaseModel):
     institution: Institution
 
 
+class AuthenticatedSupabaseUser(BaseModel):
+    auth_user_id: str
+    email: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class DonorDashboardResponse(BaseModel):
     institution: Institution
     listings: List[Listing]
@@ -242,3 +248,16 @@ class ListingDetailResponse(BaseModel):
     donor_institution: Institution
     related_requests: List[EquipmentRequest] = Field(default_factory=list)
 
+
+class OnboardingCreate(BaseModel):
+    full_name: str = Field(min_length=1, max_length=255)
+    role: Role
+    institution_name: str = Field(min_length=1, max_length=255)
+    institution_location: str = Field(min_length=1, max_length=255)
+    institution_description: str = Field(min_length=1, max_length=2000)
+
+
+class OnboardingResponse(BaseModel):
+    user: User
+    institution: Institution
+    created: bool

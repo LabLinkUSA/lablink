@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
+import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 
 import { StatusPill } from "@/components/status-pill";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { Role } from "@/lib/types";
+import type { OnboardingCreate, OnboardingResponse, Role } from "@/lib/types";
 
 type AuthMode = "sign_in" | "sign_up";
 
 type SessionUser = {
   email?: string;
   role?: string;
+  institutionName?: string;
+  onboardingReady?: boolean;
 };
 
 const roleOptions: Array<{ value: Role; label: string }> = [
@@ -20,6 +23,7 @@ const roleOptions: Array<{ value: Role; label: string }> = [
 ];
 
 const supabase = createSupabaseBrowserClient();
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export function AuthShell() {
   const [mode, setMode] = useState<AuthMode>("sign_in");
@@ -39,6 +43,100 @@ export function AuthShell() {
   const [institutionLocation, setInstitutionLocation] = useState("");
   const [institutionDescription, setInstitutionDescription] = useState("");
 
+  function getMetadataValue(user: SupabaseUser, key: string): string | undefined {
+    const value = user.user_metadata[key];
+    return typeof value === "string" ? value : undefined;
+  }
+
+  function buildOnboardingPayload(user: SupabaseUser): OnboardingCreate | null {
+    const roleValue = getMetadataValue(user, "role");
+    const institutionNameValue = getMetadataValue(user, "institution_name");
+    const institutionLocationValue = getMetadataValue(user, "institution_location");
+    const institutionDescriptionValue = getMetadataValue(user, "institution_description");
+    const fullNameValue =
+      getMetadataValue(user, "full_name") ??
+      getMetadataValue(user, "name") ??
+      user.email?.split("@")[0];
+
+    if (
+      !fullNameValue ||
+      !roleValue ||
+      (roleValue !== "donor_lab" && roleValue !== "recipient_institution") ||
+      !institutionNameValue ||
+      !institutionLocationValue ||
+      !institutionDescriptionValue
+    ) {
+      return null;
+    }
+
+    return {
+      full_name: fullNameValue,
+      role: roleValue,
+      institution_name: institutionNameValue,
+      institution_location: institutionLocationValue,
+      institution_description: institutionDescriptionValue,
+    };
+  }
+
+  function mapSessionUser(user: SupabaseUser): SessionUser {
+    return {
+      email: user.email,
+      role: getMetadataValue(user, "role"),
+      institutionName: getMetadataValue(user, "institution_name"),
+      onboardingReady: Boolean(buildOnboardingPayload(user)),
+    };
+  }
+
+  async function createOnboardingRecord(accessToken: string, payload: OnboardingCreate): Promise<OnboardingResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/onboarding`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let message = "Could not create your LabLink profile.";
+      try {
+        const body = (await response.json()) as { detail?: string };
+        if (body.detail) {
+          message = body.detail;
+        }
+      } catch {}
+      throw new Error(message);
+    }
+
+    return (await response.json()) as OnboardingResponse;
+  }
+
+  async function ensureOnboarding(session: Session, options?: { fromSignUp?: boolean }): Promise<void> {
+    const payload = buildOnboardingPayload(session.user);
+    if (!payload) {
+      if (options?.fromSignUp) {
+        setNotice("Account created. Finish email confirmation if required, then sign in to complete LabLink onboarding.");
+      }
+      return;
+    }
+
+    const onboarding = await createOnboardingRecord(session.access_token, payload);
+
+    if (onboarding.created) {
+      setNotice(
+        `Account created and LabLink onboarding started for ${onboarding.institution.name}. Admin verification is still required before transacting.`,
+      );
+      return;
+    }
+
+    if (options?.fromSignUp) {
+      setNotice(`Account created. Your LabLink profile for ${onboarding.institution.name} already exists.`);
+      return;
+    }
+
+    setNotice(`Signed in successfully. Your LabLink profile is linked to ${onboarding.institution.name}.`);
+  }
+
   useEffect(() => {
     let isMounted = true;
 
@@ -47,27 +145,13 @@ export function AuthShell() {
         return;
       }
 
-      setSessionUser(
-        data.user
-          ? {
-              email: data.user.email,
-              role: typeof data.user.user_metadata.role === "string" ? data.user.user_metadata.role : undefined,
-            }
-          : null,
-      );
+      setSessionUser(data.user ? mapSessionUser(data.user) : null);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSessionUser(
-        session?.user
-          ? {
-              email: session.user.email,
-              role: typeof session.user.user_metadata.role === "string" ? session.user.user_metadata.role : undefined,
-            }
-          : null,
-      );
+      setSessionUser(session?.user ? mapSessionUser(session.user) : null);
     });
 
     return () => {
@@ -92,13 +176,21 @@ export function AuthShell() {
           email: signInEmail,
           password: signInPassword,
         })
-        .then(({ error: authError }) => {
+        .then(async ({ error: authError, data }) => {
           if (authError) {
             setError(authError.message);
             return;
           }
 
-          setNotice("Signed in successfully. If your institution is verified, protected flows can now use your session.");
+          if (!data.session) {
+            setNotice("Signed in successfully.");
+            return;
+          }
+
+          await ensureOnboarding(data.session);
+        })
+        .catch((signInError: unknown) => {
+          setError(signInError instanceof Error ? signInError.message : "Could not complete sign-in.");
         })
         .finally(() => {
           setIsPending(false);
@@ -126,21 +218,26 @@ export function AuthShell() {
             },
           },
         })
-        .then(({ error: authError, data }) => {
+        .then(async ({ error: authError, data }) => {
           if (authError) {
             setError(authError.message);
             return;
           }
 
           if (data.session) {
-            setNotice("Account created and signed in. Your institution still needs admin verification before it can transact.");
+            await ensureOnboarding(data.session, { fromSignUp: true });
           } else {
-            setNotice("Account created. Check your email to confirm your address, then sign in here.");
+            setNotice(
+              "Account created. Check your email to confirm your address, then sign in here to finish LabLink onboarding automatically.",
+            );
           }
 
           setMode("sign_in");
           setSignInEmail(signUpEmail);
           setSignInPassword("");
+        })
+        .catch((signUpError: unknown) => {
+          setError(signUpError instanceof Error ? signUpError.message : "Could not complete sign-up.");
         })
         .finally(() => {
           setIsPending(false);
@@ -217,7 +314,7 @@ export function AuthShell() {
                 <h2>{sessionUser.email}</h2>
                 <p>
                   {sessionUser.role
-                    ? `Selected role: ${sessionUser.role.replaceAll("_", " ")}.`
+                    ? `Selected role: ${sessionUser.role.replaceAll("_", " ")}${sessionUser.institutionName ? ` for ${sessionUser.institutionName}.` : "."}`
                     : "Your auth session is active, but your LabLink app profile may still need to be created."}
                 </p>
                 <div className="auth-actions">

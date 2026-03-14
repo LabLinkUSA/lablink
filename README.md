@@ -50,4 +50,4 @@ Notes:
 4. `uvicorn app.main:app --reload`
 
 ### Handy root commands
-By default, the frontend will try `http://localhost:8000/api/v1` and gracefully fall back to the shared demo seed data when the API is unavailable.
+For local development, point the frontend API base URL at `http://127.0.0.1:8000/api/v1` so the browser and backend use the same loopback host consistently.
