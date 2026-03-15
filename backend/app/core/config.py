@@ -20,6 +20,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("LABLINK_SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
     )
+    supabase_listing_images_bucket: str = Field(
+        default="listing-images",
+        validation_alias=AliasChoices("LABLINK_SUPABASE_LISTING_IMAGES_BUCKET", "SUPABASE_LISTING_IMAGES_BUCKET"),
+    )
     supabase_jwt_audience: str = Field(
         default="authenticated",
         validation_alias=AliasChoices("LABLINK_SUPABASE_JWT_AUDIENCE", "SUPABASE_JWT_AUDIENCE"),

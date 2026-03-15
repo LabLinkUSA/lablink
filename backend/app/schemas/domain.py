@@ -181,6 +181,14 @@ class ListingCreate(BaseModel):
     photo_urls: List[str] = Field(default_factory=list)
 
 
+class ListingApprovalUpdate(BaseModel):
+    status: ListingStatus
+
+
+class ListingImageUploadResponse(BaseModel):
+    photo_url: str
+
+
 class EquipmentRequestCreate(BaseModel):
     listing_id: str
     intended_use: str

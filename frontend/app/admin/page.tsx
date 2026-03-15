@@ -1,5 +1,6 @@
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { StatusPill } from "@/components/status-pill";
+import { updateListingStatusAction } from "@/app/admin/actions";
 import { getAdminDashboard, getCurrentProfile } from "@/lib/api";
 
 export default async function AdminPage() {
@@ -69,6 +70,22 @@ export default async function AdminPage() {
                   </div>
                   <h3>{listing.title}</h3>
                   <p>{listing.handling_requirements}</p>
+                  <div className="list-row-meta">
+                    <span>{listing.location}</span>
+                    <span>{listing.quantity} unit(s)</span>
+                  </div>
+                  <form action={updateListingStatusAction} className="inline-form">
+                    <input type="hidden" name="listingId" value={listing.id} />
+                    <select name="status" defaultValue={listing.status} aria-label={`Update ${listing.title} status`}>
+                      <option value="pending_admin_approval">Pending approval</option>
+                      <option value="live">Approve and publish</option>
+                      <option value="under_review">Needs follow-up</option>
+                      <option value="removed_expired">Remove from marketplace</option>
+                    </select>
+                    <button type="submit" className="button button-secondary">
+                      Update status
+                    </button>
+                  </form>
                 </article>
               ))}
             </div>

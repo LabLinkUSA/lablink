@@ -98,10 +98,36 @@ img {
   color: var(--muted);
 }
 
+.site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .header-profile {
   display: flex;
   align-items: center;
   gap: 0.8rem;
+}
+
+.header-profile-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(135deg, #254c37, #8b3d2f);
+  box-shadow: 0 12px 30px rgba(37, 76, 55, 0.18);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.header-profile-button:hover {
+  transform: translateY(-1px);
 }
 
 .header-profile-copy {
@@ -565,7 +591,8 @@ img {
 }
 
 .auth-field input,
-.auth-field select {
+.auth-field select,
+.auth-field textarea {
   width: 100%;
   min-height: 3rem;
   padding: 0.8rem 0.95rem;
@@ -577,10 +604,20 @@ img {
 }
 
 .auth-field input:focus,
-.auth-field select:focus {
+.auth-field select:focus,
+.auth-field textarea:focus {
   outline: 2px solid rgba(139, 61, 47, 0.22);
   outline-offset: 1px;
   border-color: rgba(139, 61, 47, 0.45);
+}
+
+.auth-field textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.auth-field input[type="file"] {
+  padding: 0.75rem;
 }
 
 .auth-submit {
@@ -621,6 +658,23 @@ img {
   flex-wrap: wrap;
   gap: 0.8rem;
   margin-top: 1rem;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.inline-form select {
+  min-height: 2.9rem;
+  padding: 0 0.95rem;
+  border: 1px solid rgba(17, 34, 24, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  font: inherit;
 }
 
 .footer {

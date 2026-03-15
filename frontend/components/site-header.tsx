@@ -1,25 +1,65 @@
 import Link from "next/link";
 
+import { HeaderAuthActions } from "@/components/header-auth-actions";
 import { getCurrentProfile } from "@/lib/api";
+import type { Role } from "@/lib/types";
 
-const navItems = [
-  { href: "/listings", label: "Browse Equipment" },
-  { href: "/donor", label: "Donor Dashboard" },
-  { href: "/recipient", label: "Recipient Dashboard" },
-  { href: "/admin", label: "Admin Panel" },
-  { href: "/about", label: "About" },
-];
+function getDashboardHref(role?: Role) {
+  if (role === "donor_lab") {
+    return "/donor";
+  }
+
+  if (role === "recipient_institution") {
+    return "/recipient";
+  }
+
+  if (role === "admin") {
+    return "/admin";
+  }
+
+  return "/auth";
+}
+
+function getNavItems(role?: Role) {
+  const items = [{ href: "/listings", label: "Browse Equipment" }];
+
+  if (!role) {
+    items.push({ href: "/auth", label: "Dashboard" });
+  }
+
+  if (role === "donor_lab") {
+    items.push({ href: "/donor", label: "Donor Dashboard" });
+  }
+
+  if (role === "recipient_institution") {
+    items.push({ href: "/recipient", label: "Recipient Dashboard" });
+  }
+
+  if (role === "admin") {
+    items.push({ href: "/admin", label: "Admin Panel" });
+  }
+
+  items.push({ href: "/about", label: "About" });
+
+  return items;
+}
+
+function getProfileInitial(name: string | undefined) {
+  const trimmedName = name?.trim();
+
+  if (!trimmedName) {
+    return "U";
+  }
+
+  return trimmedName.charAt(0).toUpperCase();
+}
 
 export async function SiteHeader() {
   const profile = await getCurrentProfile();
-  const dashboardHref =
-    profile?.user.role === "donor_lab"
-      ? "/donor"
-      : profile?.user.role === "recipient_institution"
-        ? "/recipient"
-        : profile?.user.role === "admin"
-          ? "/admin"
-          : "/auth";
+  const dashboardHref = getDashboardHref(profile?.user.role);
+  const navItems = getNavItems(profile?.user.role);
+  const profileInitial = getProfileInitial(profile?.user.full_name);
+  const showListEquipment = profile?.user.role === "donor_lab";
 
   return (
     <header className="site-header">
@@ -39,19 +79,18 @@ export async function SiteHeader() {
           ))}
         </nav>
         {profile ? (
-          <div className="header-profile">
-            <div className="header-profile-copy">
-              <strong>{profile.institution.name}</strong>
-              <small>{profile.user.role.replaceAll("_", " ")}</small>
-            </div>
-            <Link href={dashboardHref} className="button button-outline">
-              Open dashboard
+          <HeaderAuthActions
+            dashboardHref={dashboardHref}
+            profileInitial={profileInitial}
+            profileName={profile.user.full_name}
+            showListEquipment={showListEquipment}
+          />
+        ) : (
+          <div className="site-header-actions">
+            <Link href="/auth" className="button button-outline">
+              Sign In / Verify
             </Link>
           </div>
-        ) : (
-          <Link href="/auth" className="button button-outline">
-            Sign In / Verify
-          </Link>
         )}
       </div>
     </header>

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.routes.dependencies import require_actor
-from app.schemas.domain import AdminDashboardResponse, AuthenticatedUser, ListingDetailResponse, Role
+from app.schemas.domain import AdminDashboardResponse, AuthenticatedUser, Listing, ListingApprovalUpdate, ListingDetailResponse, Role
+from app.services.supabase_listings import get_supabase_listing_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -10,13 +11,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def get_admin_dashboard(actor: AuthenticatedUser = Depends(require_actor)) -> AdminDashboardResponse:
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
-    return AdminDashboardResponse(
-        pending_institutions=[],
-        listings_for_review=[],
-        requests_requiring_attention=[],
-        active_threads=[],
-        recent_actions=[],
-    )
+    return get_supabase_listing_service().get_admin_dashboard()
 
 
 @router.get("/listings/{listing_id}", response_model=ListingDetailResponse)
@@ -26,4 +21,15 @@ def get_admin_listing_detail(
 ) -> ListingDetailResponse:
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+    return get_supabase_listing_service().get_admin_listing_detail(listing_id)
+
+
+@router.patch("/listings/{listing_id}", response_model=Listing)
+def update_listing_status(
+    listing_id: str,
+    payload: ListingApprovalUpdate,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> Listing:
+    if actor.user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return get_supabase_listing_service().update_listing_status(actor, listing_id, payload.status)

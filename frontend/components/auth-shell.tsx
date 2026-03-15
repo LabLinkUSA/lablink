@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 
 import { StatusPill } from "@/components/status-pill";
@@ -26,6 +27,7 @@ const supabase = createSupabaseBrowserClient();
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export function AuthShell() {
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("sign_in");
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -152,13 +154,14 @@ export function AuthShell() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSessionUser(session?.user ? mapSessionUser(session.user) : null);
+      router.refresh();
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   function resetMessages() {
     setNotice(null);
@@ -259,6 +262,7 @@ export function AuthShell() {
           }
 
           setNotice("Signed out.");
+          router.refresh();
         })
         .finally(() => {
           setIsPending(false);

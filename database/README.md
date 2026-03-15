@@ -4,6 +4,8 @@
 
 `policies.sql` provides row-level security scaffolding that assumes Supabase authentication and a mapped `public.app_users.supabase_auth_user_id`.
 
+`storage.sql` creates the default Supabase Storage bucket used for donor listing images. The frontend/backend expect the bucket name `listing-images` unless `SUPABASE_LISTING_IMAGES_BUCKET` is set to a different existing public bucket.
+
 Notable choices:
 
 - Public visitors can read only approved/public listing states.
@@ -11,4 +13,3 @@ Notable choices:
 - Verified recipient institutions can submit requests and request-board posts.
 - Messaging remains request-scoped and visible to admins.
 - Admin audit logs are first-class and admin-only.
-

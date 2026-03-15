@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 
 from app.schemas.domain import Listing, ListingDetailResponse
+from app.services.supabase_listings import get_supabase_listing_service
 
 router = APIRouter(tags=["public"])
 
@@ -12,9 +13,9 @@ def healthcheck() -> dict[str, str]:
 
 @router.get("/public/listings", response_model=list[Listing])
 def list_public_listings() -> list[Listing]:
-    return []
+    return get_supabase_listing_service().list_public_listings()
 
 
 @router.get("/public/listings/{listing_id}", response_model=ListingDetailResponse)
 def get_public_listing_detail(listing_id: str) -> ListingDetailResponse:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+    return get_supabase_listing_service().get_public_listing_detail(listing_id)

@@ -61,6 +61,31 @@ export interface Listing {
   request_count: number;
 }
 
+export interface ListingCreateInput {
+  title: string;
+  category: string;
+  condition: string;
+  quantity: number;
+  location: string;
+  availability_window: string;
+  description: string;
+  dimensions_weight: string;
+  handling_requirements: string;
+  working_status: string;
+  documentation_included: string;
+  special_handling_flags: string;
+  delivery_mode: string;
+  photo_urls: string[];
+}
+
+export interface ListingApprovalUpdate {
+  status: ListingStatus;
+}
+
+export interface ListingImageUploadResponse {
+  photo_url: string;
+}
+
 export interface EquipmentRequest {
   id: string;
   listing_id: string;

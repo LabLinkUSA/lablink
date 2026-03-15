@@ -27,8 +27,8 @@ export default async function ListingsPage() {
           <div className="empty-state">
             <h2>No listings yet</h2>
             <p>
-              The public equipment catalog is empty right now. Verified donor labs will see their own workflow once
-              database-backed listing creation is added.
+              The public equipment catalog is empty right now. Listings will appear here after donors submit them and
+              admins approve them for publication.
             </p>
           </div>
         )}
