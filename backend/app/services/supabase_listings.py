@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 
 from app.core.config import get_settings
 from app.schemas.domain import (
+    AccountStatus,
     AdminAction,
     AdminDashboardResponse,
     AuthenticatedUser,
@@ -19,6 +20,7 @@ from app.schemas.domain import (
     ListingCreate,
     ListingDetailResponse,
     ListingStatus,
+    VerificationStatus,
 )
 
 
@@ -295,6 +297,65 @@ class SupabaseListingService:
             )
         return self._to_listing(updated)
 
+    def update_institution_status(
+        self,
+        actor: AuthenticatedUser,
+        institution_id: str,
+        verification_status: VerificationStatus,
+    ) -> Institution:
+        existing = self._get_institution_row(institution_id)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Institution {institution_id} not found.")
+
+        self._request(
+            "PATCH",
+            "institutions",
+            params={"id": f"eq.{institution_id}"},
+            json={
+                "verification_status": verification_status.value,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        mapped_account_status = self._account_status_for_verification_status(verification_status)
+        self._request(
+            "PATCH",
+            "app_users",
+            params={"institution_id": f"eq.{institution_id}"},
+            json={
+                "account_status": mapped_account_status.value,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request(
+            "POST",
+            "admin_audit_logs",
+            json={
+                "id": f"audit_{uuid4().hex[:12]}",
+                "actor_user_id": actor.user.id,
+                "action_type": "institution_status_updated",
+                "subject_table": "institutions",
+                "subject_id": institution_id,
+                "notes": (
+                    f"Institution verification status updated to {verification_status.value}. "
+                    f"Member account status set to {mapped_account_status.value}."
+                ),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        updated = self._get_institution_row(institution_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Institution status was updated but the institution could not be reloaded.",
+            )
+
+        return self._to_institution(updated)
+
     def _get_listing_row(self, listing_id: str) -> dict[str, Any] | None:
         rows = self._request(
             "GET",
@@ -302,6 +363,18 @@ class SupabaseListingService:
             params={
                 "select": self._listing_select(),
                 "id": f"eq.{listing_id}",
+                "limit": "1",
+            },
+        )
+        return rows[0] if rows else None
+
+    def _get_institution_row(self, institution_id: str) -> dict[str, Any] | None:
+        rows = self._request(
+            "GET",
+            "institutions",
+            params={
+                "select": "id,name,role_type,verification_status,location,description",
+                "id": f"eq.{institution_id}",
                 "limit": "1",
             },
         )
@@ -424,6 +497,15 @@ class SupabaseListingService:
         if response.content:
             return response.json()
         return None
+
+    def _account_status_for_verification_status(self, verification_status: VerificationStatus) -> AccountStatus:
+        if verification_status == VerificationStatus.VERIFIED:
+            return AccountStatus.VERIFIED
+        if verification_status == VerificationStatus.SUSPENDED:
+            return AccountStatus.SUSPENDED
+        if verification_status == VerificationStatus.REJECTED:
+            return AccountStatus.RESTRICTED
+        return AccountStatus.PENDING_VERIFICATION
 
 
 def get_supabase_listing_service() -> SupabaseListingService:

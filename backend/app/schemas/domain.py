@@ -185,6 +185,10 @@ class ListingApprovalUpdate(BaseModel):
     status: ListingStatus
 
 
+class InstitutionVerificationUpdate(BaseModel):
+    verification_status: VerificationStatus
+
+
 class ListingImageUploadResponse(BaseModel):
     photo_url: str
 

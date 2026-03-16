@@ -102,6 +102,16 @@ export function AuthShell() {
     };
   }
 
+  function isDuplicateEmailSignUp(user: SupabaseUser | null): boolean {
+    if (!user) {
+      return false;
+    }
+
+    // Supabase may return a user without identities instead of an explicit error
+    // when sign-up is attempted for an email that already exists.
+    return Array.isArray(user.identities) && user.identities.length === 0;
+  }
+
   async function createOnboardingRecord(accessToken: string, payload: OnboardingCreate): Promise<OnboardingResponse> {
     const response = await fetch(`${API_BASE_URL}/auth/onboarding`, {
       method: "POST",
@@ -156,6 +166,10 @@ export function AuthShell() {
     router.refresh();
   }
 
+  function refreshPage() {
+    router.refresh();
+  }
+
   async function ensureOnboarding(session: Session, options?: { fromSignUp?: boolean }): Promise<void> {
     const payload = buildOnboardingPayload(session.user);
     if (!payload) {
@@ -181,11 +195,13 @@ export function AuthShell() {
       setNotice(
         `Account created and LabLink onboarding started for ${onboarding.institution.name}. Admin verification is still required before transacting.`,
       );
+      refreshPage();
       return;
     }
 
     if (options?.fromSignUp) {
       setNotice(`Account created. Your LabLink profile for ${onboarding.institution.name} already exists.`);
+      refreshPage();
       return;
     }
 
@@ -278,6 +294,11 @@ export function AuthShell() {
         .then(async ({ error: authError, data }) => {
           if (authError) {
             setError(authError.message);
+            return;
+          }
+
+          if (isDuplicateEmailSignUp(data.user)) {
+            setError("That email is already associated with an account. Sign in instead or reset the password.");
             return;
           }
 

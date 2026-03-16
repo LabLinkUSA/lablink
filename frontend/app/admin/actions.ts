@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getAccessToken } from "@/lib/auth";
 import { getCurrentProfile } from "@/lib/api";
-import type { ListingStatus } from "@/lib/types";
+import type { ListingStatus, VerificationStatus } from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 
@@ -48,4 +48,47 @@ export async function updateListingStatusAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/donor");
   revalidatePath("/listings");
+}
+
+export async function updateInstitutionStatusAction(formData: FormData) {
+  const accessToken = await getAccessToken();
+  const profile = await getCurrentProfile();
+
+  if (!accessToken || profile?.user.role !== "admin") {
+    throw new Error("Admin access required.");
+  }
+
+  const institutionId = formData.get("institutionId");
+  const verificationStatus = formData.get("verificationStatus");
+
+  if (typeof institutionId !== "string" || typeof verificationStatus !== "string") {
+    throw new Error("Institution verification payload is incomplete.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/admin/institutions/${institutionId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      verification_status: verificationStatus as VerificationStatus,
+    }),
+  });
+
+  if (!response.ok) {
+    let message = "Could not update the institution status.";
+    try {
+      const body = (await response.json()) as { detail?: string };
+      if (body.detail) {
+        message = body.detail;
+      }
+    } catch {}
+    throw new Error(message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/auth");
+  revalidatePath("/donor");
+  revalidatePath("/recipient");
 }
