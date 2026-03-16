@@ -7,7 +7,7 @@ import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 
 import { StatusPill } from "@/components/status-pill";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { OnboardingCreate, OnboardingResponse, Role } from "@/lib/types";
+import type { AuthenticatedUser, OnboardingCreate, OnboardingResponse, Role } from "@/lib/types";
 
 type AuthMode = "sign_in" | "sign_up";
 
@@ -25,6 +25,19 @@ const roleOptions: Array<{ value: Role; label: string }> = [
 
 const supabase = createSupabaseBrowserClient();
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
+function getDashboardHref(role?: Role): string {
+  if (role === "donor_lab") {
+    return "/donor";
+  }
+  if (role === "recipient_institution") {
+    return "/recipient";
+  }
+  if (role === "admin") {
+    return "/admin";
+  }
+  return "/auth";
+}
 
 export function AuthShell() {
   const router = useRouter();
@@ -113,12 +126,52 @@ export function AuthShell() {
     return (await response.json()) as OnboardingResponse;
   }
 
+  async function fetchCurrentProfile(accessToken: string): Promise<AuthenticatedUser | null> {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      let message = "Could not load your LabLink profile.";
+      try {
+        const body = (await response.json()) as { detail?: string };
+        if (body.detail) {
+          message = body.detail;
+        }
+      } catch {}
+      throw new Error(message);
+    }
+
+    return (await response.json()) as AuthenticatedUser;
+  }
+
+  async function routeToDashboard(role: Role) {
+    await router.push(getDashboardHref(role));
+    router.refresh();
+  }
+
   async function ensureOnboarding(session: Session, options?: { fromSignUp?: boolean }): Promise<void> {
     const payload = buildOnboardingPayload(session.user);
     if (!payload) {
       if (options?.fromSignUp) {
         setNotice("Account created. Finish email confirmation if required, then sign in to complete LabLink onboarding.");
+        return;
       }
+
+      const profile = await fetchCurrentProfile(session.access_token);
+      if (!profile) {
+        setNotice("Signed in successfully, but this account is not provisioned for LabLink access yet.");
+        return;
+      }
+
+      setNotice(`Signed in successfully. Your LabLink profile is linked to ${profile.institution.name}.`);
+      await routeToDashboard(profile.user.role);
       return;
     }
 
@@ -137,6 +190,7 @@ export function AuthShell() {
     }
 
     setNotice(`Signed in successfully. Your LabLink profile is linked to ${onboarding.institution.name}.`);
+    await routeToDashboard(onboarding.user.role);
   }
 
   useEffect(() => {
@@ -278,8 +332,9 @@ export function AuthShell() {
             <span className="eyebrow">Authentication</span>
             <h1>Sign in now, then move through institution verification.</h1>
             <p>
-              Accounts can be created here with Supabase. Posting listings and submitting requests still depend on the
-              institution record and admin verification workflow in LabLink.
+              Donor and recipient accounts can be created here with Supabase. Pre-created admin operators also sign in
+              here, while posting listings and submitting requests still depend on the institution record and admin
+              verification workflow in LabLink.
             </p>
           </div>
         </div>
@@ -325,9 +380,11 @@ export function AuthShell() {
                   <button type="button" className="button button-primary" onClick={handleSignOut} disabled={isPending}>
                     {isPending ? "Working..." : "Sign out"}
                   </button>
-                  <Link href="/recipient" className="button button-outline">
-                    View recipient flow
-                  </Link>
+                  {sessionUser.role ? (
+                    <Link href={getDashboardHref(sessionUser.role as Role)} className="button button-outline">
+                      View dashboard
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             ) : mode === "sign_in" ? (

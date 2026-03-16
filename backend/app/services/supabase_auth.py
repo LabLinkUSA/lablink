@@ -7,7 +7,8 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import get_settings
-from app.schemas.domain import AuthenticatedSupabaseUser, AuthenticatedUser, Institution, User
+from app.schemas.domain import AuthenticatedSupabaseUser, AuthenticatedUser
+from app.services.supabase_profiles import get_supabase_profile_service
 
 
 class SupabaseAuthService:
@@ -18,17 +19,14 @@ class SupabaseAuthService:
 
     def authenticate(self, token: str) -> AuthenticatedUser:
         auth_user = self.authenticate_supabase_user(token)
-        profile = self._fetch_app_user(auth_user.auth_user_id)
+        profile = get_supabase_profile_service().get_profile(auth_user)
         if not profile:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Authenticated user is missing an app profile.",
             )
 
-        return AuthenticatedUser(
-            user=User.model_validate(profile),
-            institution=Institution.model_validate(profile["institution"]),
-        )
+        return profile
 
     def authenticate_supabase_user(self, token: str) -> AuthenticatedSupabaseUser:
         payload = self._decode_token(token)
@@ -59,29 +57,6 @@ class SupabaseAuthService:
         if not isinstance(payload, dict):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token payload.")
         return payload
-
-    def _fetch_app_user(self, auth_user_id: str) -> dict[str, Any] | None:
-        headers = {
-            "apikey": self.service_role_key,
-            "Authorization": f"Bearer {self.service_role_key}",
-        }
-        params = {
-            "select": "id,full_name,email,role,account_status,institution_id,institution:institutions(id,name,type:role_type,verification_status,location,description)",
-            "supabase_auth_user_id": f"eq.{auth_user_id}",
-            "limit": "1",
-        }
-
-        with httpx.Client(timeout=10.0) as client:
-            response = client.get(f"{self.supabase_url}/rest/v1/app_users", headers=headers, params=params)
-
-        if response.status_code >= 400:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Could not fetch app user from Supabase.",
-            )
-
-        rows = response.json()
-        return rows[0] if rows else None
 
 
 @lru_cache

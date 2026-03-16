@@ -8,6 +8,7 @@ alter table public.request_messages enable row level security;
 alter table public.request_board_posts enable row level security;
 alter table public.saved_listings enable row level security;
 alter table public.admin_audit_logs enable row level security;
+alter table public.admin_email_allowlist enable row level security;
 
 create or replace function public.current_app_user()
 returns public.app_users
@@ -187,4 +188,3 @@ on public.admin_audit_logs
 for all
 using (public.current_user_role() = 'admin')
 with check (public.current_user_role() = 'admin');
-

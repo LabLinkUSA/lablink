@@ -9,6 +9,7 @@
 Notable choices:
 
 - Public visitors can read only approved/public listing states.
+- `admin_email_allowlist` supports manual admin eligibility management from the Supabase Table Editor.
 - Verified donor institutions can create listings tied to their own institution.
 - Verified recipient institutions can submit requests and request-board posts.
 - Messaging remains request-scoped and visible to admins.

@@ -35,6 +35,17 @@ create table if not exists public.institutions (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+insert into public.institutions (id, name, role_type, verification_status, location, description)
+values (
+  'inst_lablink_ops',
+  'LabLink Operations',
+  'admin',
+  'verified',
+  'Internal',
+  'Internal LabLink operators responsible for verification, moderation, and fulfillment oversight.'
+)
+on conflict (id) do nothing;
+
 create table if not exists public.app_users (
   id text primary key,
   supabase_auth_user_id uuid unique,
@@ -46,6 +57,29 @@ create table if not exists public.app_users (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+create table if not exists public.admin_email_allowlist (
+  email text primary key,
+  is_active boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create or replace function public.touch_admin_email_allowlist_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists touch_admin_email_allowlist_updated_at on public.admin_email_allowlist;
+create trigger touch_admin_email_allowlist_updated_at
+before update on public.admin_email_allowlist
+for each row
+execute function public.touch_admin_email_allowlist_updated_at();
 
 create table if not exists public.listings (
   id text primary key,
@@ -155,4 +189,3 @@ create index if not exists requests_listing_idx on public.equipment_requests(lis
 create index if not exists requests_status_idx on public.equipment_requests(status);
 create index if not exists threads_request_idx on public.request_message_threads(request_id);
 create index if not exists board_posts_status_idx on public.request_board_posts(status);
-
