@@ -1,4 +1,6 @@
 import { DashboardPanel } from "@/components/dashboard-panel";
+import { DonorListingActions } from "@/components/donor-listing-actions";
+import { ListingListRow } from "@/components/listing-list-row";
 import { StatusPill } from "@/components/status-pill";
 import { getCurrentProfile, getDonorDashboard, getDonorRequestBoard } from "@/lib/api";
 import { titleCaseStatus } from "@/lib/format";
@@ -67,19 +69,19 @@ export default async function DonorPage() {
           >
             <div className="list">
               {dashboard.listings.map((listing) => (
-                <article key={listing.id} className="list-row">
-                  <div className="list-row-topline">
-                    <strong>{listing.category}</strong>
-                    <StatusPill status={listing.status} />
-                  </div>
-                  <h3>{listing.title}</h3>
-                  <p>{listing.description}</p>
-                  <div className="list-row-meta">
-                    <span>{listing.location}</span>
-                    <span>{listing.quantity} unit(s)</span>
-                    <span>{listing.request_count} request(s)</span>
-                  </div>
-                </article>
+                <ListingListRow
+                  key={listing.id}
+                  listing={listing}
+                  description={listing.description}
+                  meta={
+                    <div className="list-row-meta">
+                      <span>{listing.location}</span>
+                      <span>{listing.quantity} unit(s)</span>
+                      <span>{listing.request_count} request(s)</span>
+                    </div>
+                  }
+                  actions={<DonorListingActions listingId={listing.id} />}
+                />
               ))}
             </div>
           </DashboardPanel>

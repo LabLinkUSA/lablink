@@ -13,12 +13,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
-    const accessToken = await getAccessToken();
     const headers = new Headers(init?.headers);
-
-    if (accessToken) {
-      headers.set("Authorization", `Bearer ${accessToken}`);
-    }
 
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
@@ -36,13 +31,23 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null>
   }
 }
 
-export async function getCurrentProfile(): Promise<AuthenticatedUser | null> {
+async function fetchAuthedJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   const accessToken = await getAccessToken();
   if (!accessToken) {
     return null;
   }
 
-  return fetchJson<AuthenticatedUser>("/auth/me");
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${accessToken}`);
+
+  return fetchJson<T>(path, {
+    ...init,
+    headers,
+  });
+}
+
+export async function getCurrentProfile(): Promise<AuthenticatedUser | null> {
+  return fetchAuthedJson<AuthenticatedUser>("/auth/me");
 }
 
 export async function getPublicListings(): Promise<Listing[]> {
@@ -55,37 +60,21 @@ export async function getListingDetail(listingId: string): Promise<ListingDetail
 }
 
 export async function getDonorDashboard(): Promise<DonorDashboardResponse | null> {
-  const accessToken = await getAccessToken();
-  if (!accessToken) {
-    return null;
-  }
-
-  return fetchJson<DonorDashboardResponse>("/donor/dashboard");
+  return fetchAuthedJson<DonorDashboardResponse>("/donor/dashboard");
 }
 
 export async function getDonorRequestBoard(): Promise<RequestBoardPost[] | null> {
-  const accessToken = await getAccessToken();
-  if (!accessToken) {
-    return null;
-  }
+  return fetchAuthedJson<RequestBoardPost[]>("/donor/request-board");
+}
 
-  return fetchJson<RequestBoardPost[]>("/donor/request-board");
+export async function getDonorListingDetail(listingId: string): Promise<ListingDetailResponse | null> {
+  return fetchAuthedJson<ListingDetailResponse>(`/donor/listings/${listingId}`);
 }
 
 export async function getRecipientDashboard(): Promise<RecipientDashboardResponse | null> {
-  const accessToken = await getAccessToken();
-  if (!accessToken) {
-    return null;
-  }
-
-  return fetchJson<RecipientDashboardResponse>("/recipient/dashboard");
+  return fetchAuthedJson<RecipientDashboardResponse>("/recipient/dashboard");
 }
 
 export async function getAdminDashboard(): Promise<AdminDashboardResponse | null> {
-  const accessToken = await getAccessToken();
-  if (!accessToken) {
-    return null;
-  }
-
-  return fetchJson<AdminDashboardResponse>("/admin/dashboard");
+  return fetchAuthedJson<AdminDashboardResponse>("/admin/dashboard");
 }

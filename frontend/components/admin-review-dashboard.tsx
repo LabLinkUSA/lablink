@@ -2,16 +2,22 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { DashboardPanel } from "@/components/dashboard-panel";
+import { ListingListRow } from "@/components/listing-list-row";
 import { StatusPill } from "@/components/status-pill";
-import { updateInstitutionStatusAction, updateListingStatusAction } from "@/app/admin/actions";
+import { updateInstitutionStatusAction } from "@/app/admin/actions";
 import { formatDate } from "@/lib/format";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AdminDashboardResponse, Institution, Listing } from "@/lib/types";
 
 type AdminReviewDashboardProps = {
   dashboard: AdminDashboardResponse;
 };
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+const supabase = createSupabaseBrowserClient();
 
 export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
@@ -20,7 +26,7 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   return (
     <>
       <div className="dashboard-grid">
-        <DashboardPanel title="Institution verification queue" subtitle="Pending or suspended institutions require review.">
+        <DashboardPanel title="Institution verification queue" subtitle="Review and manage every institution regardless of verification status.">
           <div className="list">
             {dashboard.pending_institutions.map((institution) => (
               <button
@@ -44,27 +50,23 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
           </div>
         </DashboardPanel>
 
-        <DashboardPanel title="Listing moderation queue" subtitle="Listings can enter moderation on submit or after material edits.">
+        <DashboardPanel title="Listing moderation queue" subtitle="Review and manage every listing, including approved, under-review, fulfilled, and removed records.">
           <div className="list">
             {dashboard.listings_for_review.map((listing) => (
-              <button
+              <ListingListRow
                 key={listing.id}
-                type="button"
-                className="list-row review-trigger"
+                listing={listing}
+                description={listing.handling_requirements}
+                meta={
+                  <div className="list-row-meta">
+                    <span>{listing.location}</span>
+                    <span>{listing.quantity} unit(s)</span>
+                    <span>Open review</span>
+                  </div>
+                }
+                asButton
                 onClick={() => setSelectedListing(listing)}
-              >
-                <div className="list-row-topline">
-                  <strong>{listing.category}</strong>
-                  <StatusPill status={listing.status} />
-                </div>
-                <h3>{listing.title}</h3>
-                <p>{listing.handling_requirements}</p>
-                <div className="list-row-meta">
-                  <span>{listing.location}</span>
-                  <span>{listing.quantity} unit(s)</span>
-                  <span>Open review</span>
-                </div>
-              </button>
+              />
             ))}
           </div>
         </DashboardPanel>
@@ -195,6 +197,56 @@ function ListingReviewModal({
   listing: Listing;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [status, setStatus] = useState(listing.status);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("You must be signed in as an admin to update listing status.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/listings/${listing.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        let message = "Could not update the listing status.";
+        try {
+          const body = (await response.json()) as { detail?: string };
+          if (body.detail) {
+            message = body.detail;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+
+      router.refresh();
+      onClose();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Could not update the listing status.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="review-modal-overlay" role="presentation" onClick={onClose}>
       <section
@@ -293,21 +345,25 @@ function ListingReviewModal({
               </dl>
             </div>
 
-            <form action={updateListingStatusAction} className="review-modal-form">
-              <input type="hidden" name="listingId" value={listing.id} />
+            <form onSubmit={handleSubmit} className="review-modal-form">
               <div className="auth-field">
-                <label htmlFor={`listing-status-${listing.id}`}>Listing status</label>
-                <select id={`listing-status-${listing.id}`} name="status" defaultValue={listing.status}>
-                  <option value="pending_admin_approval">Pending approval</option>
-                  <option value="live">Approve and publish</option>
-                  <option value="under_review">Needs follow-up</option>
-                  <option value="removed_expired">Remove from marketplace</option>
+                <label htmlFor={`listing-status-${listing.id}`}>Change Listing Status</label>
+                <select
+                  id={`listing-status-${listing.id}`}
+                  name="status"
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value as Listing["status"])}
+                >
+                  <option value="pending_admin_approval">Pending</option>
+                  <option value="live">Approved</option>
+                  <option value="removed_by_admin">Remove from marketplace</option>
                 </select>
               </div>
-              <button type="submit" className="button button-primary">
-                Update status
+              <button type="submit" className="button button-primary" disabled={isSubmitting}>
+                {isSubmitting ? "Updating..." : "Update status"}
               </button>
             </form>
+            {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
           </div>
         </div>
       </section>

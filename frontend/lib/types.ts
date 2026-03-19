@@ -8,7 +8,8 @@ export type ListingStatus =
   | "under_review"
   | "matched_reserved"
   | "fulfilled"
-  | "removed_expired";
+  | "removed_by_admin"
+  | "removed_by_donor";
 export type RequestStatus =
   | "submitted"
   | "admin_review"
@@ -62,6 +63,23 @@ export interface Listing {
 }
 
 export interface ListingCreateInput {
+  title: string;
+  category: string;
+  condition: string;
+  quantity: number;
+  location: string;
+  availability_window: string;
+  description: string;
+  dimensions_weight: string;
+  handling_requirements: string;
+  working_status: string;
+  documentation_included: string;
+  special_handling_flags: string;
+  delivery_mode: string;
+  photo_urls: string[];
+}
+
+export interface ListingUpdateInput {
   title: string;
   category: string;
   condition: string;

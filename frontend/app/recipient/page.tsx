@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { ListingListRow } from "@/components/listing-list-row";
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { StatusPill } from "@/components/status-pill";
 import { getCurrentProfile, getRecipientDashboard } from "@/lib/api";
@@ -15,6 +18,38 @@ export default async function RecipientPage() {
         </div>
       </section>
     );
+  }
+
+  if (profile?.user.role === "recipient_institution") {
+    const isVerifiedRecipient =
+      profile.user.account_status === "verified" && profile.institution.verification_status === "verified";
+
+    if (!isVerifiedRecipient) {
+      return (
+        <section className="page-section">
+          <div className="shell empty-state">
+            <span className="eyebrow">Verification required</span>
+            <h1>Your institution must be admin-verified before you can request equipment.</h1>
+            <p>
+              Your recipient account is connected to {profile.institution.name}, which is currently{" "}
+              {profile.institution.verification_status.replaceAll("_", " ")}.
+            </p>
+            <div className="auth-state-card">
+              <h2>What happens next</h2>
+              <p>Once LabLink admin verification is complete, you can return here to request listings and track activity.</p>
+            </div>
+            <div className="page-actions">
+              <Link href="/listings" className="button button-secondary">
+                Back to listings
+              </Link>
+              <Link href="/auth" className="button button-primary">
+                Check verification status
+              </Link>
+            </div>
+          </div>
+        </section>
+      );
+    }
   }
 
   if (!dashboard) {
@@ -63,14 +98,17 @@ export default async function RecipientPage() {
           <DashboardPanel title="Saved listings" subtitle="Recipients can save listings while they complete verification.">
             <div className="list">
               {dashboard.saved_listings.map((listing) => (
-                <article key={listing.id} className="list-row">
-                  <div className="list-row-topline">
-                    <strong>{listing.category}</strong>
-                    <StatusPill status={listing.status} />
-                  </div>
-                  <h3>{listing.title}</h3>
-                  <p>{listing.location}</p>
-                </article>
+                <ListingListRow
+                  key={listing.id}
+                  listing={listing}
+                  description={listing.location}
+                  meta={
+                    <div className="list-row-meta">
+                      <span>{listing.quantity} unit(s)</span>
+                      <span>{listing.availability_window}</span>
+                    </div>
+                  }
+                />
               ))}
             </div>
           </DashboardPanel>

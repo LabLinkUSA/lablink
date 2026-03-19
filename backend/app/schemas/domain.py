@@ -2,7 +2,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Role(StrEnum):
@@ -32,7 +32,8 @@ class ListingStatus(StrEnum):
     UNDER_REVIEW = "under_review"
     MATCHED_RESERVED = "matched_reserved"
     FULFILLED = "fulfilled"
-    REMOVED_EXPIRED = "removed_expired"
+    REMOVED_BY_ADMIN = "removed_by_admin"
+    REMOVED_BY_DONOR = "removed_by_donor"
 
 
 class RequestStatus(StrEnum):
@@ -164,7 +165,7 @@ class LabLinkSeed(BaseModel):
     admin_actions: List[AdminAction]
 
 
-class ListingCreate(BaseModel):
+class ListingPayloadBase(BaseModel):
     title: str
     category: str
     condition: str
@@ -179,6 +180,43 @@ class ListingCreate(BaseModel):
     special_handling_flags: str
     delivery_mode: str
     photo_urls: List[str] = Field(default_factory=list)
+
+    @field_validator(
+        "title",
+        "category",
+        "condition",
+        "location",
+        "availability_window",
+        "description",
+        "dimensions_weight",
+        "handling_requirements",
+        "working_status",
+        "documentation_included",
+        "special_handling_flags",
+        "delivery_mode",
+    )
+    @classmethod
+    def validate_required_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("This field is required.")
+        return cleaned
+
+    @field_validator("photo_urls")
+    @classmethod
+    def validate_photo_urls(cls, value: List[str]) -> List[str]:
+        cleaned_values = [photo_url.strip() for photo_url in value if photo_url.strip()]
+        if not cleaned_values:
+            raise ValueError("At least one listing image is required.")
+        return cleaned_values
+
+
+class ListingCreate(ListingPayloadBase):
+    pass
+
+
+class ListingUpdate(ListingPayloadBase):
+    pass
 
 
 class ListingApprovalUpdate(BaseModel):

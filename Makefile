@@ -16,4 +16,3 @@ dev-frontend:
 
 dev-backend:
 	cd backend && . .venv/bin/activate && uvicorn app.main:app --reload
-

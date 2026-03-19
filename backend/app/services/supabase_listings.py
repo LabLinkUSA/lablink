@@ -18,10 +18,12 @@ from app.schemas.domain import (
     Institution,
     Listing,
     ListingCreate,
+    ListingUpdate,
     ListingDetailResponse,
     ListingStatus,
     VerificationStatus,
 )
+from app.services.supabase_profiles import ADMIN_INSTITUTION_ID
 
 
 class SupabaseListingService:
@@ -61,7 +63,11 @@ class SupabaseListingService:
                 "order": "created_at.desc",
             },
         )
-        listings = [self._to_listing(row) for row in rows]
+        listings = [
+            listing
+            for listing in (self._to_listing(row) for row in rows)
+            if listing.status not in {ListingStatus.REMOVED_BY_ADMIN, ListingStatus.REMOVED_BY_DONOR}
+        ]
         impact_summary = {
             "total_items_donated": sum(listing.quantity for listing in listings if listing.status == ListingStatus.FULFILLED),
             "institutions_served": 0,
@@ -75,6 +81,13 @@ class SupabaseListingService:
             active_requests=[],
             impact_summary=impact_summary,
         )
+
+    def get_donor_listing_detail(self, actor: AuthenticatedUser, listing_id: str) -> ListingDetailResponse:
+        row = self._get_listing_detail_row(listing_id)
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+        self._ensure_donor_controls_listing(actor, row)
+        return self._to_listing_detail(row)
 
     def create_listing(self, actor: AuthenticatedUser, payload: ListingCreate) -> Listing:
         listing_id = f"listing_{uuid4().hex[:12]}"
@@ -122,6 +135,84 @@ class SupabaseListingService:
                 detail="Listing was created but could not be loaded.",
             )
         return self._to_listing(row)
+
+    def update_donor_listing(self, actor: AuthenticatedUser, listing_id: str, payload: ListingUpdate) -> Listing:
+        existing = self._get_listing_row(listing_id)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+        self._ensure_donor_controls_listing(actor, existing)
+        self._ensure_listing_mutable(existing, action="edit")
+
+        self._request(
+            "PATCH",
+            "listings",
+            params={"id": f"eq.{listing_id}"},
+            json={
+                "title": payload.title,
+                "category": payload.category,
+                "item_condition": payload.condition,
+                "quantity": payload.quantity,
+                "location": payload.location,
+                "availability_window": payload.availability_window,
+                "description": payload.description,
+                "dimensions_weight": payload.dimensions_weight,
+                "handling_requirements": payload.handling_requirements,
+                "working_status": payload.working_status,
+                "documentation_included": payload.documentation_included,
+                "special_handling_flags": payload.special_handling_flags,
+                "delivery_mode": payload.delivery_mode,
+                "status": existing["status"],
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request("DELETE", "listing_photos", params={"listing_id": f"eq.{listing_id}"})
+        for index, photo_url in enumerate(payload.photo_urls):
+            self._request(
+                "POST",
+                "listing_photos",
+                json={
+                    "listing_id": listing_id,
+                    "photo_url": photo_url,
+                    "display_order": index,
+                },
+                headers={"Prefer": "return=minimal"},
+            )
+
+        updated = self._get_listing_row(listing_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Listing was updated but could not be reloaded.",
+            )
+        return self._to_listing(updated)
+
+    def remove_donor_listing(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
+        existing = self._get_listing_row(listing_id)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+        self._ensure_donor_controls_listing(actor, existing)
+        self._ensure_listing_mutable(existing, action="remove")
+
+        self._request(
+            "PATCH",
+            "listings",
+            params={"id": f"eq.{listing_id}"},
+            json={
+                "status": ListingStatus.REMOVED_BY_DONOR.value,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        updated = self._get_listing_row(listing_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Listing was removed but could not be reloaded.",
+            )
+        return self._to_listing(updated)
 
     def upload_listing_image(self, actor: AuthenticatedUser, filename: str, content: bytes, content_type: str) -> str:
         extension = Path(filename).suffix.lower() or ".jpg"
@@ -208,7 +299,7 @@ class SupabaseListingService:
             "institutions",
             params={
                 "select": "id,name,role_type,verification_status,location,description",
-                "verification_status": "in.(pending_verification,suspended)",
+                "id": f"neq.{ADMIN_INSTITUTION_ID}",
                 "order": "created_at.asc",
             },
         )
@@ -217,7 +308,6 @@ class SupabaseListingService:
             "listings",
             params={
                 "select": self._listing_select(),
-                "status": "in.(pending_admin_approval,under_review)",
                 "order": "created_at.desc",
             },
         )
@@ -368,6 +458,22 @@ class SupabaseListingService:
         )
         return rows[0] if rows else None
 
+    def _ensure_donor_controls_listing(self, actor: AuthenticatedUser, row: dict[str, Any]) -> None:
+        if row.get("donor_institution_id") != actor.institution.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only manage your own listings.")
+
+    def _ensure_listing_mutable(self, row: dict[str, Any], *, action: str) -> None:
+        status_value = self._normalize_listing_status(row.get("status"))
+        if status_value in {
+            ListingStatus.FULFILLED.value,
+            ListingStatus.REMOVED_BY_ADMIN.value,
+            ListingStatus.REMOVED_BY_DONOR.value,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Listings that are already {status_value.replace('_', ' ')} cannot be {action}ed.",
+            )
+
     def _get_institution_row(self, institution_id: str) -> dict[str, Any] | None:
         rows = self._request(
             "GET",
@@ -441,7 +547,7 @@ class SupabaseListingService:
                 "documentation_included": row["documentation_included"],
                 "special_handling_flags": row["special_handling_flags"],
                 "delivery_mode": row["delivery_mode"],
-                "status": row["status"],
+                "status": self._normalize_listing_status(row["status"]),
                 "photo_urls": [photo["photo_url"] for photo in photos],
                 "donor_institution_id": row["donor_institution_id"],
                 "created_by_user_id": row["created_by_user_id"],
@@ -449,6 +555,11 @@ class SupabaseListingService:
                 "request_count": row.get("request_count", 0),
             }
         )
+
+    def _normalize_listing_status(self, status_value: str) -> str:
+        if status_value == "removed_expired":
+            return ListingStatus.REMOVED_BY_ADMIN.value
+        return status_value
 
     def _to_institution(self, row: dict[str, Any]) -> Institution:
         return Institution.model_validate(

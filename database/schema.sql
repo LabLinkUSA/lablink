@@ -10,7 +10,8 @@ create type public.listing_status as enum (
   'under_review',
   'matched_reserved',
   'fulfilled',
-  'removed_expired'
+  'removed_by_admin',
+  'removed_by_donor'
 );
 create type public.request_status as enum (
   'submitted',

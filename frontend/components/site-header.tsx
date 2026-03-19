@@ -55,7 +55,14 @@ function getProfileInitial(name: string | undefined) {
 }
 
 export async function SiteHeader() {
-  const profile = await getCurrentProfile();
+  let profile = null;
+
+  try {
+    profile = await getCurrentProfile();
+  } catch {
+    profile = null;
+  }
+
   const dashboardHref = getDashboardHref(profile?.user.role);
   const navItems = getNavItems(profile?.user.role);
   const profileInitial = getProfileInitial(profile?.user.full_name);

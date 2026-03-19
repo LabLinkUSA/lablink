@@ -36,7 +36,8 @@ class ListingStatus(str, Enum):
     UNDER_REVIEW = "under_review"
     MATCHED_RESERVED = "matched_reserved"
     FULFILLED = "fulfilled"
-    REMOVED_EXPIRED = "removed_expired"
+    REMOVED_BY_ADMIN = "removed_by_admin"
+    REMOVED_BY_DONOR = "removed_by_donor"
 
 
 class RequestStatus(str, Enum):

@@ -3,15 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { StatusPill } from "@/components/status-pill";
-import { getListingDetail } from "@/lib/api";
+import { getCurrentProfile, getListingDetail } from "@/lib/api";
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = await params;
-  const detail = await getListingDetail(listingId);
+  const [detail, profile] = await Promise.all([getListingDetail(listingId), getCurrentProfile()]);
 
   if (!detail) {
     notFound();
   }
+
+  const requestHref =
+    profile?.user.role === "recipient_institution" &&
+    (profile.user.account_status !== "verified" || profile.institution.verification_status !== "verified")
+      ? "/recipient"
+      : "/auth";
 
   return (
     <section className="page-section">
@@ -32,14 +38,13 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           </div>
           <h1>{detail.listing.title}</h1>
           <p>{detail.listing.description}</p>
-          <div className="detail-actions">
-            <Link href="/auth" className="button button-primary">
-              Verify to request
-            </Link>
-            <Link href="/recipient" className="button button-outline">
-              View recipient workflow
-            </Link>
-          </div>
+          {profile?.user.role !== "admin" && profile?.user.role !== "donor_lab" ? (
+            <div className="detail-actions">
+              <Link href={requestHref} className="button button-primary">
+                Request
+              </Link>
+            </div>
+          ) : null}
 
           <section className="detail-section">
             <h2>Handling and readiness</h2>
@@ -110,4 +115,3 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     </section>
   );
 }
-

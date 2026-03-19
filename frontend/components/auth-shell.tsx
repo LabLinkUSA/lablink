@@ -26,6 +26,10 @@ const roleOptions: Array<{ value: Role; label: string }> = [
 const supabase = createSupabaseBrowserClient();
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
+function isInvalidRefreshTokenMessage(message: string): boolean {
+  return message.includes("Invalid Refresh Token") || message.includes("Refresh Token Not Found");
+}
+
 function getDashboardHref(role?: Role): string {
   if (role === "donor_lab") {
     return "/donor";
@@ -39,12 +43,16 @@ function getDashboardHref(role?: Role): string {
   return "/auth";
 }
 
-export function AuthShell() {
+type AuthShellProps = {
+  initialNotice?: string;
+};
+
+export function AuthShell({ initialNotice }: AuthShellProps) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("sign_in");
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [isPending, setIsPending] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(initialNotice ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const [signInEmail, setSignInEmail] = useState("");
@@ -57,6 +65,15 @@ export function AuthShell() {
   const [institutionName, setInstitutionName] = useState("");
   const [institutionLocation, setInstitutionLocation] = useState("");
   const [institutionDescription, setInstitutionDescription] = useState("");
+
+  useEffect(() => {
+    setNotice(initialNotice ?? null);
+  }, [initialNotice]);
+
+  async function clearInvalidSession() {
+    await supabase.auth.signOut({ scope: "local" });
+    setSessionUser(null);
+  }
 
   function getMetadataValue(user: SupabaseUser, key: string): string | undefined {
     const value = user.user_metadata[key];
@@ -212,17 +229,47 @@ export function AuthShell() {
   useEffect(() => {
     let isMounted = true;
 
-    void supabase.auth.getUser().then(({ data }) => {
-      if (!isMounted) {
-        return;
-      }
+    void supabase.auth
+      .getUser()
+      .then(async ({ data, error: authError }) => {
+        if (!isMounted) {
+          return;
+        }
 
-      setSessionUser(data.user ? mapSessionUser(data.user) : null);
-    });
+        if (authError) {
+          if (isInvalidRefreshTokenMessage(authError.message)) {
+            await clearInvalidSession();
+            return;
+          }
+
+          setSessionUser(null);
+          return;
+        }
+
+        setSessionUser(data.user ? mapSessionUser(data.user) : null);
+      })
+      .catch(async (authError: unknown) => {
+        if (!isMounted) {
+          return;
+        }
+
+        if (authError instanceof Error && isInvalidRefreshTokenMessage(authError.message)) {
+          await clearInvalidSession();
+          return;
+        }
+
+        setSessionUser(null);
+      });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "TOKEN_REFRESH_FAILED") {
+        await clearInvalidSession();
+        router.refresh();
+        return;
+      }
+
       setSessionUser(session?.user ? mapSessionUser(session.user) : null);
       router.refresh();
     });
@@ -431,6 +478,11 @@ export function AuthShell() {
                     autoComplete="current-password"
                     required
                   />
+                </div>
+                <div className="auth-inline-link-row">
+                  <Link href="/auth/forgot-password" className="auth-inline-link">
+                    Forgot password?
+                  </Link>
                 </div>
                 <button type="submit" className="button button-primary auth-submit" disabled={isPending}>
                   {isPending ? "Signing in..." : "Sign in"}

@@ -1,20 +1,32 @@
 "use client";
 
+import Image from "next/image";
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { Listing } from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const supabase = createSupabaseBrowserClient();
 
-function getRequiredString(formData: FormData, key: string, label: string) {
-  const value = formData.get(key);
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`${label} is required.`);
-  }
-  return value.trim();
-}
+type ListingFieldName =
+  | "title"
+  | "category"
+  | "condition"
+  | "quantity"
+  | "location"
+  | "availability_window"
+  | "description"
+  | "dimensions_weight"
+  | "handling_requirements"
+  | "working_status"
+  | "documentation_included"
+  | "special_handling_flags"
+  | "delivery_mode"
+  | "image";
+
+type FieldErrors = Partial<Record<ListingFieldName, string>>;
 
 async function uploadListingImage(accessToken: string, file: File) {
   const imageFormData = new FormData();
@@ -43,17 +55,84 @@ async function uploadListingImage(accessToken: string, file: File) {
   return body.photo_url;
 }
 
-export function DonorListingForm() {
+export function DonorListingForm({
+  listing,
+  mode = "create",
+}: {
+  listing?: Listing;
+  mode?: "create" | "edit";
+}) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  function validateForm(formData: FormData): { errors: FieldErrors; quantity: number; image: File | null } {
+    const errors: FieldErrors = {};
+
+    const requireText = (key: Exclude<ListingFieldName, "quantity" | "image">, label: string) => {
+      const value = formData.get(key);
+      if (typeof value !== "string" || value.trim().length === 0) {
+        errors[key] = `${label} is required.`;
+        return "";
+      }
+      return value.trim();
+    };
+
+    requireText("title", "Equipment title");
+    requireText("category", "Category");
+    requireText("condition", "Condition");
+    requireText("location", "Pickup location");
+    requireText("availability_window", "Availability window");
+    requireText("description", "Description");
+    requireText("dimensions_weight", "Dimensions and weight");
+    requireText("handling_requirements", "Handling requirements");
+    requireText("working_status", "Working status");
+    requireText("documentation_included", "Documentation included");
+    requireText("special_handling_flags", "Special handling flags");
+    requireText("delivery_mode", "Delivery mode");
+
+    const quantityValue = formData.get("quantity");
+    const quantityString = typeof quantityValue === "string" ? quantityValue.trim() : "";
+    const quantity = Number(quantityString);
+    if (quantityString.length === 0) {
+      errors.quantity = "Quantity is required.";
+    } else if (!Number.isInteger(quantity) || quantity < 1) {
+      errors.quantity = "Quantity must be a whole number greater than zero.";
+    }
+
+    const imageValue = formData.get("image");
+    const image = imageValue instanceof File && imageValue.size > 0 ? imageValue : null;
+    const hasExistingImage = Boolean(listing?.photo_urls[0]);
+    if (!image && !hasExistingImage) {
+      errors.image = "Equipment image is required.";
+    }
+
+    return {
+      errors,
+      quantity,
+      image,
+    };
+  }
+
+  function getFieldClassName(name: ListingFieldName) {
+    return fieldErrors[name] ? "auth-field auth-field-invalid" : "auth-field";
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
     setIsPending(true);
 
     const formData = new FormData(event.currentTarget);
+    const validation = validateForm(formData);
+
+    if (Object.keys(validation.errors).length > 0) {
+      setFieldErrors(validation.errors);
+      setIsPending(false);
+      return;
+    }
 
     startTransition(() => {
       void supabase.auth
@@ -68,45 +147,42 @@ export function DonorListingForm() {
             throw new Error("You must be signed in as a donor to create a listing.");
           }
 
-          const quantityValue = getRequiredString(formData, "quantity", "Quantity");
-          const quantity = Number(quantityValue);
-          if (!Number.isInteger(quantity) || quantity < 1) {
-            throw new Error("Quantity must be a whole number greater than zero.");
+          const quantity = validation.quantity;
+          const image = validation.image;
+          const photoUrls = [...(listing?.photo_urls ?? [])];
+
+          if (image) {
+            photoUrls.splice(0, photoUrls.length, await uploadListingImage(accessToken, image));
           }
 
-          const image = formData.get("image");
-          const photoUrls: string[] = [];
+          const payload = {
+            title: String(formData.get("title")).trim(),
+            category: String(formData.get("category")).trim(),
+            condition: String(formData.get("condition")).trim(),
+            quantity,
+            location: String(formData.get("location")).trim(),
+            availability_window: String(formData.get("availability_window")).trim(),
+            description: String(formData.get("description")).trim(),
+            dimensions_weight: String(formData.get("dimensions_weight")).trim(),
+            handling_requirements: String(formData.get("handling_requirements")).trim(),
+            working_status: String(formData.get("working_status")).trim(),
+            documentation_included: String(formData.get("documentation_included")).trim(),
+            special_handling_flags: String(formData.get("special_handling_flags")).trim(),
+            delivery_mode: String(formData.get("delivery_mode")).trim(),
+            photo_urls: photoUrls,
+          };
 
-          if (image instanceof File && image.size > 0) {
-            photoUrls.push(await uploadListingImage(accessToken, image));
-          }
-
-          const response = await fetch(`${API_BASE_URL}/donor/listings`, {
-            method: "POST",
+          const response = await fetch(`${API_BASE_URL}/donor/listings${mode === "edit" && listing ? `/${listing.id}` : ""}`, {
+            method: mode === "edit" ? "PATCH" : "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${accessToken}`,
             },
-            body: JSON.stringify({
-              title: getRequiredString(formData, "title", "Equipment title"),
-              category: getRequiredString(formData, "category", "Category"),
-              condition: getRequiredString(formData, "condition", "Condition"),
-              quantity,
-              location: getRequiredString(formData, "location", "Location"),
-              availability_window: getRequiredString(formData, "availability_window", "Availability window"),
-              description: getRequiredString(formData, "description", "Description"),
-              dimensions_weight: getRequiredString(formData, "dimensions_weight", "Dimensions and weight"),
-              handling_requirements: getRequiredString(formData, "handling_requirements", "Handling requirements"),
-              working_status: getRequiredString(formData, "working_status", "Working status"),
-              documentation_included: getRequiredString(formData, "documentation_included", "Documentation included"),
-              special_handling_flags: getRequiredString(formData, "special_handling_flags", "Special handling flags"),
-              delivery_mode: getRequiredString(formData, "delivery_mode", "Delivery mode"),
-              photo_urls: photoUrls,
-            }),
+            body: JSON.stringify(payload),
           });
 
           if (!response.ok) {
-            let message = "Could not create the equipment listing.";
+            let message = mode === "edit" ? "Could not update the equipment listing." : "Could not create the equipment listing.";
             try {
               const body = (await response.json()) as { detail?: string };
               if (body.detail) {
@@ -120,7 +196,13 @@ export function DonorListingForm() {
           router.refresh();
         })
         .catch((submitError: unknown) => {
-          setError(submitError instanceof Error ? submitError.message : "Could not create the equipment listing.");
+          setError(
+            submitError instanceof Error
+              ? submitError.message
+              : mode === "edit"
+                ? "Could not update the equipment listing."
+                : "Could not create the equipment listing.",
+          );
         })
         .finally(() => {
           setIsPending(false);
@@ -131,88 +213,163 @@ export function DonorListingForm() {
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
       <div className="auth-field-grid">
-        <div className="auth-field">
+        <div className={getFieldClassName("title")}>
           <label htmlFor="title">Equipment title</label>
-          <input id="title" name="title" type="text" placeholder="PCR thermal cycler" required />
+          <input id="title" name="title" type="text" placeholder="PCR thermal cycler" defaultValue={listing?.title ?? ""} required />
+          {fieldErrors.title ? <p className="auth-field-error">{fieldErrors.title}</p> : null}
         </div>
-        <div className="auth-field">
+        <div className={getFieldClassName("category")}>
           <label htmlFor="category">Category</label>
-          <input id="category" name="category" type="text" placeholder="Molecular biology" required />
+          <input id="category" name="category" type="text" placeholder="Molecular biology" defaultValue={listing?.category ?? ""} required />
+          {fieldErrors.category ? <p className="auth-field-error">{fieldErrors.category}</p> : null}
         </div>
       </div>
 
       <div className="auth-field-grid">
-        <div className="auth-field">
+        <div className={getFieldClassName("condition")}>
           <label htmlFor="condition">Condition</label>
-          <input id="condition" name="condition" type="text" placeholder="Gently used" required />
+          <input id="condition" name="condition" type="text" placeholder="Gently used" defaultValue={listing?.condition ?? ""} required />
+          {fieldErrors.condition ? <p className="auth-field-error">{fieldErrors.condition}</p> : null}
         </div>
-        <div className="auth-field">
+        <div className={getFieldClassName("quantity")}>
           <label htmlFor="quantity">Quantity</label>
-          <input id="quantity" name="quantity" type="number" min="1" defaultValue="1" required />
+          <input id="quantity" name="quantity" type="number" min="1" defaultValue={listing?.quantity ?? 1} required />
+          {fieldErrors.quantity ? <p className="auth-field-error">{fieldErrors.quantity}</p> : null}
         </div>
       </div>
 
       <div className="auth-field-grid">
-        <div className="auth-field">
+        <div className={getFieldClassName("location")}>
           <label htmlFor="location">Pickup location</label>
-          <input id="location" name="location" type="text" placeholder="Boston, MA" required />
+          <input id="location" name="location" type="text" placeholder="Boston, MA" defaultValue={listing?.location ?? ""} required />
+          {fieldErrors.location ? <p className="auth-field-error">{fieldErrors.location}</p> : null}
         </div>
-        <div className="auth-field">
+        <div className={getFieldClassName("availability_window")}>
           <label htmlFor="availability_window">Availability window</label>
-          <input id="availability_window" name="availability_window" type="text" placeholder="Available through June 2026" required />
+          <input
+            id="availability_window"
+            name="availability_window"
+            type="text"
+            placeholder="Available through June 2026"
+            defaultValue={listing?.availability_window ?? ""}
+            required
+          />
+          {fieldErrors.availability_window ? <p className="auth-field-error">{fieldErrors.availability_window}</p> : null}
         </div>
       </div>
 
-      <div className="auth-field">
+      <div className={getFieldClassName("description")}>
         <label htmlFor="description">Description</label>
-        <textarea id="description" name="description" placeholder="Share what the equipment is, its use case, and any context a recipient should know." required />
+        <textarea
+          id="description"
+          name="description"
+          placeholder="Share what the equipment is, its use case, and any context a recipient should know."
+          defaultValue={listing?.description ?? ""}
+          required
+        />
+        {fieldErrors.description ? <p className="auth-field-error">{fieldErrors.description}</p> : null}
       </div>
 
       <div className="auth-field-grid">
-        <div className="auth-field">
+        <div className={getFieldClassName("dimensions_weight")}>
           <label htmlFor="dimensions_weight">Dimensions and weight</label>
-          <input id="dimensions_weight" name="dimensions_weight" type="text" placeholder='24" x 18" x 16", 35 lb' required />
+          <input
+            id="dimensions_weight"
+            name="dimensions_weight"
+            type="text"
+            placeholder='24" x 18" x 16", 35 lb'
+            defaultValue={listing?.dimensions_weight ?? ""}
+            required
+          />
+          {fieldErrors.dimensions_weight ? <p className="auth-field-error">{fieldErrors.dimensions_weight}</p> : null}
         </div>
-        <div className="auth-field">
+        <div className={getFieldClassName("working_status")}>
           <label htmlFor="working_status">Working status</label>
-          <input id="working_status" name="working_status" type="text" placeholder="Fully operational, last serviced January 2026" required />
+          <input
+            id="working_status"
+            name="working_status"
+            type="text"
+            placeholder="Fully operational, last serviced January 2026"
+            defaultValue={listing?.working_status ?? ""}
+            required
+          />
+          {fieldErrors.working_status ? <p className="auth-field-error">{fieldErrors.working_status}</p> : null}
         </div>
       </div>
 
-      <div className="auth-field">
+      <div className={getFieldClassName("handling_requirements")}>
         <label htmlFor="handling_requirements">Handling requirements</label>
-        <textarea id="handling_requirements" name="handling_requirements" placeholder="Include calibration needs, packing notes, hazardous material restrictions, or setup details." required />
+        <textarea
+          id="handling_requirements"
+          name="handling_requirements"
+          placeholder="Include calibration needs, packing notes, hazardous material restrictions, or setup details."
+          defaultValue={listing?.handling_requirements ?? ""}
+          required
+        />
+        {fieldErrors.handling_requirements ? <p className="auth-field-error">{fieldErrors.handling_requirements}</p> : null}
       </div>
 
       <div className="auth-field-grid">
-        <div className="auth-field">
+        <div className={getFieldClassName("documentation_included")}>
           <label htmlFor="documentation_included">Documentation included</label>
-          <input id="documentation_included" name="documentation_included" type="text" placeholder="User manual, maintenance logs, calibration certificate" required />
+          <input
+            id="documentation_included"
+            name="documentation_included"
+            type="text"
+            placeholder="User manual, maintenance logs, calibration certificate"
+            defaultValue={listing?.documentation_included ?? ""}
+            required
+          />
+          {fieldErrors.documentation_included ? <p className="auth-field-error">{fieldErrors.documentation_included}</p> : null}
         </div>
-        <div className="auth-field">
+        <div className={getFieldClassName("special_handling_flags")}>
           <label htmlFor="special_handling_flags">Special handling flags</label>
-          <input id="special_handling_flags" name="special_handling_flags" type="text" placeholder="Fragile optics, keep upright" required />
+          <input
+            id="special_handling_flags"
+            name="special_handling_flags"
+            type="text"
+            placeholder="Fragile optics, keep upright"
+            defaultValue={listing?.special_handling_flags ?? ""}
+            required
+          />
+          {fieldErrors.special_handling_flags ? <p className="auth-field-error">{fieldErrors.special_handling_flags}</p> : null}
         </div>
       </div>
 
       <div className="auth-field-grid">
-        <div className="auth-field">
+        <div className={getFieldClassName("delivery_mode")}>
           <label htmlFor="delivery_mode">Delivery mode</label>
-          <select id="delivery_mode" name="delivery_mode" defaultValue="pickup_only" required>
+          <select id="delivery_mode" name="delivery_mode" defaultValue={listing?.delivery_mode ?? "pickup_only"} required>
             <option value="pickup_only">Pickup only</option>
             <option value="pickup_or_shipment">Pickup or shipment</option>
           </select>
+          {fieldErrors.delivery_mode ? <p className="auth-field-error">{fieldErrors.delivery_mode}</p> : null}
         </div>
-        <div className="auth-field">
+        <div className={getFieldClassName("image")}>
           <label htmlFor="image">Equipment image</label>
-          <input id="image" name="image" type="file" accept="image/*" />
+          {listing?.photo_urls[0] ? (
+            <div className="auth-image-preview">
+              <div className="auth-image-preview-media">
+                <Image
+                  src={listing.photo_urls[0]}
+                  alt={listing.title}
+                  fill
+                  sizes="160px"
+                  className="listing-card-image"
+                />
+              </div>
+              <p className="auth-image-preview-copy">Current image saved. Upload a new file only if you want to replace it.</p>
+            </div>
+          ) : null}
+          <input id="image" name="image" type="file" accept="image/*" required={!listing?.photo_urls[0]} />
+          {fieldErrors.image ? <p className="auth-field-error">{fieldErrors.image}</p> : null}
         </div>
       </div>
 
       {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
 
       <button type="submit" className="button button-primary auth-submit" disabled={isPending}>
-        {isPending ? "Submitting listing..." : "Submit for admin approval"}
+        {isPending ? (mode === "edit" ? "Saving changes..." : "Submitting listing...") : mode === "edit" ? "Save listing changes" : "Submit for admin approval"}
       </button>
     </form>
   );
