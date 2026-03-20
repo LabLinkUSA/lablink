@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { getAccessToken } from "@/lib/auth";
 import type {
   AdminDashboardResponse,
@@ -7,6 +9,7 @@ import type {
   ListingDetailResponse,
   RecipientDashboardResponse,
   RequestBoardPost,
+  SavedListingStateResponse,
 } from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
@@ -46,9 +49,9 @@ async function fetchAuthedJson<T>(path: string, init?: RequestInit): Promise<T |
   });
 }
 
-export async function getCurrentProfile(): Promise<AuthenticatedUser | null> {
-  return fetchAuthedJson<AuthenticatedUser>("/auth/me");
-}
+export const getCurrentProfile = cache(async (): Promise<AuthenticatedUser | null> =>
+  fetchAuthedJson<AuthenticatedUser>("/auth/me"),
+);
 
 export async function getPublicListings(): Promise<Listing[]> {
   const apiResult = await fetchJson<Listing[]>("/public/listings");
@@ -77,4 +80,8 @@ export async function getRecipientDashboard(): Promise<RecipientDashboardRespons
 
 export async function getAdminDashboard(): Promise<AdminDashboardResponse | null> {
   return fetchAuthedJson<AdminDashboardResponse>("/admin/dashboard");
+}
+
+export async function getRecipientSavedListingState(listingId: string): Promise<SavedListingStateResponse | null> {
+  return fetchAuthedJson<SavedListingStateResponse>(`/recipient/saved-listings/${listingId}`);
 }

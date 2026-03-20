@@ -30,12 +30,6 @@ function installRecovery(client: SupabaseClient) {
     void client.auth.signOut({ scope: "local" });
   };
 
-  client.auth.onAuthStateChange((event) => {
-    if (event === "TOKEN_REFRESH_FAILED") {
-      clearBrokenSession();
-    }
-  });
-
   window.addEventListener("unhandledrejection", (event) => {
     if (!isInvalidRefreshTokenError(event.reason)) {
       return;

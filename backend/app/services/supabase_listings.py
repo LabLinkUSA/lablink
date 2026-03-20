@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -15,12 +15,15 @@ from app.schemas.domain import (
     AdminDashboardResponse,
     AuthenticatedUser,
     DonorDashboardResponse,
+    EquipmentRequest,
+    RecipientDashboardResponse,
     Institution,
     Listing,
     ListingCreate,
     ListingUpdate,
     ListingDetailResponse,
     ListingStatus,
+    RequestStatus,
     VerificationStatus,
 )
 from app.services.supabase_profiles import ADMIN_INSTITUTION_ID
@@ -37,19 +40,19 @@ class SupabaseListingService:
             "GET",
             "listings",
             params={
-                "select": self._listing_select(),
+                "select": self._listing_select(include_donor_institution=True),
                 "status": "in.(live,under_review,matched_reserved,fulfilled)",
                 "order": "created_at.desc",
             },
         )
-        return [self._to_listing(row) for row in rows]
+        return [self._to_listing(row) for row in rows if self._is_verified_donor_listing_row(row)]
 
     def get_public_listing_detail(self, listing_id: str) -> ListingDetailResponse:
         row = self._get_listing_detail_row(
             listing_id,
             extra_params={"status": "in.(live,under_review,matched_reserved,fulfilled)"},
         )
-        if not row:
+        if not row or not self._is_verified_donor_listing_row(row):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         return self._to_listing_detail(row)
 
@@ -68,6 +71,7 @@ class SupabaseListingService:
             for listing in (self._to_listing(row) for row in rows)
             if listing.status not in {ListingStatus.REMOVED_BY_ADMIN, ListingStatus.REMOVED_BY_DONOR}
         ]
+        active_requests = self._get_requests_for_listing_ids([listing.id for listing in listings], only_verified_recipients=True)
         impact_summary = {
             "total_items_donated": sum(listing.quantity for listing in listings if listing.status == ListingStatus.FULFILLED),
             "institutions_served": 0,
@@ -78,8 +82,146 @@ class SupabaseListingService:
         return DonorDashboardResponse(
             institution=actor.institution,
             listings=listings,
-            active_requests=[],
+            active_requests=active_requests,
             impact_summary=impact_summary,
+        )
+
+    def get_recipient_dashboard(self, actor: AuthenticatedUser) -> RecipientDashboardResponse:
+        request_rows = self._request(
+            "GET",
+            "equipment_requests",
+            params={
+                "select": self._equipment_request_select(include_listing=True),
+                "recipient_institution_id": f"eq.{actor.institution.id}",
+                "order": "created_at.desc",
+            },
+        )
+
+        saved_listing_rows = self._request(
+            "GET",
+            "saved_listings",
+            params={
+                "select": f"listing:listings({self._listing_select()})",
+                "user_id": f"eq.{actor.user.id}",
+                "order": "created_at.desc",
+            },
+        )
+
+        return RecipientDashboardResponse(
+            institution=actor.institution,
+            requests=[self._to_equipment_request(row) for row in request_rows],
+            saved_listings=[self._to_listing(row["listing"]) for row in saved_listing_rows if row.get("listing")],
+            threads=[],
+            request_board_posts=[],
+        )
+
+    def create_equipment_request(self, actor: AuthenticatedUser, listing_id: str) -> EquipmentRequest:
+        listing = self._get_listing_row(listing_id)
+        if not listing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+
+        normalized_status = self._normalize_listing_status(listing["status"])
+        if normalized_status not in {
+            ListingStatus.LIVE.value,
+            ListingStatus.UNDER_REVIEW.value,
+            ListingStatus.MATCHED_RESERVED.value,
+        }:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This listing is not open for requests.")
+
+        existing_requests = self._request(
+            "GET",
+            "equipment_requests",
+            params={
+                "select": "id",
+                "listing_id": f"eq.{listing_id}",
+                "recipient_institution_id": f"eq.{actor.institution.id}",
+                "limit": "1",
+            },
+        )
+        if existing_requests:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Your institution has already requested this listing.")
+
+        request_id = f"request_{uuid4().hex[:12]}"
+        self._request(
+            "POST",
+            "equipment_requests",
+            json={
+                "id": request_id,
+                "listing_id": listing_id,
+                "recipient_institution_id": actor.institution.id,
+                "submitted_by_user_id": actor.user.id,
+                "intended_use": f"Request for {listing['title']}",
+                "institution_type": actor.institution.type.value,
+                "program_or_department": actor.institution.name,
+                "audience": "To be confirmed",
+                "needed_by": date.today().isoformat(),
+                "urgency_notes": "Submitted from public listing detail.",
+                "delivery_constraints": f"Requested via LabLink ({listing['delivery_mode']}).",
+                "storage_readiness": "Pending recipient logistics confirmation.",
+                "funding_or_logistics_notes": "Admin review required before donor coordination.",
+                "status": RequestStatus.SUBMITTED.value,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request(
+            "PATCH",
+            "listings",
+            params={"id": f"eq.{listing_id}"},
+            json={
+                "request_count": int(listing.get("request_count", 0)) + 1,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        row = self._get_equipment_request_row(request_id)
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Request was created but could not be loaded.",
+        )
+        return self._to_equipment_request(row)
+
+    def get_saved_listing_state(self, actor: AuthenticatedUser, listing_id: str) -> bool:
+        rows = self._request(
+            "GET",
+            "saved_listings",
+            params={
+                "select": "listing_id",
+                "user_id": f"eq.{actor.user.id}",
+                "listing_id": f"eq.{listing_id}",
+                "limit": "1",
+            },
+        )
+        return bool(rows)
+
+    def save_listing_for_recipient(self, actor: AuthenticatedUser, listing_id: str) -> None:
+        listing = self._get_listing_detail_row(listing_id)
+        if not listing or not self._is_verified_donor_listing_row(listing):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+
+        if self.get_saved_listing_state(actor, listing_id):
+            return
+
+        self._request(
+            "POST",
+            "saved_listings",
+            json={
+                "user_id": actor.user.id,
+                "listing_id": listing_id,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+    def remove_saved_listing_for_recipient(self, actor: AuthenticatedUser, listing_id: str) -> None:
+        self._request(
+            "DELETE",
+            "saved_listings",
+            params={
+                "user_id": f"eq.{actor.user.id}",
+                "listing_id": f"eq.{listing_id}",
+            },
         )
 
     def get_donor_listing_detail(self, actor: AuthenticatedUser, listing_id: str) -> ListingDetailResponse:
@@ -323,7 +465,7 @@ class SupabaseListingService:
         return AdminDashboardResponse(
             pending_institutions=[self._to_institution(row) for row in pending_institution_rows],
             listings_for_review=[self._to_listing(row) for row in listing_rows],
-            requests_requiring_attention=[],
+            requests_requiring_attention=self._get_requests_for_listing_ids(only_verified_recipients=True),
             active_threads=[],
             recent_actions=[
                 AdminAction.model_validate(
@@ -350,6 +492,16 @@ class SupabaseListingService:
         existing = self._get_listing_row(listing_id)
         if not existing:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+
+        current_status = self._normalize_listing_status(existing["status"])
+        if current_status == ListingStatus.MATCHED_RESERVED.value and status_value not in {
+            ListingStatus.MATCHED_RESERVED,
+            ListingStatus.REMOVED_BY_ADMIN,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Match-reserved listings can only stay match reserved, be removed by admin, or be reopened through Cancel match.",
+            )
 
         patch_payload: dict[str, Any] = {
             "status": status_value.value,
@@ -446,6 +598,134 @@ class SupabaseListingService:
 
         return self._to_institution(updated)
 
+    def select_equipment_request(self, actor: AuthenticatedUser, request_id: str) -> EquipmentRequest:
+        existing = self._get_equipment_request_row(request_id)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Request {request_id} not found.")
+
+        listing_id = existing["listing_id"]
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        self._request(
+            "PATCH",
+            "equipment_requests",
+            params={"id": f"eq.{request_id}"},
+            json={
+                "status": RequestStatus.APPROVED_MATCHED.value,
+                "selected_by_admin_user_id": actor.user.id,
+                "selected_at": timestamp,
+                "updated_at": timestamp,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request(
+            "PATCH",
+            "equipment_requests",
+            params={
+                "listing_id": f"eq.{listing_id}",
+                "id": f"neq.{request_id}",
+            },
+            json={
+                "status": RequestStatus.REJECTED_CANCELLED.value,
+                "updated_at": timestamp,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request(
+            "PATCH",
+            "listings",
+            params={"id": f"eq.{listing_id}"},
+            json={
+                "status": ListingStatus.MATCHED_RESERVED.value,
+                "updated_at": timestamp,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request(
+            "POST",
+            "admin_audit_logs",
+            json={
+                "id": f"audit_{uuid4().hex[:12]}",
+                "actor_user_id": actor.user.id,
+                "action_type": "request_selected_for_listing",
+                "subject_table": "equipment_requests",
+                "subject_id": request_id,
+                "notes": f"Request selected for listing {listing_id}.",
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        updated = self._get_equipment_request_row(request_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Request was selected but could not be reloaded.",
+            )
+        return self._to_equipment_request(updated)
+
+    def cancel_listing_match(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
+        listing = self._get_listing_row(listing_id)
+        if not listing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+
+        normalized_status = self._normalize_listing_status(listing["status"])
+        if normalized_status != ListingStatus.MATCHED_RESERVED.value:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only match-reserved listings can have their match cancelled.")
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        self._request(
+            "PATCH",
+            "equipment_requests",
+            params={
+                "listing_id": f"eq.{listing_id}",
+                "status": f"in.({RequestStatus.APPROVED_MATCHED.value},{RequestStatus.REJECTED_CANCELLED.value})",
+            },
+            json={
+                "status": RequestStatus.SUBMITTED.value,
+                "selected_by_admin_user_id": None,
+                "selected_at": None,
+                "updated_at": timestamp,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request(
+            "PATCH",
+            "listings",
+            params={"id": f"eq.{listing_id}"},
+            json={
+                "status": ListingStatus.LIVE.value,
+                "updated_at": timestamp,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        self._request(
+            "POST",
+            "admin_audit_logs",
+            json={
+                "id": f"audit_{uuid4().hex[:12]}",
+                "actor_user_id": actor.user.id,
+                "action_type": "listing_match_cancelled",
+                "subject_table": "listings",
+                "subject_id": listing_id,
+                "notes": "Match cancelled and related requests reopened.",
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        updated = self._get_listing_row(listing_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Listing match was cancelled but the listing could not be reloaded.",
+            )
+        return self._to_listing(updated)
+
     def _get_listing_row(self, listing_id: str) -> dict[str, Any] | None:
         rows = self._request(
             "GET",
@@ -453,6 +733,18 @@ class SupabaseListingService:
             params={
                 "select": self._listing_select(),
                 "id": f"eq.{listing_id}",
+                "limit": "1",
+            },
+        )
+        return rows[0] if rows else None
+
+    def _get_equipment_request_row(self, request_id: str) -> dict[str, Any] | None:
+        rows = self._request(
+            "GET",
+            "equipment_requests",
+            params={
+                "select": self._equipment_request_select(include_listing=True),
+                "id": f"eq.{request_id}",
                 "limit": "1",
             },
         )
@@ -508,13 +800,35 @@ class SupabaseListingService:
         rows = self._request("GET", "listings", params=params)
         return rows[0] if rows else None
 
-    def _listing_select(self) -> str:
-        return (
+    def _listing_select(self, *, include_donor_institution: bool = False) -> str:
+        base = (
             "id,donor_institution_id,created_by_user_id,title,category,item_condition,quantity,location,"
             "availability_window,description,dimensions_weight,handling_requirements,working_status,"
             "documentation_included,special_handling_flags,delivery_mode,status,request_count,created_at,"
             "listing_photos(photo_url,display_order)"
         )
+        if include_donor_institution:
+            return f"{base},donor_institution:institutions(id,name,role_type,verification_status,location,description)"
+        return base
+
+    def _equipment_request_select(
+        self,
+        *,
+        include_listing: bool = False,
+        include_recipient_institution: bool = False,
+    ) -> str:
+        base = (
+            "id,listing_id,recipient_institution_id,submitted_by_user_id,intended_use,program_or_department,"
+            "audience,needed_by,urgency_notes,delivery_constraints,storage_readiness,funding_or_logistics_notes,"
+            "status,created_at"
+        )
+        if include_listing:
+            base = f"{base},listing:listings({self._listing_select()})"
+        if include_recipient_institution:
+            base = (
+                f"{base},recipient_institution:institutions(id,name,role_type,verification_status,location,description)"
+            )
+        return base
 
     def _to_listing_detail(self, row: dict[str, Any]) -> ListingDetailResponse:
         donor_institution = row.get("donor_institution")
@@ -526,7 +840,7 @@ class SupabaseListingService:
         return ListingDetailResponse(
             listing=self._to_listing(row),
             donor_institution=self._to_institution(donor_institution),
-            related_requests=[],
+            related_requests=self._get_requests_for_listing_ids([row["id"]]),
         )
 
     def _to_listing(self, row: dict[str, Any]) -> Listing:
@@ -554,6 +868,61 @@ class SupabaseListingService:
                 "created_at": row["created_at"],
                 "request_count": row.get("request_count", 0),
             }
+        )
+
+    def _to_equipment_request(self, row: dict[str, Any]) -> EquipmentRequest:
+        return EquipmentRequest.model_validate(
+            {
+                "id": row["id"],
+                "listing_id": row["listing_id"],
+                "recipient_institution_id": row["recipient_institution_id"],
+                "submitted_by_user_id": row["submitted_by_user_id"],
+                "intended_use": row["intended_use"],
+                "program_or_department": row["program_or_department"],
+                "audience": row.get("audience") or "",
+                "needed_by": row["needed_by"],
+                "urgency_notes": row.get("urgency_notes") or "",
+                "delivery_constraints": row["delivery_constraints"],
+                "storage_readiness": row["storage_readiness"],
+                "funding_or_logistics_notes": row.get("funding_or_logistics_notes") or "",
+                "status": row["status"],
+                "submitted_at": row["created_at"],
+                "listing": self._to_listing(row["listing"]) if row.get("listing") else None,
+            }
+        )
+
+    def _get_requests_for_listing_ids(
+        self,
+        listing_ids: list[str] | None = None,
+        *,
+        only_verified_recipients: bool = False,
+    ) -> list[EquipmentRequest]:
+        params = {
+            "select": self._equipment_request_select(
+                include_listing=True,
+                include_recipient_institution=only_verified_recipients,
+            ),
+            "order": "created_at.desc",
+        }
+        if listing_ids is not None:
+            if not listing_ids:
+                return []
+            params["listing_id"] = f"in.({','.join(listing_ids)})"
+
+        rows = self._request("GET", "equipment_requests", params=params)
+        if only_verified_recipients:
+            rows = [row for row in rows if self._is_verified_recipient_request_row(row)]
+        return [self._to_equipment_request(row) for row in rows]
+
+    def _is_verified_donor_listing_row(self, row: dict[str, Any]) -> bool:
+        donor_institution = row.get("donor_institution")
+        return bool(donor_institution and donor_institution.get("verification_status") == VerificationStatus.VERIFIED.value)
+
+    def _is_verified_recipient_request_row(self, row: dict[str, Any]) -> bool:
+        recipient_institution = row.get("recipient_institution")
+        return bool(
+            recipient_institution
+            and recipient_institution.get("verification_status") == VerificationStatus.VERIFIED.value
         )
 
     def _normalize_listing_status(self, status_value: str) -> str:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -47,6 +48,27 @@ class SupabaseProfileService:
         if existing:
             return OnboardingResponse(user=existing.user, institution=existing.institution, created=False)
 
+        existing_by_email = self._select_app_user_by_email(auth_user.email)
+        if existing_by_email:
+            self._request(
+                "PATCH",
+                "app_users",
+                params={"id": f"eq.{existing_by_email['id']}"},
+                json={
+                    "supabase_auth_user_id": auth_user.auth_user_id,
+                    "full_name": payload.full_name,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
+                headers={"Prefer": "return=minimal"},
+            )
+            relinked = self.get_profile(auth_user)
+            if not relinked:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Existing LabLink profile was found but could not be re-linked to this sign-in.",
+                )
+            return OnboardingResponse(user=relinked.user, institution=relinked.institution, created=False)
+
         institution_id = f"inst_{uuid4().hex[:12]}"
         user_id = f"user_{uuid4().hex[:12]}"
 
@@ -84,6 +106,61 @@ class SupabaseProfileService:
 
         return OnboardingResponse(user=created.user, institution=created.institution, created=True)
 
+    def app_account_exists_for_email(self, email: str) -> bool:
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            return False
+
+        rows = self._request(
+            "GET",
+            "app_users",
+            params={
+                "select": "id",
+                "email": f"eq.{normalized_email}",
+                "limit": "1",
+            },
+        )
+        return bool(rows)
+
+    def auth_account_exists_for_email(self, email: str) -> bool:
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            return False
+
+        headers = {
+            "apikey": self.service_role_key,
+            "Authorization": f"Bearer {self.service_role_key}",
+        }
+
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(
+                f"{self.supabase_url}/auth/v1/admin/users",
+                params={"page": "1", "per_page": "1000"},
+                headers=headers,
+            )
+
+        if response.status_code >= 400:
+            detail = "Supabase auth lookup failed."
+            try:
+                body = response.json()
+                detail = body.get("msg") or body.get("message") or body.get("error") or detail
+            except ValueError:
+                pass
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+        body = response.json()
+        users = body.get("users") if isinstance(body, dict) else None
+        if not isinstance(users, list):
+            return False
+
+        for user in users:
+            if not isinstance(user, dict):
+                continue
+            if str(user.get("email", "")).strip().lower() == normalized_email:
+                return True
+
+        return False
+
     def _select_app_user(self, auth_user_id: str) -> dict[str, Any] | None:
         rows = self._request(
             "GET",
@@ -91,6 +168,22 @@ class SupabaseProfileService:
             params={
                 "select": "id,full_name,email,role,account_status,institution_id,institution:institutions(id,name,type:role_type,verification_status,location,description)",
                 "supabase_auth_user_id": f"eq.{auth_user_id}",
+                "limit": "1",
+            },
+        )
+        return rows[0] if rows else None
+
+    def _select_app_user_by_email(self, email: str) -> dict[str, Any] | None:
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            return None
+
+        rows = self._request(
+            "GET",
+            "app_users",
+            params={
+                "select": "id,full_name,email,role,account_status,institution_id,institution:institutions(id,name,type:role_type,verification_status,location,description)",
+                "email": f"eq.{normalized_email}",
                 "limit": "1",
             },
         )

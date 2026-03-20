@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { AuthStateSync } from "@/components/auth-state-sync";
 import { SiteHeader } from "@/components/site-header";
 
 import "./globals.css";
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="en">
       <body>
+        <AuthStateSync />
         <SiteHeader />
         <main>{children}</main>
         <footer className="footer">

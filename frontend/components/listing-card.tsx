@@ -9,13 +9,17 @@ export function ListingCard({ listing }: { listing: Listing }) {
   return (
     <article className="listing-card">
       <div className="listing-card-media">
-        <Image
-          src={listing.photo_urls[0]}
-          alt={listing.title}
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="listing-card-image"
-        />
+        {listing.photo_urls[0] ? (
+          <Image
+            src={listing.photo_urls[0]}
+            alt={listing.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="listing-card-image"
+          />
+        ) : (
+          <div className="listing-row-image-empty">No image</div>
+        )}
       </div>
       <div className="listing-card-body">
         <div className="listing-card-topline">
@@ -52,4 +56,3 @@ export function ListingCard({ listing }: { listing: Listing }) {
     </article>
   );
 }
-

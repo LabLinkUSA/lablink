@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function getErrorMessage(error: unknown): string | null {
@@ -22,7 +24,7 @@ function isInvalidRefreshTokenError(error: unknown): boolean {
   return message.includes("Invalid Refresh Token") || message.includes("Refresh Token Not Found");
 }
 
-export async function getAccessToken(): Promise<string | null> {
+export const getAccessToken = cache(async (): Promise<string | null> => {
   try {
     const supabase = await createSupabaseServerClient();
     const {
@@ -37,4 +39,4 @@ export async function getAccessToken(): Promise<string | null> {
 
     throw error;
   }
-}
+});

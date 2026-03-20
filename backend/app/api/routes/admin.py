@@ -4,6 +4,7 @@ from app.api.routes.dependencies import require_actor
 from app.schemas.domain import (
     AdminDashboardResponse,
     AuthenticatedUser,
+    EquipmentRequest,
     Institution,
     InstitutionVerificationUpdate,
     Listing,
@@ -53,3 +54,17 @@ def update_institution_status(
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
     return get_supabase_listing_service().update_institution_status(actor, institution_id, payload.verification_status)
+
+
+@router.post("/requests/{request_id}/select", response_model=EquipmentRequest)
+def select_request_recipient(request_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> EquipmentRequest:
+    if actor.user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return get_supabase_listing_service().select_equipment_request(actor, request_id)
+
+
+@router.post("/listings/{listing_id}/cancel-match", response_model=Listing)
+def cancel_listing_match(listing_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> Listing:
+    if actor.user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return get_supabase_listing_service().cancel_listing_match(actor, listing_id)

@@ -5,6 +5,7 @@ import type { Listing } from "@/lib/types";
 
 export function ListingListRow({
   listing,
+  status,
   description,
   meta,
   actions,
@@ -12,6 +13,7 @@ export function ListingListRow({
   onClick,
 }: {
   listing: Listing;
+  status?: string;
   description: string;
   meta?: React.ReactNode;
   actions?: React.ReactNode;
@@ -36,7 +38,7 @@ export function ListingListRow({
       <div className="listing-row-content">
         <div className="list-row-topline">
           <strong>{listing.category}</strong>
-          <StatusPill status={listing.status} />
+          <StatusPill status={status ?? listing.status} />
         </div>
         <h3>{listing.title}</h3>
         <p>{description}</p>

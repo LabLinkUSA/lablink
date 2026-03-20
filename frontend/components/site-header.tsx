@@ -54,6 +54,22 @@ function getProfileInitial(name: string | undefined) {
   return trimmedName.charAt(0).toUpperCase();
 }
 
+function getRoleLabel(role?: Role) {
+  if (role === "donor_lab") {
+    return "Donor dashboard";
+  }
+
+  if (role === "recipient_institution") {
+    return "Recipient dashboard";
+  }
+
+  if (role === "admin") {
+    return "Admin dashboard";
+  }
+
+  return "LabLink account";
+}
+
 export async function SiteHeader() {
   let profile = null;
 
@@ -66,6 +82,7 @@ export async function SiteHeader() {
   const dashboardHref = getDashboardHref(profile?.user.role);
   const navItems = getNavItems(profile?.user.role);
   const profileInitial = getProfileInitial(profile?.user.full_name);
+  const profileRoleLabel = getRoleLabel(profile?.user.role);
   const showListEquipment = profile?.user.role === "donor_lab";
 
   return (
@@ -90,6 +107,9 @@ export async function SiteHeader() {
             dashboardHref={dashboardHref}
             profileInitial={profileInitial}
             profileName={profile.user.full_name}
+            profileEmail={profile.user.email}
+            profileRoleLabel={profileRoleLabel}
+            institutionName={profile.institution.name}
             showListEquipment={showListEquipment}
           />
         ) : (

@@ -4,6 +4,25 @@ import { ListingListRow } from "@/components/listing-list-row";
 import { StatusPill } from "@/components/status-pill";
 import { getCurrentProfile, getDonorDashboard, getDonorRequestBoard } from "@/lib/api";
 import { titleCaseStatus } from "@/lib/format";
+import Link from "next/link";
+
+function getInstitutionAccessStateMessage(status: string) {
+  if (status === "suspended") {
+    return {
+      eyebrow: "Institution suspended",
+      title: "Your donor dashboard is temporarily unavailable.",
+      description:
+        "Your institution is currently suspended, so donor actions are paused until an admin restores access.",
+    };
+  }
+
+  return {
+    eyebrow: "Verification pending",
+    title: "Your donor dashboard is waiting on admin verification.",
+    description:
+      "Your institution is currently pending verification, so donor actions stay blocked until approval is complete.",
+  };
+}
 
 export default async function DonorPage() {
   const [profile, dashboard, requestBoardPosts] = await Promise.all([
@@ -22,6 +41,40 @@ export default async function DonorPage() {
         </div>
       </section>
     );
+  }
+
+  if (profile?.user.role === "donor_lab") {
+    const isVerifiedDonor =
+      profile.user.account_status === "verified" && profile.institution.verification_status === "verified";
+
+    if (!isVerifiedDonor) {
+      const accessState = getInstitutionAccessStateMessage(profile.institution.verification_status);
+
+      return (
+        <section className="page-section">
+          <div className="shell empty-state">
+            <span className="eyebrow">{accessState.eyebrow}</span>
+            <h1>{accessState.title}</h1>
+            <p>
+              {accessState.description} Your donor lab account is connected to {profile.institution.name}, which is
+              currently {profile.institution.verification_status.replaceAll("_", " ")}.
+            </p>
+            <div className="auth-state-card">
+              <h2>Your LabLink information is still saved</h2>
+              <p>Listings, request history, and institution details stay in place so access can resume after re-verification.</p>
+            </div>
+            <div className="page-actions">
+              <Link href="/listings" className="button button-secondary">
+                Browse equipment
+              </Link>
+              <Link href="/auth" className="button button-primary">
+                Check account status
+              </Link>
+            </div>
+          </div>
+        </section>
+      );
+    }
   }
 
   if (!dashboard || !requestBoardPosts) {
@@ -92,18 +145,34 @@ export default async function DonorPage() {
           >
             <div className="list">
               {dashboard.active_requests.map((request) => (
-                <article key={request.id} className="list-row">
-                  <div className="list-row-topline">
-                    <strong>{request.program_or_department}</strong>
-                    <StatusPill status={request.status} />
-                  </div>
-                  <h3>{request.intended_use}</h3>
-                  <p>{request.delivery_constraints}</p>
-                  <div className="list-row-meta">
-                    <span>Needed by {request.needed_by}</span>
-                    <span>{titleCaseStatus(request.status)}</span>
-                  </div>
-                </article>
+                request.listing ? (
+                  <ListingListRow
+                    key={request.id}
+                    listing={request.listing}
+                    description={request.intended_use}
+                    meta={
+                      <div className="list-row-meta">
+                        <span>{request.program_or_department}</span>
+                        <span>Needed by {request.needed_by}</span>
+                        <span>{request.delivery_constraints}</span>
+                      </div>
+                    }
+                    actions={<StatusPill status={request.status} />}
+                  />
+                ) : (
+                  <article key={request.id} className="list-row">
+                    <div className="list-row-topline">
+                      <strong>{request.program_or_department}</strong>
+                      <StatusPill status={request.status} />
+                    </div>
+                    <h3>{request.intended_use}</h3>
+                    <p>{request.delivery_constraints}</p>
+                    <div className="list-row-meta">
+                      <span>Needed by {request.needed_by}</span>
+                      <span>{titleCaseStatus(request.status)}</span>
+                    </div>
+                  </article>
+                )
               ))}
             </div>
           </DashboardPanel>

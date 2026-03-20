@@ -114,6 +114,7 @@ class EquipmentRequest(BaseModel):
     funding_or_logistics_notes: str
     status: RequestStatus
     submitted_at: datetime
+    listing: Optional[Listing] = None
 
 
 class MessageThread(BaseModel):
@@ -233,14 +234,14 @@ class ListingImageUploadResponse(BaseModel):
 
 class EquipmentRequestCreate(BaseModel):
     listing_id: str
-    intended_use: str
-    program_or_department: str
-    audience: str
-    needed_by: date
-    urgency_notes: str
-    delivery_constraints: str
-    storage_readiness: str
-    funding_or_logistics_notes: str
+
+
+class SavedListingCreate(BaseModel):
+    listing_id: str
+
+
+class SavedListingStateResponse(BaseModel):
+    saved: bool
 
 
 class MessageCreate(BaseModel):
@@ -263,6 +264,12 @@ class AuthenticatedSupabaseUser(BaseModel):
     auth_user_id: str
     email: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AccountLookupResponse(BaseModel):
+    exists: bool
+    auth_exists: bool = False
+    app_exists: bool = False
 
 
 class DonorDashboardResponse(BaseModel):

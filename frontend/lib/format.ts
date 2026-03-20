@@ -7,12 +7,24 @@ export function formatDate(value: string) {
 }
 
 export function titleCaseStatus(value: string) {
+  if (value === "rejected_cancelled") {
+    return "Not selected";
+  }
+
+  if (value === "pending_request") {
+    return "Pending request";
+  }
+
   if (value === "removed_by_admin") {
     return "Removed By Admin";
   }
 
   if (value === "removed_by_donor") {
     return "Removed By Donor";
+  }
+
+  if (value === "matched_reserved") {
+    return "Match reserved";
   }
 
   return value

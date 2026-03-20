@@ -30,6 +30,14 @@ function isInvalidRefreshTokenMessage(message: string): boolean {
   return message.includes("Invalid Refresh Token") || message.includes("Refresh Token Not Found");
 }
 
+function getFriendlyAuthErrorMessage(message: string): string {
+  if (message.toLowerCase().includes("email not confirmed")) {
+    return "Check your email inbox to confirm and verify your account before signing in.";
+  }
+
+  return message;
+}
+
 function getDashboardHref(role?: Role): string {
   if (role === "donor_lab") {
     return "/donor";
@@ -178,9 +186,23 @@ export function AuthShell({ initialNotice }: AuthShellProps) {
     return (await response.json()) as AuthenticatedUser;
   }
 
+  async function lookupAppAccount(email: string): Promise<{ exists: boolean; appExists: boolean; authExists: boolean } | null> {
+    const response = await fetch(`${API_BASE_URL}/auth/account-exists?email=${encodeURIComponent(email)}`);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const body = (await response.json()) as { exists: boolean; app_exists?: boolean; auth_exists?: boolean };
+    return {
+      exists: body.exists,
+      appExists: Boolean(body.app_exists),
+      authExists: Boolean(body.auth_exists),
+    };
+  }
+
   async function routeToDashboard(role: Role) {
-    await router.push(getDashboardHref(role));
-    router.refresh();
+    window.location.replace(getDashboardHref(role));
   }
 
   function refreshPage() {
@@ -264,14 +286,12 @@ export function AuthShell({ initialNotice }: AuthShellProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "TOKEN_REFRESH_FAILED") {
-        await clearInvalidSession();
-        router.refresh();
+      if (event === "SIGNED_OUT") {
+        setSessionUser(null);
         return;
       }
 
       setSessionUser(session?.user ? mapSessionUser(session.user) : null);
-      router.refresh();
     });
 
     return () => {
@@ -298,6 +318,25 @@ export function AuthShell({ initialNotice }: AuthShellProps) {
         })
         .then(async ({ error: authError, data }) => {
           if (authError) {
+            const friendlyMessage = getFriendlyAuthErrorMessage(authError.message);
+            if (friendlyMessage !== authError.message) {
+              setError(friendlyMessage);
+              return;
+            }
+
+            if (authError.message.toLowerCase().includes("invalid login credentials")) {
+              const accountExists = await lookupAppAccount(signInEmail);
+              if (accountExists && !accountExists.exists) {
+                setError("We couldn't find a LabLink account for that email address.");
+                return;
+              }
+
+              if (accountExists?.exists) {
+                setError("The password you entered is incorrect. Try again.");
+                return;
+              }
+            }
+
             setError(authError.message);
             return;
           }
@@ -376,15 +415,14 @@ export function AuthShell({ initialNotice }: AuthShellProps) {
 
     startTransition(() => {
       void supabase.auth
-        .signOut()
+        .signOut({ scope: "local" })
         .then(({ error: authError }) => {
           if (authError) {
             setError(authError.message);
             return;
           }
 
-          setNotice("Signed out.");
-          router.refresh();
+          window.location.replace("/");
         })
         .finally(() => {
           setIsPending(false);

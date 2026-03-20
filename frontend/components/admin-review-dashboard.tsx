@@ -1,16 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { ListingListRow } from "@/components/listing-list-row";
 import { StatusPill } from "@/components/status-pill";
-import { updateInstitutionStatusAction } from "@/app/admin/actions";
 import { formatDate } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AdminDashboardResponse, Institution, Listing } from "@/lib/types";
+import type { AdminDashboardResponse, Institution, Listing, ListingDetailResponse } from "@/lib/types";
 
 type AdminReviewDashboardProps = {
   dashboard: AdminDashboardResponse;
@@ -22,6 +21,22 @@ const supabase = createSupabaseBrowserClient();
 export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [selectedCompetitionListingId, setSelectedCompetitionListingId] = useState<string | null>(null);
+  const groupedCompetitionRequests = Array.from(
+    dashboard.requests_requiring_attention.reduce((groups, request) => {
+      const existingGroup = groups.get(request.listing_id);
+      if (existingGroup) {
+        existingGroup.requests.push(request);
+        return groups;
+      }
+
+      groups.set(request.listing_id, {
+        listing: request.listing,
+        requests: [request],
+      });
+      return groups;
+    }, new Map<string, { listing: AdminDashboardResponse["requests_requiring_attention"][number]["listing"]; requests: AdminDashboardResponse["requests_requiring_attention"] }>()),
+  );
 
   return (
     <>
@@ -75,16 +90,44 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
       <div className="dashboard-grid" style={{ marginTop: "1rem" }}>
         <DashboardPanel title="Request competition" subtitle="Multiple institutions can request the same listing. Admin chooses the match.">
           <div className="list">
-            {dashboard.requests_requiring_attention.map((request) => (
-              <article key={request.id} className="list-row">
-                <div className="list-row-topline">
-                  <strong>{request.program_or_department}</strong>
-                  <StatusPill status={request.status} />
-                </div>
-                <h3>{request.intended_use}</h3>
-                <p>{request.urgency_notes}</p>
-              </article>
-            ))}
+            {groupedCompetitionRequests.map(([listingId, group]) => {
+              const matchedRequest = group.requests.find((request) => request.status === "approved_matched");
+              const primaryStatus = matchedRequest?.status ?? group.requests[0]?.status ?? "submitted";
+
+              return group.listing ? (
+                <ListingListRow
+                  key={listingId}
+                  listing={group.listing}
+                  description={
+                    matchedRequest
+                      ? `Matched to ${matchedRequest.program_or_department}`
+                      : `${group.requests.length} institution${group.requests.length === 1 ? "" : "s"} requesting this listing`
+                  }
+                  meta={
+                    <div className="list-row-meta">
+                      <span>{group.requests.length} request(s)</span>
+                      {matchedRequest ? <span>Selected institution: {matchedRequest.program_or_department}</span> : null}
+                    </div>
+                  }
+                  actions={<StatusPill status={primaryStatus} />}
+                  asButton
+                  onClick={() => setSelectedCompetitionListingId(listingId)}
+                />
+              ) : (
+                <article key={listingId} className="list-row">
+                  <div className="list-row-topline">
+                    <strong>{group.requests.length} request(s)</strong>
+                    <StatusPill status={primaryStatus} />
+                  </div>
+                  <h3>Request competition for listing {listingId}</h3>
+                  <p>
+                    {matchedRequest
+                      ? `Matched to ${matchedRequest.program_or_department}.`
+                      : "Open review to choose which recipient institution receives this listing."}
+                  </p>
+                </article>
+              );
+            })}
           </div>
         </DashboardPanel>
 
@@ -117,7 +160,214 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
       ) : null}
 
       {selectedListing ? <ListingReviewModal listing={selectedListing} onClose={() => setSelectedListing(null)} /> : null}
+      {selectedCompetitionListingId ? (
+        <RequestCompetitionModal
+          listingId={selectedCompetitionListingId}
+          onClose={() => setSelectedCompetitionListingId(null)}
+        />
+      ) : null}
     </>
+  );
+}
+
+function RequestCompetitionModal({
+  listingId,
+  onClose,
+}: {
+  listingId: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [detail, setDetail] = useState<ListingDetailResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+
+        const accessToken = data.session?.access_token;
+        if (!accessToken) {
+          throw new Error("You must be signed in as an admin to review request competition.");
+        }
+
+        const response = await fetch(`${API_BASE_URL}/admin/listings/${listingId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          let message = "Could not load the request competition view.";
+          try {
+            const body = (await response.json()) as { detail?: string };
+            if (body.detail) {
+              message = body.detail;
+            }
+          } catch {}
+          throw new Error(message);
+        }
+
+        setDetail((await response.json()) as ListingDetailResponse);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Could not load the request competition view.");
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [listingId]);
+
+  async function handleSelectRecipient(requestId: string) {
+    setSelectedRequestId(requestId);
+    setError(null);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("You must be signed in as an admin to select a recipient.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/requests/${requestId}/select`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = "Could not select the recipient institution.";
+        try {
+          const body = (await response.json()) as { detail?: string };
+          if (body.detail) {
+            message = body.detail;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+
+      router.refresh();
+      onClose();
+    } catch (selectError) {
+      setError(selectError instanceof Error ? selectError.message : "Could not select the recipient institution.");
+    } finally {
+      setSelectedRequestId(null);
+    }
+  }
+
+  async function handleCancelMatch() {
+    setIsCancelling(true);
+    setError(null);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("You must be signed in as an admin to cancel the match.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/listings/${listingId}/cancel-match`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = "Could not cancel the current match.";
+        try {
+          const body = (await response.json()) as { detail?: string };
+          if (body.detail) {
+            message = body.detail;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+
+      router.refresh();
+      onClose();
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : "Could not cancel the current match.");
+    } finally {
+      setIsCancelling(false);
+    }
+  }
+
+  const hasMatchedRequest = Boolean(detail?.related_requests.some((request) => request.status === "approved_matched"));
+
+  return (
+    <div className="review-modal-overlay" role="presentation" onClick={onClose}>
+      <section
+        className="review-modal-card review-modal-card-wide"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`request-competition-${listingId}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="review-modal-header">
+          <div>
+            <span className="eyebrow">Request competition</span>
+            <h2 id={`request-competition-${listingId}`}>{detail?.listing.title ?? "Loading listing..."}</h2>
+          </div>
+          <div className="page-actions" style={{ marginTop: 0 }}>
+            {hasMatchedRequest ? (
+              <button type="button" className="button button-outline" onClick={handleCancelMatch} disabled={isCancelling}>
+                {isCancelling ? "Cancelling..." : "Cancel match"}
+              </button>
+            ) : null}
+            <button type="button" className="button button-outline" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+
+        {isLoading ? <p className="auth-notice">Loading request competition...</p> : null}
+        {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
+
+        {detail ? (
+          <div className="list">
+            {detail.related_requests.map((request) => (
+              <article key={request.id} className="list-row">
+                <div className="list-row-topline">
+                  <strong>{request.program_or_department}</strong>
+                  <StatusPill status={request.status} />
+                </div>
+                <h3>{request.intended_use}</h3>
+                <p>{request.storage_readiness}</p>
+                <div className="list-row-meta">
+                  <span>Needed by {request.needed_by}</span>
+                  <span>{request.delivery_constraints}</span>
+                </div>
+                <div className="list-row-actions">
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => handleSelectRecipient(request.id)}
+                    disabled={selectedRequestId === request.id || request.status === "approved_matched"}
+                  >
+                    {selectedRequestId === request.id ? "Selecting..." : "Select recipient"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </section>
+    </div>
   );
 }
 
@@ -128,6 +378,56 @@ function InstitutionReviewModal({
   institution: Institution;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [verificationStatus, setVerificationStatus] = useState(institution.verification_status);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("You must be signed in as an admin to update institution status.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/institutions/${institution.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ verification_status: verificationStatus }),
+      });
+
+      if (!response.ok) {
+        let message = "Could not update the institution status.";
+        try {
+          const body = (await response.json()) as { detail?: string };
+          if (body.detail) {
+            message = body.detail;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+
+      router.refresh();
+      onClose();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Could not update the institution status.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="review-modal-overlay" role="presentation" onClick={onClose}>
       <section
@@ -166,14 +466,14 @@ function InstitutionReviewModal({
           </div>
         </div>
 
-        <form action={updateInstitutionStatusAction} className="review-modal-form">
-          <input type="hidden" name="institutionId" value={institution.id} />
+        <form onSubmit={handleSubmit} className="review-modal-form">
           <div className="auth-field">
             <label htmlFor={`institution-status-${institution.id}`}>Verification status</label>
             <select
               id={`institution-status-${institution.id}`}
               name="verificationStatus"
-              defaultValue={institution.verification_status}
+              value={verificationStatus}
+              onChange={(event) => setVerificationStatus(event.target.value as Institution["verification_status"])}
             >
               <option value="pending_verification">Pending verification</option>
               <option value="verified">Verify institution</option>
@@ -181,10 +481,11 @@ function InstitutionReviewModal({
               <option value="suspended">Suspend institution</option>
             </select>
           </div>
-          <button type="submit" className="button button-primary">
-            Update status
+          <button type="submit" className="button button-primary" disabled={isSubmitting}>
+            {isSubmitting ? "Updating..." : "Update status"}
           </button>
         </form>
+        {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
       </section>
     </div>
   );
@@ -354,8 +655,9 @@ function ListingReviewModal({
                   value={status}
                   onChange={(event) => setStatus(event.target.value as Listing["status"])}
                 >
-                  <option value="pending_admin_approval">Pending</option>
-                  <option value="live">Approved</option>
+                  {listing.status !== "matched_reserved" ? <option value="pending_admin_approval">Pending</option> : null}
+                  {listing.status !== "matched_reserved" ? <option value="live">Approved</option> : null}
+                  {listing.status === "matched_reserved" ? <option value="matched_reserved">Match reserved</option> : null}
                   <option value="removed_by_admin">Remove from marketplace</option>
                 </select>
               </div>

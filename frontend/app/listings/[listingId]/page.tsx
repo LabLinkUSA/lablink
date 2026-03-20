@@ -2,8 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ListingRequestButton } from "@/components/listing-request-button";
+import { RecipientSaveListingButton } from "@/components/recipient-save-listing-button";
 import { StatusPill } from "@/components/status-pill";
-import { getCurrentProfile, getListingDetail } from "@/lib/api";
+import { getCurrentProfile, getListingDetail, getRecipientSavedListingState } from "@/lib/api";
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = await params;
@@ -13,36 +15,50 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
+  const isVerifiedRecipient =
+    profile?.user.role === "recipient_institution" &&
+    profile.user.account_status === "verified" &&
+    profile.institution.verification_status === "verified";
+
   const requestHref =
     profile?.user.role === "recipient_institution" &&
     (profile.user.account_status !== "verified" || profile.institution.verification_status !== "verified")
       ? "/recipient"
       : "/auth";
+  const recipientCanSave = profile?.user.role === "recipient_institution";
+  const savedState = recipientCanSave ? await getRecipientSavedListingState(listingId) : null;
 
   return (
     <section className="page-section">
       <div className="shell detail-grid">
         <div className="detail-image">
-          <Image
-            src={detail.listing.photo_urls[0]}
-            alt={detail.listing.title}
-            fill
-            sizes="(max-width: 980px) 100vw, 50vw"
-            className="listing-card-image"
-          />
+          {detail.listing.photo_urls[0] ? (
+            <Image
+              src={detail.listing.photo_urls[0]}
+              alt={detail.listing.title}
+              fill
+              sizes="(max-width: 980px) 100vw, 50vw"
+              className="listing-card-image"
+            />
+          ) : (
+            <div className="listing-row-image-empty">No image</div>
+          )}
         </div>
         <div className="detail-content">
           <div className="detail-topline">
-            <span className="eyebrow">{detail.listing.category}</span>
-            <StatusPill status={detail.listing.status} />
+            <div className="detail-topline-group">
+              <span className="eyebrow">{detail.listing.category}</span>
+              <StatusPill status={detail.listing.status} />
+            </div>
+            {recipientCanSave ? (
+              <RecipientSaveListingButton listingId={detail.listing.id} initialSaved={savedState?.saved ?? false} />
+            ) : null}
           </div>
           <h1>{detail.listing.title}</h1>
           <p>{detail.listing.description}</p>
           {profile?.user.role !== "admin" && profile?.user.role !== "donor_lab" ? (
             <div className="detail-actions">
-              <Link href={requestHref} className="button button-primary">
-                Request
-              </Link>
+              {isVerifiedRecipient ? <ListingRequestButton listingId={detail.listing.id} /> : <Link href={requestHref} className="button button-primary">Request</Link>}
             </div>
           ) : null}
 

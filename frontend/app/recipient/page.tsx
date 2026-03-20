@@ -5,6 +5,24 @@ import { DashboardPanel } from "@/components/dashboard-panel";
 import { StatusPill } from "@/components/status-pill";
 import { getCurrentProfile, getRecipientDashboard } from "@/lib/api";
 
+function getInstitutionAccessStateMessage(status: string) {
+  if (status === "suspended") {
+    return {
+      eyebrow: "Institution suspended",
+      title: "Your recipient dashboard is temporarily unavailable.",
+      description:
+        "Your institution is currently suspended, so recipient request activity is paused until an admin restores access.",
+    };
+  }
+
+  return {
+    eyebrow: "Verification pending",
+    title: "Your recipient dashboard is waiting on admin verification.",
+    description:
+      "Your institution is currently pending verification, so recipient request activity stays blocked until approval is complete.",
+  };
+}
+
 export default async function RecipientPage() {
   const [profile, dashboard] = await Promise.all([getCurrentProfile(), getRecipientDashboard()]);
 
@@ -25,25 +43,27 @@ export default async function RecipientPage() {
       profile.user.account_status === "verified" && profile.institution.verification_status === "verified";
 
     if (!isVerifiedRecipient) {
+      const accessState = getInstitutionAccessStateMessage(profile.institution.verification_status);
+
       return (
         <section className="page-section">
           <div className="shell empty-state">
-            <span className="eyebrow">Verification required</span>
-            <h1>Your institution must be admin-verified before you can request equipment.</h1>
+            <span className="eyebrow">{accessState.eyebrow}</span>
+            <h1>{accessState.title}</h1>
             <p>
-              Your recipient account is connected to {profile.institution.name}, which is currently{" "}
-              {profile.institution.verification_status.replaceAll("_", " ")}.
+              {accessState.description} Your recipient account is connected to {profile.institution.name}, which is
+              currently {profile.institution.verification_status.replaceAll("_", " ")}.
             </p>
             <div className="auth-state-card">
-              <h2>What happens next</h2>
-              <p>Once LabLink admin verification is complete, you can return here to request listings and track activity.</p>
+              <h2>Your LabLink information is still saved</h2>
+              <p>Requests, saved listings, and institution details stay in place so access can resume after re-verification.</p>
             </div>
             <div className="page-actions">
               <Link href="/listings" className="button button-secondary">
-                Back to listings
+                Browse equipment
               </Link>
               <Link href="/auth" className="button button-primary">
-                Check verification status
+                Check account status
               </Link>
             </div>
           </div>
@@ -79,18 +99,36 @@ export default async function RecipientPage() {
           <DashboardPanel title="Requests" subtitle="Only admin-verified institutions can submit equipment requests.">
             <div className="list">
               {dashboard.requests.map((request) => (
-                <article key={request.id} className="list-row">
-                  <div className="list-row-topline">
-                    <strong>{request.program_or_department}</strong>
-                    <StatusPill status={request.status} />
-                  </div>
-                  <h3>{request.intended_use}</h3>
-                  <p>{request.storage_readiness}</p>
-                  <div className="list-row-meta">
-                    <span>Needed by {request.needed_by}</span>
-                    <span>{request.delivery_constraints}</span>
-                  </div>
-                </article>
+                request.listing ? (
+                  <Link key={request.id} href={`/listings/${request.listing_id}`}>
+                    <ListingListRow
+                      listing={request.listing}
+                      status={request.status === "submitted" ? "pending_request" : request.status}
+                      description={request.intended_use}
+                      meta={
+                        <div className="list-row-meta">
+                          <span>Needed by {request.needed_by}</span>
+                          <span>{request.delivery_constraints}</span>
+                          <span>{request.storage_readiness}</span>
+                        </div>
+                      }
+                      actions={<StatusPill status={request.status} />}
+                    />
+                  </Link>
+                ) : (
+                  <article key={request.id} className="list-row">
+                    <div className="list-row-topline">
+                      <strong>{request.program_or_department}</strong>
+                      <StatusPill status={request.status} />
+                    </div>
+                    <h3>{request.intended_use}</h3>
+                    <p>{request.storage_readiness}</p>
+                    <div className="list-row-meta">
+                      <span>Needed by {request.needed_by}</span>
+                      <span>{request.delivery_constraints}</span>
+                    </div>
+                  </article>
+                )
               ))}
             </div>
           </DashboardPanel>
@@ -98,17 +136,18 @@ export default async function RecipientPage() {
           <DashboardPanel title="Saved listings" subtitle="Recipients can save listings while they complete verification.">
             <div className="list">
               {dashboard.saved_listings.map((listing) => (
-                <ListingListRow
-                  key={listing.id}
-                  listing={listing}
-                  description={listing.location}
-                  meta={
-                    <div className="list-row-meta">
-                      <span>{listing.quantity} unit(s)</span>
-                      <span>{listing.availability_window}</span>
-                    </div>
-                  }
-                />
+                <Link key={listing.id} href={`/listings/${listing.id}`}>
+                  <ListingListRow
+                    listing={listing}
+                    description={listing.location}
+                    meta={
+                      <div className="list-row-meta">
+                        <span>{listing.quantity} unit(s)</span>
+                        <span>{listing.availability_window}</span>
+                      </div>
+                    }
+                  />
+                </Link>
               ))}
             </div>
           </DashboardPanel>

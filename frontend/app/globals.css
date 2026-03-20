@@ -104,6 +104,10 @@ img {
   gap: 0.75rem;
 }
 
+.header-profile-menu {
+  position: relative;
+}
+
 .header-profile {
   display: flex;
   align-items: center;
@@ -128,6 +132,45 @@ img {
 
 .header-profile-button:hover {
   transform: translateY(-1px);
+}
+
+.header-profile-button:focus-visible + .header-profile-tooltip,
+.header-profile-menu:hover .header-profile-tooltip,
+.header-profile-menu:focus-within .header-profile-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.header-profile-tooltip {
+  position: absolute;
+  top: calc(100% + 0.7rem);
+  left: 50%;
+  display: grid;
+  gap: 0.2rem;
+  min-width: 15rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 1rem;
+  background: rgba(17, 34, 24, 0.94);
+  box-shadow: 0 16px 36px rgba(17, 34, 24, 0.22);
+  color: rgba(255, 250, 240, 0.96);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 0.4rem);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  white-space: nowrap;
+}
+
+.header-profile-tooltip strong {
+  font-size: 0.94rem;
+}
+
+.header-profile-tooltip span {
+  color: rgba(255, 250, 240, 0.8);
+  font-size: 0.82rem;
 }
 
 .header-profile-copy {
@@ -361,6 +404,17 @@ img {
   gap: 0.75rem;
 }
 
+.detail-topline {
+  align-items: start;
+}
+
+.detail-topline-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .listing-card p,
 .detail-section p,
 .list-row p,
@@ -399,6 +453,45 @@ img {
   margin-top: 1.25rem;
 }
 
+.save-listing-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid rgba(17, 34, 24, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 10px 24px rgba(66, 45, 27, 0.12);
+  color: var(--muted);
+}
+
+.save-listing-button svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: currentColor;
+}
+
+.save-listing-button-saved {
+  color: #b88900;
+  background: rgba(255, 234, 163, 0.62);
+  border-color: rgba(184, 137, 0, 0.28);
+}
+
+.save-listing-toast {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 40;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 1rem;
+  background: rgba(17, 34, 24, 0.94);
+  box-shadow: 0 18px 42px rgba(17, 34, 24, 0.2);
+  color: #fffaf0;
+  font-weight: 600;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -421,6 +514,7 @@ img {
 
 .status-under_review,
 .status-admin_review,
+.status-pending_request,
 .status-pending_admin_approval,
 .status-pending_verification,
 .status-awaiting_donor_confirmation,
@@ -433,6 +527,7 @@ img {
 .status-matched_reserved,
 .status-locked,
 .status-restricted,
+.status-rejected_cancelled,
 .status-removed_by_admin,
 .status-removed_by_donor {
   color: var(--accent);
@@ -961,8 +1056,20 @@ img {
     flex-direction: column;
   }
 
+  .site-header-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .site-nav {
-    display: none;
+    display: flex;
+    width: 100%;
+    gap: 0.75rem 1rem;
+  }
+
+  .site-header-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .review-modal-layout,
@@ -983,5 +1090,29 @@ img {
 
   .hero {
     padding-top: 2.5rem;
+  }
+
+  .site-header-inner {
+    gap: 0.85rem;
+  }
+
+  .brand-mark {
+    gap: 0.7rem;
+  }
+
+  .brand-mark strong {
+    font-size: 1rem;
+  }
+
+  .brand-mark small {
+    font-size: 0.82rem;
+  }
+
+  .site-nav {
+    font-size: 0.95rem;
+  }
+
+  .site-header-actions {
+    flex-wrap: wrap;
   }
 }

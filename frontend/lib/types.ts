@@ -119,6 +119,7 @@ export interface EquipmentRequest {
   funding_or_logistics_notes: string;
   status: RequestStatus;
   submitted_at: string;
+  listing?: Listing | null;
 }
 
 export interface MessageThread {
@@ -216,4 +217,8 @@ export interface OnboardingResponse {
 export interface AuthenticatedUser {
   user: User;
   institution: Institution;
+}
+
+export interface SavedListingStateResponse {
+  saved: boolean;
 }
