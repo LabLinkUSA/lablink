@@ -68,6 +68,7 @@ class SupabaseListingService:
                 "order": "created_at.desc",
             },
         )
+        rows = self._with_active_request_counts(rows)
         return [self._to_listing(row) for row in rows if self._is_verified_donor_listing_row(row)]
 
     def get_public_listing_detail(self, listing_id: str) -> ListingDetailResponse:
@@ -89,6 +90,7 @@ class SupabaseListingService:
                 "order": "created_at.desc",
             },
         )
+        rows = self._with_active_request_counts(rows)
         listings = [
             listing
             for listing in (self._to_listing(row) for row in rows)
@@ -229,12 +231,15 @@ class SupabaseListingService:
                 "select": "id,status",
                 "listing_id": f"eq.{listing_id}",
                 "recipient_institution_id": f"eq.{actor.institution.id}",
+                "order": "created_at.desc",
+                "limit": "1",
             },
         )
-        active_existing_requests = [
-            row for row in existing_requests if row.get("status") != RequestStatus.REJECTED_CANCELLED.value
-        ]
-        if active_existing_requests:
+        latest_request = existing_requests[0] if existing_requests else None
+        if latest_request and latest_request.get("status") not in {
+            RequestStatus.REJECTED_CANCELLED.value,
+            RequestStatus.COMPLETED.value,
+        }:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Your institution has already requested this listing.")
 
         request_id = f"request_{uuid4().hex[:12]}"
@@ -733,6 +738,7 @@ class SupabaseListingService:
                 "order": "created_at.desc",
             },
         )
+        listing_rows = self._with_active_request_counts(listing_rows)
         audit_rows = self._request(
             "GET",
             "admin_audit_logs",
@@ -748,6 +754,8 @@ class SupabaseListingService:
             requests_requiring_attention=self._get_requests_for_listing_ids(
                 only_verified_recipients=True,
                 exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+                latest_per_recipient=True,
+                include_rejected_if_listing_has_match=True,
             ),
             active_threads=[],
             recent_actions=[
@@ -947,6 +955,7 @@ class SupabaseListingService:
             params={
                 "select": self._equipment_request_select(include_listing=True),
                 "listing_id": f"eq.{listing_id}",
+                "order": "created_at.desc",
             },
         )
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -1015,6 +1024,7 @@ class SupabaseListingService:
             if isinstance(listing, dict) and listing.get("title")
             else self._get_listing_row(listing_id)["title"]
         )
+        latest_request_rows = self._latest_request_rows_by_recipient(other_request_rows)
         self._notify_institution(
             existing["recipient_institution_id"],
             notification_type=NotificationType.REQUEST_STATUS_CHANGED,
@@ -1028,8 +1038,8 @@ class SupabaseListingService:
             metadata={"request_id": request_id, "status": RequestStatus.APPROVED_MATCHED.value, "listing_id": listing_id},
         )
 
-        for row in other_request_rows:
-            if row["id"] == request_id:
+        for row in latest_request_rows:
+            if row["recipient_institution_id"] == existing["recipient_institution_id"]:
                 continue
             self._notify_institution(
                 row["recipient_institution_id"],
@@ -1450,7 +1460,9 @@ class SupabaseListingService:
                 "limit": "1",
             },
         )
-        return rows[0] if rows else None
+        if not rows:
+            return None
+        return self._with_active_request_counts(rows)[0]
 
     def _get_equipment_request_row(self, request_id: str) -> dict[str, Any] | None:
         rows = self._request(
@@ -1512,7 +1524,9 @@ class SupabaseListingService:
         if extra_params:
             params.update(extra_params)
         rows = self._request("GET", "listings", params=params)
-        return rows[0] if rows else None
+        if not rows:
+            return None
+        return self._with_active_request_counts(rows)[0]
 
     def _listing_select(self, *, include_donor_institution: bool = False) -> str:
         base = (
@@ -1558,6 +1572,7 @@ class SupabaseListingService:
                 [row["id"]],
                 exclude_statuses={RequestStatus.REJECTED_CANCELLED},
                 latest_per_recipient=True,
+                include_rejected_if_listing_has_match=True,
             ),
         )
 
@@ -1588,6 +1603,28 @@ class SupabaseListingService:
             }
         )
 
+    def _with_active_request_counts(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if not rows:
+            return rows
+
+        listing_ids = [row["id"] for row in rows if row.get("id")]
+        active_requests = self._get_requests_for_listing_ids(
+            listing_ids,
+            exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+            latest_per_recipient=True,
+        )
+
+        request_counts: dict[str, int] = {}
+        for request in active_requests:
+            request_counts[request.listing_id] = request_counts.get(request.listing_id, 0) + 1
+
+        normalized_rows: list[dict[str, Any]] = []
+        for row in rows:
+            normalized_row = dict(row)
+            normalized_row["request_count"] = request_counts.get(row["id"], 0)
+            normalized_rows.append(normalized_row)
+        return normalized_rows
+
     def _to_equipment_request(self, row: dict[str, Any]) -> EquipmentRequest:
         return EquipmentRequest.model_validate(
             {
@@ -1608,6 +1645,14 @@ class SupabaseListingService:
                 "listing": self._to_listing(row["listing"]) if row.get("listing") else None,
             }
         )
+
+    def _latest_request_rows_by_recipient(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        latest_rows: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            institution_id = row["recipient_institution_id"]
+            if institution_id not in latest_rows:
+                latest_rows[institution_id] = row
+        return list(latest_rows.values())
 
     def _to_notification(self, row: dict[str, Any]) -> Notification:
         return Notification.model_validate(
@@ -1634,6 +1679,7 @@ class SupabaseListingService:
         only_verified_recipients: bool = False,
         exclude_statuses: set[RequestStatus] | None = None,
         latest_per_recipient: bool = False,
+        include_rejected_if_listing_has_match: bool = False,
     ) -> list[EquipmentRequest]:
         params = {
             "select": self._equipment_request_select(
@@ -1650,9 +1696,6 @@ class SupabaseListingService:
         rows = self._request("GET", "equipment_requests", params=params)
         if only_verified_recipients:
             rows = [row for row in rows if self._is_verified_recipient_request_row(row)]
-        if exclude_statuses:
-            excluded = {status.value for status in exclude_statuses}
-            rows = [row for row in rows if row.get("status") not in excluded]
         if latest_per_recipient:
             latest_rows: dict[tuple[str, str], dict[str, Any]] = {}
             for row in rows:
@@ -1660,6 +1703,26 @@ class SupabaseListingService:
                 if key not in latest_rows:
                     latest_rows[key] = row
             rows = list(latest_rows.values())
+        if exclude_statuses:
+            excluded = {status.value for status in exclude_statuses}
+            listing_ids_with_match = {
+                row["listing_id"] for row in rows if row.get("status") == RequestStatus.APPROVED_MATCHED.value
+            }
+            filtered_rows: list[dict[str, Any]] = []
+            for row in rows:
+                row_status = row.get("status")
+                if (
+                    include_rejected_if_listing_has_match
+                    and row_status == RequestStatus.REJECTED_CANCELLED.value
+                    and row["listing_id"] in listing_ids_with_match
+                ):
+                    filtered_rows.append(row)
+                    continue
+                if row_status not in excluded:
+                    filtered_rows.append(row)
+            rows = filtered_rows
+        rows.sort(key=lambda row: row.get("created_at", ""), reverse=True)
+        rows.sort(key=lambda row: 0 if row.get("status") == RequestStatus.APPROVED_MATCHED.value else 1)
         return [self._to_equipment_request(row) for row in rows]
 
     def _is_verified_donor_listing_row(self, row: dict[str, Any]) -> bool:
