@@ -58,6 +58,21 @@ class BoardPostStatus(StrEnum):
     CLOSED = "closed"
 
 
+class NotificationType(StrEnum):
+    ADMIN_LISTING_SUBMITTED = "admin_listing_submitted"
+    ADMIN_REQUEST_SUBMITTED = "admin_request_submitted"
+    INSTITUTION_STATUS_CHANGED = "institution_status_changed"
+    LISTING_STATUS_CHANGED = "listing_status_changed"
+    REQUEST_STATUS_CHANGED = "request_status_changed"
+    RECIPIENT_CATALOG_UPDATED = "recipient_catalog_updated"
+
+
+class NotificationEmailStatus(StrEnum):
+    PENDING = "pending"
+    SENT = "sent"
+    FAILED = "failed"
+
+
 class Institution(BaseModel):
     id: str
     name: str
@@ -155,6 +170,21 @@ class AdminAction(BaseModel):
     created_at: datetime
 
 
+class Notification(BaseModel):
+    id: str
+    type: NotificationType
+    message: str
+    cta_href: str
+    entity_type: str
+    entity_id: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    viewed_at: Optional[datetime] = None
+    email_status: NotificationEmailStatus
+    email_attempted_at: Optional[datetime] = None
+    email_error: Optional[str] = None
+
+
 class LabLinkSeed(BaseModel):
     institutions: List[Institution]
     users: List[User]
@@ -222,10 +252,17 @@ class ListingUpdate(ListingPayloadBase):
 
 class ListingApprovalUpdate(BaseModel):
     status: ListingStatus
+    admin_note: Optional[str] = Field(default=None, max_length=1000)
 
 
 class InstitutionVerificationUpdate(BaseModel):
     verification_status: VerificationStatus
+    admin_note: Optional[str] = Field(default=None, max_length=1000)
+
+
+class RequestStatusUpdate(BaseModel):
+    status: RequestStatus
+    admin_note: Optional[str] = Field(default=None, max_length=1000)
 
 
 class ListingImageUploadResponse(BaseModel):
@@ -236,12 +273,28 @@ class EquipmentRequestCreate(BaseModel):
     listing_id: str
 
 
+class RecipientRequestStateResponse(BaseModel):
+    requested: bool
+    status: Optional[RequestStatus] = None
+
+
 class SavedListingCreate(BaseModel):
     listing_id: str
 
 
 class SavedListingStateResponse(BaseModel):
     saved: bool
+
+
+class NotificationListResponse(BaseModel):
+    notifications: List[Notification]
+    unread_count: int
+    next_cursor: Optional[str] = None
+
+
+class MarkNotificationsViewedResponse(BaseModel):
+    marked_count: int
+    viewed_at: datetime
 
 
 class MessageCreate(BaseModel):

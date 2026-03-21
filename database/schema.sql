@@ -24,6 +24,15 @@ create type public.request_status as enum (
 );
 create type public.thread_status as enum ('active', 'locked', 'closed');
 create type public.board_post_status as enum ('open', 'match_in_progress', 'closed');
+create type public.notification_type as enum (
+  'admin_listing_submitted',
+  'admin_request_submitted',
+  'institution_status_changed',
+  'listing_status_changed',
+  'request_status_changed',
+  'recipient_catalog_updated'
+);
+create type public.notification_email_status as enum ('pending', 'sent', 'failed');
 
 create table if not exists public.institutions (
   id text primary key,
@@ -174,6 +183,22 @@ create table if not exists public.saved_listings (
   primary key (user_id, listing_id)
 );
 
+create table if not exists public.notifications (
+  id text primary key,
+  user_id text not null references public.app_users(id) on delete cascade,
+  type public.notification_type not null,
+  message text not null,
+  cta_href text not null,
+  entity_type text not null,
+  entity_id text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  viewed_at timestamptz,
+  email_status public.notification_email_status not null default 'pending',
+  email_attempted_at timestamptz,
+  email_error text
+);
+
 create table if not exists public.admin_audit_logs (
   id text primary key,
   actor_user_id text not null references public.app_users(id) on delete restrict,
@@ -190,3 +215,5 @@ create index if not exists requests_listing_idx on public.equipment_requests(lis
 create index if not exists requests_status_idx on public.equipment_requests(status);
 create index if not exists threads_request_idx on public.request_message_threads(request_id);
 create index if not exists board_posts_status_idx on public.request_board_posts(status);
+create index if not exists notifications_user_created_at_idx on public.notifications(user_id, created_at desc);
+create index if not exists notifications_user_viewed_at_idx on public.notifications(user_id, viewed_at, created_at desc);

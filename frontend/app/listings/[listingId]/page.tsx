@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { ListingRequestButton } from "@/components/listing-request-button";
 import { RecipientSaveListingButton } from "@/components/recipient-save-listing-button";
 import { StatusPill } from "@/components/status-pill";
-import { getCurrentProfile, getListingDetail, getRecipientSavedListingState } from "@/lib/api";
+import { getCurrentProfile, getListingDetail, getRecipientRequestState, getRecipientSavedListingState } from "@/lib/api";
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = await params;
@@ -27,6 +27,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
       : "/auth";
   const recipientCanSave = profile?.user.role === "recipient_institution";
   const savedState = recipientCanSave ? await getRecipientSavedListingState(listingId) : null;
+  const requestState = isVerifiedRecipient ? await getRecipientRequestState(listingId) : null;
 
   return (
     <section className="page-section">
@@ -58,7 +59,13 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           <p>{detail.listing.description}</p>
           {profile?.user.role !== "admin" && profile?.user.role !== "donor_lab" ? (
             <div className="detail-actions">
-              {isVerifiedRecipient ? <ListingRequestButton listingId={detail.listing.id} /> : <Link href={requestHref} className="button button-primary">Request</Link>}
+              {isVerifiedRecipient ? (
+                <ListingRequestButton listingId={detail.listing.id} initialRequested={requestState?.requested ?? false} />
+              ) : (
+                <Link href={requestHref} className="button button-primary">
+                  Request
+                </Link>
+              )}
             </div>
           ) : null}
 

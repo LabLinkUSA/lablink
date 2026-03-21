@@ -74,6 +74,12 @@ def remove_listing(listing_id: str, actor: AuthenticatedUser = Depends(require_a
     return get_supabase_listing_service().remove_donor_listing(actor, listing_id)
 
 
+@router.post("/listings/{listing_id}/mark-donated", response_model=Listing)
+def mark_listing_donated(listing_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> Listing:
+    require_verified_donor(actor)
+    return get_supabase_listing_service().mark_donor_listing_donated(actor, listing_id)
+
+
 @router.post("/listing-images", response_model=ListingImageUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_listing_image(
     image: UploadFile = File(...),

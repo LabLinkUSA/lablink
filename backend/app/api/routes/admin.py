@@ -10,6 +10,7 @@ from app.schemas.domain import (
     Listing,
     ListingApprovalUpdate,
     ListingDetailResponse,
+    RequestStatusUpdate,
     Role,
 )
 from app.services.supabase_listings import get_supabase_listing_service
@@ -42,7 +43,12 @@ def update_listing_status(
 ) -> Listing:
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
-    return get_supabase_listing_service().update_listing_status(actor, listing_id, payload.status)
+    return get_supabase_listing_service().update_listing_status(
+        actor,
+        listing_id,
+        payload.status,
+        admin_note=payload.admin_note,
+    )
 
 
 @router.patch("/institutions/{institution_id}", response_model=Institution)
@@ -53,7 +59,28 @@ def update_institution_status(
 ) -> Institution:
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
-    return get_supabase_listing_service().update_institution_status(actor, institution_id, payload.verification_status)
+    return get_supabase_listing_service().update_institution_status(
+        actor,
+        institution_id,
+        payload.verification_status,
+        admin_note=payload.admin_note,
+    )
+
+
+@router.patch("/requests/{request_id}", response_model=EquipmentRequest)
+def update_request_status(
+    request_id: str,
+    payload: RequestStatusUpdate,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> EquipmentRequest:
+    if actor.user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return get_supabase_listing_service().update_request_status(
+        actor,
+        request_id,
+        payload.status,
+        admin_note=payload.admin_note,
+    )
 
 
 @router.post("/requests/{request_id}/select", response_model=EquipmentRequest)

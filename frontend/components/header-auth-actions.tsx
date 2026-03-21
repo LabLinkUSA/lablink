@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+
+import { NotificationBell } from "@/components/notification-center";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type HeaderAuthActionsProps = {
@@ -49,6 +51,7 @@ export function HeaderAuthActions({
           List Equipment
         </Link>
       ) : null}
+      <NotificationBell />
       <div className="header-profile-menu">
         <Link
           href={dashboardHref}

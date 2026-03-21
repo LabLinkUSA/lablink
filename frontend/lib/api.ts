@@ -9,6 +9,7 @@ import type {
   ListingDetailResponse,
   RecipientDashboardResponse,
   RequestBoardPost,
+  RecipientRequestStateResponse,
   SavedListingStateResponse,
 } from "@/lib/types";
 
@@ -84,4 +85,8 @@ export async function getAdminDashboard(): Promise<AdminDashboardResponse | null
 
 export async function getRecipientSavedListingState(listingId: string): Promise<SavedListingStateResponse | null> {
   return fetchAuthedJson<SavedListingStateResponse>(`/recipient/saved-listings/${listingId}`);
+}
+
+export async function getRecipientRequestState(listingId: string): Promise<RecipientRequestStateResponse | null> {
+  return fetchAuthedJson<RecipientRequestStateResponse>(`/recipient/requests/${listingId}/state`);
 }

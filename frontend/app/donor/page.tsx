@@ -89,6 +89,22 @@ export default async function DonorPage() {
     );
   }
 
+  const groupedIncomingRequests = Array.from(
+    dashboard.active_requests.reduce((groups, request) => {
+      const existingGroup = groups.get(request.listing_id);
+      if (existingGroup) {
+        existingGroup.requests.push(request);
+        return groups;
+      }
+
+      groups.set(request.listing_id, {
+        listing: request.listing,
+        requests: [request],
+      });
+      return groups;
+    }, new Map<string, { listing: (typeof dashboard.active_requests)[number]["listing"]; requests: typeof dashboard.active_requests }>()),
+  );
+
   return (
     <section className="page-section">
       <div className="shell">
@@ -133,7 +149,7 @@ export default async function DonorPage() {
                       <span>{listing.request_count} request(s)</span>
                     </div>
                   }
-                  actions={<DonorListingActions listingId={listing.id} />}
+                  actions={<DonorListingActions listingId={listing.id} status={listing.status} />}
                 />
               ))}
             </div>
@@ -144,32 +160,32 @@ export default async function DonorPage() {
             subtitle="Admin allocates recipients when multiple institutions request the same item."
           >
             <div className="list">
-              {dashboard.active_requests.map((request) => (
-                request.listing ? (
+              {groupedIncomingRequests.map(([listingId, group]) => (
+                group.listing ? (
                   <ListingListRow
-                    key={request.id}
-                    listing={request.listing}
-                    description={request.intended_use}
+                    key={listingId}
+                    listing={group.listing}
+                    description={`${group.requests.length} institution${group.requests.length === 1 ? "" : "s"} requesting this listing`}
                     meta={
                       <div className="list-row-meta">
-                        <span>{request.program_or_department}</span>
-                        <span>Needed by {request.needed_by}</span>
-                        <span>{request.delivery_constraints}</span>
+                        <span>{group.requests.length} request(s)</span>
+                        <span>Latest needed by {group.requests[0]?.needed_by}</span>
+                        <span>{group.requests[0]?.delivery_constraints}</span>
                       </div>
                     }
-                    actions={<StatusPill status={request.status} />}
+                    actions={<StatusPill status={group.requests[0]?.status ?? "submitted"} />}
                   />
                 ) : (
-                  <article key={request.id} className="list-row">
+                  <article key={listingId} className="list-row">
                     <div className="list-row-topline">
-                      <strong>{request.program_or_department}</strong>
-                      <StatusPill status={request.status} />
+                      <strong>{group.requests.length} request(s)</strong>
+                      <StatusPill status={group.requests[0]?.status ?? "submitted"} />
                     </div>
-                    <h3>{request.intended_use}</h3>
-                    <p>{request.delivery_constraints}</p>
+                    <h3>Request competition for listing {listingId}</h3>
+                    <p>Multiple recipient institutions have requested this item.</p>
                     <div className="list-row-meta">
-                      <span>Needed by {request.needed_by}</span>
-                      <span>{titleCaseStatus(request.status)}</span>
+                      <span>Latest needed by {group.requests[0]?.needed_by}</span>
+                      <span>{titleCaseStatus(group.requests[0]?.status ?? "submitted")}</span>
                     </div>
                   </article>
                 )

@@ -7,6 +7,7 @@ alter table public.request_message_threads enable row level security;
 alter table public.request_messages enable row level security;
 alter table public.request_board_posts enable row level security;
 alter table public.saved_listings enable row level security;
+alter table public.notifications enable row level security;
 alter table public.admin_audit_logs enable row level security;
 alter table public.admin_email_allowlist enable row level security;
 
@@ -181,6 +182,26 @@ using (
         )
       )
   )
+);
+
+create policy "users can read their notifications"
+on public.notifications
+for select
+using (
+  user_id = public.current_app_user().id
+  or public.current_user_role() = 'admin'
+);
+
+create policy "users can update their notifications"
+on public.notifications
+for update
+using (
+  user_id = public.current_app_user().id
+  or public.current_user_role() = 'admin'
+)
+with check (
+  user_id = public.current_app_user().id
+  or public.current_user_role() = 'admin'
 );
 
 create policy "admins manage audit logs"

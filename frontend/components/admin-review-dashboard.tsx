@@ -9,7 +9,7 @@ import { ListingListRow } from "@/components/listing-list-row";
 import { StatusPill } from "@/components/status-pill";
 import { formatDate } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AdminDashboardResponse, Institution, Listing, ListingDetailResponse } from "@/lib/types";
+import type { AdminDashboardResponse, Institution, Listing, ListingDetailResponse, RequestStatus } from "@/lib/types";
 
 type AdminReviewDashboardProps = {
   dashboard: AdminDashboardResponse;
@@ -17,6 +17,14 @@ type AdminReviewDashboardProps = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const supabase = createSupabaseBrowserClient();
+const REQUEST_STATUS_OPTIONS: RequestStatus[] = [
+  "admin_review",
+  "awaiting_donor_confirmation",
+  "approved_matched",
+  "pickup_transfer_coordination",
+  "completed",
+  "rejected_cancelled",
+];
 
 export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
@@ -183,6 +191,8 @@ function RequestCompetitionModal({
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [requestStatuses, setRequestStatuses] = useState<Record<string, RequestStatus>>({});
+  const [adminNote, setAdminNote] = useState("");
 
   useEffect(() => {
     void (async () => {
@@ -214,7 +224,11 @@ function RequestCompetitionModal({
           throw new Error(message);
         }
 
-        setDetail((await response.json()) as ListingDetailResponse);
+        const nextDetail = (await response.json()) as ListingDetailResponse;
+        setDetail(nextDetail);
+        setRequestStatuses(
+          Object.fromEntries(nextDetail.related_requests.map((request) => [request.id, request.status as RequestStatus])),
+        );
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Could not load the request competition view.");
       } finally {
@@ -238,15 +252,20 @@ function RequestCompetitionModal({
         throw new Error("You must be signed in as an admin to select a recipient.");
       }
 
-      const response = await fetch(`${API_BASE_URL}/admin/requests/${requestId}/select`, {
-        method: "POST",
+      const response = await fetch(`${API_BASE_URL}/admin/requests/${requestId}`, {
+        method: "PATCH",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
+        body: JSON.stringify({
+          status: requestStatuses[requestId] ?? "approved_matched",
+          admin_note: adminNote.trim() || undefined,
+        }),
       });
 
       if (!response.ok) {
-        let message = "Could not select the recipient institution.";
+        let message = "Could not update the request status.";
         try {
           const body = (await response.json()) as { detail?: string };
           if (body.detail) {
@@ -259,7 +278,7 @@ function RequestCompetitionModal({
       router.refresh();
       onClose();
     } catch (selectError) {
-      setError(selectError instanceof Error ? selectError.message : "Could not select the recipient institution.");
+      setError(selectError instanceof Error ? selectError.message : "Could not update the request status.");
     } finally {
       setSelectedRequestId(null);
     }
@@ -340,6 +359,17 @@ function RequestCompetitionModal({
 
         {detail ? (
           <div className="list">
+            <div className="auth-field">
+              <label htmlFor={`request-admin-note-${listingId}`}>Admin note</label>
+              <textarea
+                id={`request-admin-note-${listingId}`}
+                name="adminNote"
+                value={adminNote}
+                onChange={(event) => setAdminNote(event.target.value)}
+                rows={3}
+                placeholder="Optional note included in recipient notifications"
+              />
+            </div>
             {detail.related_requests.map((request) => (
               <article key={request.id} className="list-row">
                 <div className="list-row-topline">
@@ -353,13 +383,32 @@ function RequestCompetitionModal({
                   <span>{request.delivery_constraints}</span>
                 </div>
                 <div className="list-row-actions">
+                  <label className="sr-only" htmlFor={`request-status-${request.id}`}>
+                    Request status
+                  </label>
+                  <select
+                    id={`request-status-${request.id}`}
+                    value={requestStatuses[request.id] ?? request.status}
+                    onChange={(event) =>
+                      setRequestStatuses((current) => ({
+                        ...current,
+                        [request.id]: event.target.value as RequestStatus,
+                      }))
+                    }
+                  >
+                    {REQUEST_STATUS_OPTIONS.map((statusValue) => (
+                      <option key={statusValue} value={statusValue}>
+                        {statusValue.replaceAll("_", " ")}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="button"
                     className="button button-primary"
                     onClick={() => handleSelectRecipient(request.id)}
-                    disabled={selectedRequestId === request.id || request.status === "approved_matched"}
+                    disabled={selectedRequestId === request.id}
                   >
-                    {selectedRequestId === request.id ? "Selecting..." : "Select recipient"}
+                    {selectedRequestId === request.id ? "Updating..." : "Update status"}
                   </button>
                 </div>
               </article>
@@ -380,6 +429,7 @@ function InstitutionReviewModal({
 }) {
   const router = useRouter();
   const [verificationStatus, setVerificationStatus] = useState(institution.verification_status);
+  const [adminNote, setAdminNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -405,7 +455,7 @@ function InstitutionReviewModal({
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ verification_status: verificationStatus }),
+        body: JSON.stringify({ verification_status: verificationStatus, admin_note: adminNote.trim() || undefined }),
       });
 
       if (!response.ok) {
@@ -481,6 +531,17 @@ function InstitutionReviewModal({
               <option value="suspended">Suspend institution</option>
             </select>
           </div>
+          <div className="auth-field">
+            <label htmlFor={`institution-note-${institution.id}`}>Admin note</label>
+            <textarea
+              id={`institution-note-${institution.id}`}
+              name="adminNote"
+              value={adminNote}
+              onChange={(event) => setAdminNote(event.target.value)}
+              rows={3}
+              placeholder="Optional note included in the institution notification"
+            />
+          </div>
           <button type="submit" className="button button-primary" disabled={isSubmitting}>
             {isSubmitting ? "Updating..." : "Update status"}
           </button>
@@ -500,6 +561,7 @@ function ListingReviewModal({
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(listing.status);
+  const [adminNote, setAdminNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -525,7 +587,7 @@ function ListingReviewModal({
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, admin_note: adminNote.trim() || undefined }),
       });
 
       if (!response.ok) {
@@ -660,6 +722,17 @@ function ListingReviewModal({
                   {listing.status === "matched_reserved" ? <option value="matched_reserved">Match reserved</option> : null}
                   <option value="removed_by_admin">Remove from marketplace</option>
                 </select>
+              </div>
+              <div className="auth-field">
+                <label htmlFor={`listing-note-${listing.id}`}>Admin note</label>
+                <textarea
+                  id={`listing-note-${listing.id}`}
+                  name="adminNote"
+                  value={adminNote}
+                  onChange={(event) => setAdminNote(event.target.value)}
+                  rows={3}
+                  placeholder="Optional note included in the donor notification"
+                />
               </div>
               <button type="submit" className="button button-primary" disabled={isSubmitting}>
                 {isSubmitting ? "Updating..." : "Update status"}

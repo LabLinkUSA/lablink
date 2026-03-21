@@ -10,6 +10,7 @@ from app.schemas.domain import (
     RecipientDashboardResponse,
     RequestBoardPost,
     RequestBoardPostCreate,
+    RecipientRequestStateResponse,
     Role,
     SavedListingCreate,
     SavedListingStateResponse,
@@ -46,6 +47,20 @@ def create_request(
 ) -> EquipmentRequest:
     require_verified_recipient(actor)
     return get_supabase_listing_service().create_equipment_request(actor, payload.listing_id)
+
+
+@router.get("/requests/{listing_id}/state", response_model=RecipientRequestStateResponse)
+def get_request_state(listing_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> RecipientRequestStateResponse:
+    if actor.user.role != Role.RECIPIENT_INSTITUTION:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
+    requested, request_status = get_supabase_listing_service().get_recipient_request_state(actor, listing_id)
+    return RecipientRequestStateResponse(requested=requested, status=request_status)
+
+
+@router.delete("/requests/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_request(listing_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> None:
+    require_verified_recipient(actor)
+    get_supabase_listing_service().cancel_recipient_request(actor, listing_id)
 
 
 @router.get("/saved-listings/{listing_id}", response_model=SavedListingStateResponse)

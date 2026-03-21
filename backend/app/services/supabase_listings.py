@@ -16,24 +16,47 @@ from app.schemas.domain import (
     AuthenticatedUser,
     DonorDashboardResponse,
     EquipmentRequest,
+    MarkNotificationsViewedResponse,
+    Notification,
+    NotificationEmailStatus,
+    NotificationListResponse,
+    NotificationType,
     RecipientDashboardResponse,
     Institution,
     Listing,
     ListingCreate,
-    ListingUpdate,
     ListingDetailResponse,
+    ListingApprovalUpdate,
     ListingStatus,
+    ListingUpdate,
+    RequestStatusUpdate,
     RequestStatus,
     VerificationStatus,
 )
 from app.services.supabase_profiles import ADMIN_INSTITUTION_ID
 
+RESEND_API_URL = "https://api.resend.com/emails"
+
 
 class SupabaseListingService:
-    def __init__(self, supabase_url: str, service_role_key: str, storage_bucket: str):
+    def __init__(
+        self,
+        supabase_url: str,
+        service_role_key: str,
+        storage_bucket: str,
+        *,
+        frontend_origin: str,
+        resend_api_key: str | None = None,
+        email_from: str | None = None,
+        email_reply_to: str | None = None,
+    ):
         self.supabase_url = supabase_url.rstrip("/")
         self.service_role_key = service_role_key
         self.storage_bucket = storage_bucket
+        self.frontend_origin = frontend_origin.rstrip("/")
+        self.resend_api_key = resend_api_key
+        self.email_from = email_from
+        self.email_reply_to = email_reply_to
 
     def list_public_listings(self) -> list[Listing]:
         rows = self._request(
@@ -71,7 +94,11 @@ class SupabaseListingService:
             for listing in (self._to_listing(row) for row in rows)
             if listing.status not in {ListingStatus.REMOVED_BY_ADMIN, ListingStatus.REMOVED_BY_DONOR}
         ]
-        active_requests = self._get_requests_for_listing_ids([listing.id for listing in listings], only_verified_recipients=True)
+        active_requests = self._get_requests_for_listing_ids(
+            [listing.id for listing in listings],
+            only_verified_recipients=True,
+            exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+        )
         impact_summary = {
             "total_items_donated": sum(listing.quantity for listing in listings if listing.status == ListingStatus.FULFILLED),
             "institutions_served": 0,
@@ -109,11 +136,78 @@ class SupabaseListingService:
 
         return RecipientDashboardResponse(
             institution=actor.institution,
-            requests=[self._to_equipment_request(row) for row in request_rows],
+            requests=[
+                self._to_equipment_request(row)
+                for row in request_rows
+                if row.get("status") != RequestStatus.REJECTED_CANCELLED.value
+            ],
             saved_listings=[self._to_listing(row["listing"]) for row in saved_listing_rows if row.get("listing")],
             threads=[],
             request_board_posts=[],
         )
+
+    def list_notifications(
+        self,
+        actor: AuthenticatedUser,
+        *,
+        limit: int = 20,
+        before: str | None = None,
+    ) -> NotificationListResponse:
+        normalized_limit = max(1, min(limit, 50))
+        params = {
+            "select": (
+                "id,type,message,cta_href,entity_type,entity_id,metadata,created_at,viewed_at,"
+                "email_status,email_attempted_at,email_error"
+            ),
+            "user_id": f"eq.{actor.user.id}",
+            "order": "created_at.desc",
+            "limit": str(normalized_limit),
+        }
+        if before:
+            params["created_at"] = f"lt.{before}"
+
+        rows = self._request("GET", "notifications", params=params)
+        unread_rows = self._request(
+            "GET",
+            "notifications",
+            params={
+                "select": "id",
+                "user_id": f"eq.{actor.user.id}",
+                "viewed_at": "is.null",
+            },
+        )
+
+        notifications = [self._to_notification(row) for row in rows]
+        next_cursor = notifications[-1].created_at.isoformat() if notifications else None
+        return NotificationListResponse(
+            notifications=notifications,
+            unread_count=len(unread_rows),
+            next_cursor=next_cursor,
+        )
+
+    def mark_notifications_viewed(self, actor: AuthenticatedUser) -> MarkNotificationsViewedResponse:
+        unread_rows = self._request(
+            "GET",
+            "notifications",
+            params={
+                "select": "id",
+                "user_id": f"eq.{actor.user.id}",
+                "viewed_at": "is.null",
+            },
+        )
+        viewed_at = datetime.now(timezone.utc)
+        if unread_rows:
+            self._request(
+                "PATCH",
+                "notifications",
+                params={
+                    "user_id": f"eq.{actor.user.id}",
+                    "viewed_at": "is.null",
+                },
+                json={"viewed_at": viewed_at.isoformat()},
+                headers={"Prefer": "return=minimal"},
+            )
+        return MarkNotificationsViewedResponse(marked_count=len(unread_rows), viewed_at=viewed_at)
 
     def create_equipment_request(self, actor: AuthenticatedUser, listing_id: str) -> EquipmentRequest:
         listing = self._get_listing_row(listing_id)
@@ -132,13 +226,15 @@ class SupabaseListingService:
             "GET",
             "equipment_requests",
             params={
-                "select": "id",
+                "select": "id,status",
                 "listing_id": f"eq.{listing_id}",
                 "recipient_institution_id": f"eq.{actor.institution.id}",
-                "limit": "1",
             },
         )
-        if existing_requests:
+        active_existing_requests = [
+            row for row in existing_requests if row.get("status") != RequestStatus.REJECTED_CANCELLED.value
+        ]
+        if active_existing_requests:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Your institution has already requested this listing.")
 
         request_id = f"request_{uuid4().hex[:12]}"
@@ -175,13 +271,161 @@ class SupabaseListingService:
             headers={"Prefer": "return=minimal"},
         )
 
+        admin_message = f"{actor.institution.name} submitted a request for {listing['title']}."
+        donor_message = f"A recipient institution requested your listing {listing['title']}."
+        self._notify_role(
+            "admin",
+            notification_type=NotificationType.ADMIN_REQUEST_SUBMITTED,
+            message=admin_message,
+            cta_href="/admin",
+            entity_type="request",
+            entity_id=request_id,
+            metadata={
+                "listing_id": listing_id,
+                "recipient_institution_id": actor.institution.id,
+                "recipient_institution_name": actor.institution.name,
+            },
+        )
+        self._notify_institution(
+            listing["donor_institution_id"],
+            notification_type=NotificationType.ADMIN_REQUEST_SUBMITTED,
+            message=donor_message,
+            cta_href="/donor",
+            entity_type="request",
+            entity_id=request_id,
+            metadata={
+                "listing_id": listing_id,
+                "recipient_institution_id": actor.institution.id,
+                "recipient_institution_name": actor.institution.name,
+            },
+        )
+
         row = self._get_equipment_request_row(request_id)
         if not row:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Request was created but could not be loaded.",
-        )
+            )
         return self._to_equipment_request(row)
+
+    def get_recipient_request_state(self, actor: AuthenticatedUser, listing_id: str) -> tuple[bool, RequestStatus | None]:
+        rows = self._request(
+            "GET",
+            "equipment_requests",
+            params={
+                "select": "id,status",
+                "listing_id": f"eq.{listing_id}",
+                "recipient_institution_id": f"eq.{actor.institution.id}",
+                "order": "created_at.desc",
+                "limit": "1",
+            },
+        )
+        if not rows:
+            return False, None
+
+        latest_status = RequestStatus(rows[0]["status"])
+        if latest_status == RequestStatus.REJECTED_CANCELLED:
+            return False, latest_status
+
+        return True, latest_status
+
+    def cancel_recipient_request(self, actor: AuthenticatedUser, listing_id: str) -> None:
+        rows = self._request(
+            "GET",
+            "equipment_requests",
+            params={
+                "select": (
+                    "id,status,recipient_institution_id,"
+                    "listing:listings(id,title,donor_institution_id,status,request_count)"
+                ),
+                "listing_id": f"eq.{listing_id}",
+                "recipient_institution_id": f"eq.{actor.institution.id}",
+                "order": "created_at.desc",
+                "limit": "1",
+            },
+        )
+        if not rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No request was found for this listing.")
+
+        request_row = rows[0]
+        request_status = RequestStatus(request_row["status"])
+        if request_status in {RequestStatus.APPROVED_MATCHED, RequestStatus.COMPLETED}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This request can no longer be cancelled from the listing page.",
+            )
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+        self._request(
+            "PATCH",
+            "equipment_requests",
+            params={"id": f"eq.{request_row['id']}"},
+            json={
+                "status": RequestStatus.REJECTED_CANCELLED.value,
+                "updated_at": timestamp,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        listing = request_row.get("listing") or self._get_listing_row(listing_id)
+        if listing:
+            next_request_count = max(0, int(listing.get("request_count", 0)) - 1)
+            listing_patch: dict[str, Any] = {
+                "request_count": next_request_count,
+                "updated_at": timestamp,
+            }
+            normalized_listing_status = self._normalize_listing_status(listing.get("status", ""))
+            if normalized_listing_status == ListingStatus.UNDER_REVIEW.value and next_request_count == 0:
+                listing_patch["status"] = ListingStatus.LIVE.value
+
+            self._request(
+                "PATCH",
+                "listings",
+                params={"id": f"eq.{listing_id}"},
+                json=listing_patch,
+                headers={"Prefer": "return=minimal"},
+            )
+
+            self._request(
+                "POST",
+                "admin_audit_logs",
+                json={
+                    "id": f"audit_{uuid4().hex[:12]}",
+                    "actor_user_id": actor.user.id,
+                    "action_type": "recipient_request_cancelled",
+                    "subject_table": "equipment_requests",
+                    "subject_id": request_row["id"],
+                    "notes": f"Recipient cancelled request for listing {listing_id}.",
+                },
+                headers={"Prefer": "return=minimal"},
+            )
+
+            message = f"{actor.institution.name} cancelled its request for {listing['title']}."
+            metadata = {
+                "request_id": request_row["id"],
+                "listing_id": listing_id,
+                "status": RequestStatus.REJECTED_CANCELLED.value,
+                "recipient_institution_id": actor.institution.id,
+                "recipient_institution_name": actor.institution.name,
+            }
+            self._notify_role(
+                "admin",
+                notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+                message=message,
+                cta_href="/admin",
+                entity_type="request",
+                entity_id=request_row["id"],
+                metadata=metadata,
+            )
+            self._notify_institution(
+                listing["donor_institution_id"],
+                notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+                message=message,
+                cta_href="/donor",
+                entity_type="request",
+                entity_id=request_row["id"],
+                metadata=metadata,
+            )
 
     def get_saved_listing_state(self, actor: AuthenticatedUser, listing_id: str) -> bool:
         rows = self._request(
@@ -270,6 +514,16 @@ class SupabaseListingService:
                 headers={"Prefer": "return=minimal"},
             )
 
+        self._notify_role(
+            "admin",
+            notification_type=NotificationType.ADMIN_LISTING_SUBMITTED,
+            message=f"{actor.institution.name} submitted a new listing: {payload.title}.",
+            cta_href="/admin",
+            entity_type="listing",
+            entity_id=listing_id,
+            metadata={"listing_id": listing_id, "donor_institution_id": actor.institution.id},
+        )
+
         row = self._get_listing_row(listing_id)
         if not row:
             raise HTTPException(
@@ -353,6 +607,32 @@ class SupabaseListingService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Listing was removed but could not be reloaded.",
+            )
+        return self._to_listing(updated)
+
+    def mark_donor_listing_donated(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
+        existing = self._get_listing_row(listing_id)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+        self._ensure_donor_controls_listing(actor, existing)
+        self._ensure_listing_mutable(existing, action="mark as donated")
+
+        self._request(
+            "PATCH",
+            "listings",
+            params={"id": f"eq.{listing_id}"},
+            json={
+                "status": ListingStatus.FULFILLED.value,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        updated = self._get_listing_row(listing_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Listing was marked as donated but could not be reloaded.",
             )
         return self._to_listing(updated)
 
@@ -465,7 +745,10 @@ class SupabaseListingService:
         return AdminDashboardResponse(
             pending_institutions=[self._to_institution(row) for row in pending_institution_rows],
             listings_for_review=[self._to_listing(row) for row in listing_rows],
-            requests_requiring_attention=self._get_requests_for_listing_ids(only_verified_recipients=True),
+            requests_requiring_attention=self._get_requests_for_listing_ids(
+                only_verified_recipients=True,
+                exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+            ),
             active_threads=[],
             recent_actions=[
                 AdminAction.model_validate(
@@ -488,7 +771,14 @@ class SupabaseListingService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         return self._to_listing_detail(row)
 
-    def update_listing_status(self, actor: AuthenticatedUser, listing_id: str, status_value: ListingStatus) -> Listing:
+    def update_listing_status(
+        self,
+        actor: AuthenticatedUser,
+        listing_id: str,
+        status_value: ListingStatus,
+        *,
+        admin_note: str | None = None,
+    ) -> Listing:
         existing = self._get_listing_row(listing_id)
         if not existing:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
@@ -526,7 +816,7 @@ class SupabaseListingService:
                 "action_type": "listing_status_updated",
                 "subject_table": "listings",
                 "subject_id": listing_id,
-                "notes": f"Listing status updated to {status_value.value}.",
+                "notes": self._with_admin_note(f"Listing status updated to {status_value.value}.", admin_note),
             },
             headers={"Prefer": "return=minimal"},
         )
@@ -537,6 +827,29 @@ class SupabaseListingService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Listing status was updated but the listing could not be reloaded.",
             )
+
+        self._notify_institution(
+            updated["donor_institution_id"],
+            notification_type=NotificationType.LISTING_STATUS_CHANGED,
+            message=self._with_admin_note(
+                f"Your listing {updated['title']} is now {self._friendly_status_label(status_value.value)}.",
+                admin_note,
+            ),
+            cta_href="/donor",
+            entity_type="listing",
+            entity_id=listing_id,
+            metadata={"listing_id": listing_id, "status": status_value.value},
+        )
+        if status_value == ListingStatus.LIVE:
+            self._notify_role(
+                "recipient_institution",
+                notification_type=NotificationType.RECIPIENT_CATALOG_UPDATED,
+                message=f"New listing available in the catalog: {updated['title']}.",
+                cta_href=f"/listings/{listing_id}",
+                entity_type="listing",
+                entity_id=listing_id,
+                metadata={"listing_id": listing_id, "status": status_value.value},
+            )
         return self._to_listing(updated)
 
     def update_institution_status(
@@ -544,6 +857,8 @@ class SupabaseListingService:
         actor: AuthenticatedUser,
         institution_id: str,
         verification_status: VerificationStatus,
+        *,
+        admin_note: str | None = None,
     ) -> Institution:
         existing = self._get_institution_row(institution_id)
         if not existing:
@@ -581,9 +896,12 @@ class SupabaseListingService:
                 "action_type": "institution_status_updated",
                 "subject_table": "institutions",
                 "subject_id": institution_id,
-                "notes": (
-                    f"Institution verification status updated to {verification_status.value}. "
-                    f"Member account status set to {mapped_account_status.value}."
+                "notes": self._with_admin_note(
+                    (
+                        f"Institution verification status updated to {verification_status.value}. "
+                        f"Member account status set to {mapped_account_status.value}."
+                    ),
+                    admin_note,
                 ),
             },
             headers={"Prefer": "return=minimal"},
@@ -596,14 +914,41 @@ class SupabaseListingService:
                 detail="Institution status was updated but the institution could not be reloaded.",
             )
 
+        self._notify_institution(
+            institution_id,
+            notification_type=NotificationType.INSTITUTION_STATUS_CHANGED,
+            message=self._with_admin_note(
+                f"Your institution verification status is now {self._friendly_status_label(verification_status.value)}.",
+                admin_note,
+            ),
+            cta_href=self._dashboard_href_for_role(updated["role_type"]),
+            entity_type="institution",
+            entity_id=institution_id,
+            metadata={"institution_id": institution_id, "verification_status": verification_status.value},
+        )
         return self._to_institution(updated)
 
-    def select_equipment_request(self, actor: AuthenticatedUser, request_id: str) -> EquipmentRequest:
+    def select_equipment_request(
+        self,
+        actor: AuthenticatedUser,
+        request_id: str,
+        *,
+        admin_note: str | None = None,
+    ) -> EquipmentRequest:
         existing = self._get_equipment_request_row(request_id)
         if not existing:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Request {request_id} not found.")
 
         listing_id = existing["listing_id"]
+        listing = existing.get("listing")
+        other_request_rows = self._request(
+            "GET",
+            "equipment_requests",
+            params={
+                "select": self._equipment_request_select(include_listing=True),
+                "listing_id": f"eq.{listing_id}",
+            },
+        )
         timestamp = datetime.now(timezone.utc).isoformat()
 
         self._request(
@@ -653,7 +998,7 @@ class SupabaseListingService:
                 "action_type": "request_selected_for_listing",
                 "subject_table": "equipment_requests",
                 "subject_id": request_id,
-                "notes": f"Request selected for listing {listing_id}.",
+                "notes": self._with_admin_note(f"Request selected for listing {listing_id}.", admin_note),
             },
             headers={"Prefer": "return=minimal"},
         )
@@ -664,6 +1009,133 @@ class SupabaseListingService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Request was selected but could not be reloaded.",
             )
+
+        listing_title = (
+            listing["title"]
+            if isinstance(listing, dict) and listing.get("title")
+            else self._get_listing_row(listing_id)["title"]
+        )
+        self._notify_institution(
+            existing["recipient_institution_id"],
+            notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+            message=self._with_admin_note(
+                f"Your request for {listing_title} is now {self._friendly_request_status_label(RequestStatus.APPROVED_MATCHED.value)}.",
+                admin_note,
+            ),
+            cta_href="/recipient",
+            entity_type="request",
+            entity_id=request_id,
+            metadata={"request_id": request_id, "status": RequestStatus.APPROVED_MATCHED.value, "listing_id": listing_id},
+        )
+
+        for row in other_request_rows:
+            if row["id"] == request_id:
+                continue
+            self._notify_institution(
+                row["recipient_institution_id"],
+                notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+                message=self._with_admin_note(
+                    f"Your request for {listing_title} was not selected.",
+                    admin_note,
+                ),
+                cta_href="/recipient",
+                entity_type="request",
+                entity_id=row["id"],
+                metadata={"request_id": row["id"], "status": RequestStatus.REJECTED_CANCELLED.value, "listing_id": listing_id},
+            )
+        return self._to_equipment_request(updated)
+
+    def update_request_status(
+        self,
+        actor: AuthenticatedUser,
+        request_id: str,
+        status_value: RequestStatus,
+        *,
+        admin_note: str | None = None,
+    ) -> EquipmentRequest:
+        if status_value == RequestStatus.APPROVED_MATCHED:
+            return self.select_equipment_request(actor, request_id, admin_note=admin_note)
+
+        existing = self._get_equipment_request_row(request_id)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Request {request_id} not found.")
+
+        current_status = RequestStatus(existing["status"])
+        if current_status == RequestStatus.APPROVED_MATCHED and status_value in {
+            RequestStatus.SUBMITTED,
+            RequestStatus.ADMIN_REVIEW,
+            RequestStatus.AWAITING_DONOR_CONFIRMATION,
+            RequestStatus.REJECTED_CANCELLED,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Use Cancel match to reopen or reject a currently matched request.",
+            )
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+        patch_payload: dict[str, Any] = {
+            "status": status_value.value,
+            "updated_at": timestamp,
+        }
+        if status_value != RequestStatus.APPROVED_MATCHED:
+            patch_payload["selected_by_admin_user_id"] = None
+            patch_payload["selected_at"] = None
+
+        self._request(
+            "PATCH",
+            "equipment_requests",
+            params={"id": f"eq.{request_id}"},
+            json=patch_payload,
+            headers={"Prefer": "return=minimal"},
+        )
+
+        if status_value == RequestStatus.COMPLETED:
+            self._request(
+                "PATCH",
+                "listings",
+                params={"id": f"eq.{existing['listing_id']}"},
+                json={
+                    "status": ListingStatus.FULFILLED.value,
+                    "fulfilled_at": timestamp,
+                    "updated_at": timestamp,
+                },
+                headers={"Prefer": "return=minimal"},
+            )
+
+        self._request(
+            "POST",
+            "admin_audit_logs",
+            json={
+                "id": f"audit_{uuid4().hex[:12]}",
+                "actor_user_id": actor.user.id,
+                "action_type": "request_status_updated",
+                "subject_table": "equipment_requests",
+                "subject_id": request_id,
+                "notes": self._with_admin_note(f"Request status updated to {status_value.value}.", admin_note),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        updated = self._get_equipment_request_row(request_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Request status was updated but the request could not be reloaded.",
+            )
+
+        listing_title = updated.get("listing", {}).get("title") if updated.get("listing") else existing["listing_id"]
+        self._notify_institution(
+            updated["recipient_institution_id"],
+            notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+            message=self._with_admin_note(
+                f"Your request for {listing_title} is now {self._friendly_request_status_label(status_value.value)}.",
+                admin_note,
+            ),
+            cta_href="/recipient",
+            entity_type="request",
+            entity_id=request_id,
+            metadata={"request_id": request_id, "status": status_value.value, "listing_id": updated["listing_id"]},
+        )
         return self._to_equipment_request(updated)
 
     def cancel_listing_match(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
@@ -718,6 +1190,26 @@ class SupabaseListingService:
             headers={"Prefer": "return=minimal"},
         )
 
+        request_rows = self._request(
+            "GET",
+            "equipment_requests",
+            params={
+                "select": self._equipment_request_select(include_listing=True),
+                "listing_id": f"eq.{listing_id}",
+            },
+        )
+        listing_title = listing["title"]
+        for row in request_rows:
+            self._notify_institution(
+                row["recipient_institution_id"],
+                notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+                message=f"Your request for {listing_title} is now {self._friendly_request_status_label(RequestStatus.SUBMITTED.value)}.",
+                cta_href="/recipient",
+                entity_type="request",
+                entity_id=row["id"],
+                metadata={"request_id": row["id"], "status": RequestStatus.SUBMITTED.value, "listing_id": listing_id},
+            )
+
         updated = self._get_listing_row(listing_id)
         if not updated:
             raise HTTPException(
@@ -725,6 +1217,228 @@ class SupabaseListingService:
                 detail="Listing match was cancelled but the listing could not be reloaded.",
             )
         return self._to_listing(updated)
+
+    def _notify_role(
+        self,
+        role_value: str,
+        *,
+        notification_type: NotificationType,
+        message: str,
+        cta_href: str,
+        entity_type: str,
+        entity_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        users = self._request(
+            "GET",
+            "app_users",
+            params={
+                "select": "id,email,full_name,role,institution_id,account_status",
+                "role": f"eq.{role_value}",
+            },
+        )
+        self._create_notifications_for_users(
+            users,
+            notification_type=notification_type,
+            message=message,
+            cta_href=cta_href,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            metadata=metadata,
+        )
+
+    def _notify_institution(
+        self,
+        institution_id: str,
+        *,
+        notification_type: NotificationType,
+        message: str,
+        cta_href: str,
+        entity_type: str,
+        entity_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        users = self._request(
+            "GET",
+            "app_users",
+            params={
+                "select": "id,email,full_name,role,institution_id,account_status",
+                "institution_id": f"eq.{institution_id}",
+            },
+        )
+        self._create_notifications_for_users(
+            users,
+            notification_type=notification_type,
+            message=message,
+            cta_href=cta_href,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            metadata=metadata,
+        )
+
+    def _create_notifications_for_users(
+        self,
+        users: list[dict[str, Any]],
+        *,
+        notification_type: NotificationType,
+        message: str,
+        cta_href: str,
+        entity_type: str,
+        entity_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        for user in users:
+            notification_id = f"notif_{uuid4().hex[:12]}"
+            notification_row = {
+                "id": notification_id,
+                "user_id": user["id"],
+                "type": notification_type.value,
+                "message": message,
+                "cta_href": cta_href,
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "metadata": metadata or {},
+            }
+            self._request(
+                "POST",
+                "notifications",
+                json=notification_row,
+                headers={"Prefer": "return=minimal"},
+            )
+            self._send_notification_email(
+                notification_id=notification_id,
+                to_email=user["email"],
+                subject=self._notification_email_subject(notification_type),
+                message=message,
+                cta_href=cta_href,
+            )
+
+    def _send_notification_email(
+        self,
+        *,
+        notification_id: str,
+        to_email: str,
+        subject: str,
+        message: str,
+        cta_href: str,
+    ) -> None:
+        attempted_at = datetime.now(timezone.utc).isoformat()
+        if not self.resend_api_key or not self.email_from:
+            self._set_notification_email_status(
+                notification_id,
+                NotificationEmailStatus.FAILED,
+                attempted_at=attempted_at,
+                error="Email delivery is not configured.",
+            )
+            return
+
+        payload: dict[str, Any] = {
+            "from": self.email_from,
+            "to": [to_email],
+            "subject": subject,
+            "html": (
+                f"<p>{message}</p>"
+                f"<p><a href=\"{self.frontend_origin}{cta_href}\">Open in LabLink</a></p>"
+            ),
+        }
+        if self.email_reply_to:
+            payload["reply_to"] = self.email_reply_to
+
+        try:
+            with httpx.Client(timeout=20.0) as client:
+                response = client.post(
+                    RESEND_API_URL,
+                    headers={
+                        "Authorization": f"Bearer {self.resend_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+
+            if response.status_code >= 400:
+                detail = "Email delivery failed."
+                try:
+                    body = response.json()
+                    detail = body.get("message") or body.get("error") or detail
+                except ValueError:
+                    pass
+                self._set_notification_email_status(
+                    notification_id,
+                    NotificationEmailStatus.FAILED,
+                    attempted_at=attempted_at,
+                    error=detail,
+                )
+                return
+        except Exception as error:
+            self._set_notification_email_status(
+                notification_id,
+                NotificationEmailStatus.FAILED,
+                attempted_at=attempted_at,
+                error=str(error),
+            )
+            return
+
+        self._set_notification_email_status(
+            notification_id,
+            NotificationEmailStatus.SENT,
+            attempted_at=attempted_at,
+        )
+
+    def _set_notification_email_status(
+        self,
+        notification_id: str,
+        email_status: NotificationEmailStatus,
+        *,
+        attempted_at: str,
+        error: str | None = None,
+    ) -> None:
+        self._request(
+            "PATCH",
+            "notifications",
+            params={"id": f"eq.{notification_id}"},
+            json={
+                "email_status": email_status.value,
+                "email_attempted_at": attempted_at,
+                "email_error": error,
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+    def _notification_email_subject(self, notification_type: NotificationType) -> str:
+        if notification_type == NotificationType.ADMIN_LISTING_SUBMITTED:
+            return "LabLink admin notification: new listing submitted"
+        if notification_type == NotificationType.ADMIN_REQUEST_SUBMITTED:
+            return "LabLink notification: new equipment request"
+        if notification_type == NotificationType.RECIPIENT_CATALOG_UPDATED:
+            return "LabLink notification: new catalog listing"
+        return "LabLink notification"
+
+    def _friendly_status_label(self, status_value: str) -> str:
+        return status_value.replace("_", " ")
+
+    def _friendly_request_status_label(self, status_value: str) -> str:
+        if status_value == RequestStatus.REJECTED_CANCELLED.value:
+            return "not selected"
+        if status_value == RequestStatus.APPROVED_MATCHED.value:
+            return "approved"
+        if status_value in {RequestStatus.SUBMITTED.value, RequestStatus.ADMIN_REVIEW.value}:
+            return "pending request"
+        return self._friendly_status_label(status_value)
+
+    def _dashboard_href_for_role(self, role_value: str) -> str:
+        if role_value == "donor_lab":
+            return "/donor"
+        if role_value == "recipient_institution":
+            return "/recipient"
+        if role_value == "admin":
+            return "/admin"
+        return "/auth"
+
+    def _with_admin_note(self, message: str, admin_note: str | None) -> str:
+        cleaned_note = (admin_note or "").strip()
+        if not cleaned_note:
+            return message
+        return f"{message} Admin note: {cleaned_note}"
 
     def _get_listing_row(self, listing_id: str) -> dict[str, Any] | None:
         rows = self._request(
@@ -840,7 +1554,11 @@ class SupabaseListingService:
         return ListingDetailResponse(
             listing=self._to_listing(row),
             donor_institution=self._to_institution(donor_institution),
-            related_requests=self._get_requests_for_listing_ids([row["id"]]),
+            related_requests=self._get_requests_for_listing_ids(
+                [row["id"]],
+                exclude_statuses={RequestStatus.REJECTED_CANCELLED},
+                latest_per_recipient=True,
+            ),
         )
 
     def _to_listing(self, row: dict[str, Any]) -> Listing:
@@ -891,11 +1609,31 @@ class SupabaseListingService:
             }
         )
 
+    def _to_notification(self, row: dict[str, Any]) -> Notification:
+        return Notification.model_validate(
+            {
+                "id": row["id"],
+                "type": row["type"],
+                "message": row["message"],
+                "cta_href": row["cta_href"],
+                "entity_type": row["entity_type"],
+                "entity_id": row["entity_id"],
+                "metadata": row.get("metadata") or {},
+                "created_at": row["created_at"],
+                "viewed_at": row.get("viewed_at"),
+                "email_status": row.get("email_status") or NotificationEmailStatus.PENDING.value,
+                "email_attempted_at": row.get("email_attempted_at"),
+                "email_error": row.get("email_error"),
+            }
+        )
+
     def _get_requests_for_listing_ids(
         self,
         listing_ids: list[str] | None = None,
         *,
         only_verified_recipients: bool = False,
+        exclude_statuses: set[RequestStatus] | None = None,
+        latest_per_recipient: bool = False,
     ) -> list[EquipmentRequest]:
         params = {
             "select": self._equipment_request_select(
@@ -912,6 +1650,16 @@ class SupabaseListingService:
         rows = self._request("GET", "equipment_requests", params=params)
         if only_verified_recipients:
             rows = [row for row in rows if self._is_verified_recipient_request_row(row)]
+        if exclude_statuses:
+            excluded = {status.value for status in exclude_statuses}
+            rows = [row for row in rows if row.get("status") not in excluded]
+        if latest_per_recipient:
+            latest_rows: dict[tuple[str, str], dict[str, Any]] = {}
+            for row in rows:
+                key = (row["listing_id"], row["recipient_institution_id"])
+                if key not in latest_rows:
+                    latest_rows[key] = row
+            rows = list(latest_rows.values())
         return [self._to_equipment_request(row) for row in rows]
 
     def _is_verified_donor_listing_row(self, row: dict[str, Any]) -> bool:
@@ -999,4 +1747,8 @@ def get_supabase_listing_service() -> SupabaseListingService:
         supabase_url=settings.supabase_url,
         service_role_key=settings.supabase_service_role_key,
         storage_bucket=settings.supabase_listing_images_bucket,
+        frontend_origin=settings.frontend_origin,
+        resend_api_key=settings.resend_api_key,
+        email_from=settings.email_from,
+        email_reply_to=settings.email_reply_to,
     )

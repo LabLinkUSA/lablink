@@ -24,6 +24,18 @@ class Settings(BaseSettings):
         default="listing-images",
         validation_alias=AliasChoices("LABLINK_SUPABASE_LISTING_IMAGES_BUCKET", "SUPABASE_LISTING_IMAGES_BUCKET"),
     )
+    resend_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LABLINK_RESEND_API_KEY", "RESEND_API_KEY"),
+    )
+    email_from: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LABLINK_EMAIL_FROM", "EMAIL_FROM"),
+    )
+    email_reply_to: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LABLINK_EMAIL_REPLY_TO", "EMAIL_REPLY_TO"),
+    )
     supabase_jwt_audience: str = Field(
         default="authenticated",
         validation_alias=AliasChoices("LABLINK_SUPABASE_JWT_AUDIENCE", "SUPABASE_JWT_AUDIENCE"),

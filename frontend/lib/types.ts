@@ -20,6 +20,14 @@ export type RequestStatus =
   | "rejected_cancelled";
 export type ThreadStatus = "active" | "locked" | "closed";
 export type BoardPostStatus = "open" | "match_in_progress" | "closed";
+export type NotificationType =
+  | "admin_listing_submitted"
+  | "admin_request_submitted"
+  | "institution_status_changed"
+  | "listing_status_changed"
+  | "request_status_changed"
+  | "recipient_catalog_updated";
+export type NotificationEmailStatus = "pending" | "sent" | "failed";
 
 export interface Institution {
   id: string;
@@ -98,6 +106,7 @@ export interface ListingUpdateInput {
 
 export interface ListingApprovalUpdate {
   status: ListingStatus;
+  admin_note?: string;
 }
 
 export interface ListingImageUploadResponse {
@@ -158,6 +167,21 @@ export interface AdminAction {
   subject_id: string;
   notes: string;
   created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  message: string;
+  cta_href: string;
+  entity_type: string;
+  entity_id: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  viewed_at?: string | null;
+  email_status: NotificationEmailStatus;
+  email_attempted_at?: string | null;
+  email_error?: string | null;
 }
 
 export interface LabLinkSeed {
@@ -221,4 +245,20 @@ export interface AuthenticatedUser {
 
 export interface SavedListingStateResponse {
   saved: boolean;
+}
+
+export interface RecipientRequestStateResponse {
+  requested: boolean;
+  status?: RequestStatus | null;
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[];
+  unread_count: number;
+  next_cursor?: string | null;
+}
+
+export interface MarkNotificationsViewedResponse {
+  marked_count: number;
+  viewed_at: string;
 }
