@@ -47,7 +47,7 @@ Notes:
 1. `cd backend`
 2. `python -m venv .venv && source .venv/bin/activate`
 3. `pip install -e .`
-4. `uvicorn app.main:app --reload`
+4. `uvicorn app.main:app --reload --reload-dir app`
 
 ### Handy root commands
 For local development, point the frontend API base URL at `http://127.0.0.1:8000/api/v1` so the browser and backend use the same loopback host consistently.

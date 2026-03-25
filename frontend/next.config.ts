@@ -18,9 +18,6 @@ if (supabaseUrl) {
 }
 
 const nextConfig: NextConfig = {
-  experimental: {
-    externalDir: true,
-  },
   images: {
     remotePatterns,
   },
