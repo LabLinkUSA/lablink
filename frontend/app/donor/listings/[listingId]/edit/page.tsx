@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { DonorListingForm } from "@/components/donor-listing-form";
 import { getCurrentProfile, getDonorDashboard, getDonorListingDetail } from "@/lib/api";
+import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
 export default async function EditDonorListingPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = await params;
@@ -10,6 +11,7 @@ export default async function EditDonorListingPage({ params }: { params: Promise
     getDonorListingDetail(listingId),
     getDonorDashboard(),
   ]);
+  redirectAdminToDashboard(profile);
 
   if (!profile || profile.user.role !== "donor_lab") {
     return (
@@ -69,24 +71,13 @@ export default async function EditDonorListingPage({ params }: { params: Promise
 
   return (
     <section className="page-section">
-      <div className="shell auth-layout">
-        <div className="auth-panel">
-          <span className="eyebrow">Donor listing</span>
-          <h1>Edit equipment listing</h1>
-          <p>
-            Update your listing details here. If the listing is already live, changes will send it back through review
-            before it stays publicly available.
-          </p>
-          <div className="page-actions">
-            <Link href="/donor" className="button button-secondary">
-              Back to donor dashboard
-            </Link>
-          </div>
+      <div className="shell donor-form-page">
+        <div className="page-actions donor-form-page-actions">
+          <Link href="/donor" className="button button-secondary">
+            Back to donor dashboard
+          </Link>
         </div>
-
-        <div className="auth-panel">
           <DonorListingForm listing={listing} mode="edit" />
-        </div>
       </div>
     </section>
   );

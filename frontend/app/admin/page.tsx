@@ -29,18 +29,8 @@ export default async function AdminPage() {
   }
 
   return (
-    <section className="page-section">
-      <div className="shell">
-        <div className="page-header">
-          <div>
-            <span className="eyebrow">Admin operations</span>
-            <h1>Moderation, verification, and fulfillment oversight</h1>
-            <p>
-              Admins verify institutions, moderate listings, choose recipients, monitor threads, and preserve an audit
-              trail across the marketplace.
-            </p>
-          </div>
-        </div>
+    <section className="page-section admin-page-section">
+      <div className="admin-page-shell">
         <AdminReviewDashboard dashboard={dashboard} />
       </div>
     </section>

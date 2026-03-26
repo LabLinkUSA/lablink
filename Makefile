@@ -11,8 +11,8 @@ setup-backend:
 	cd backend && python3 -m venv .venv
 	cd backend && . .venv/bin/activate && pip install --upgrade pip && pip install -e .
 
-dev-frontend:
+front:
 	cd frontend && npm run dev
 
-dev-backend:
+back:
 	cd backend && . .venv/bin/activate && uvicorn app.main:app --reload --reload-dir app --reload-exclude '.venv/*' --reload-exclude 'lablink_backend.egg-info/*' --reload-exclude '__pycache__/*'

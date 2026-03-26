@@ -13,7 +13,6 @@ type HeaderAuthActionsProps = {
   profileEmail: string;
   profileRoleLabel: string;
   institutionName: string;
-  showListEquipment: boolean;
 };
 
 const supabase = createSupabaseBrowserClient();
@@ -25,7 +24,6 @@ export function HeaderAuthActions({
   profileEmail,
   profileRoleLabel,
   institutionName,
-  showListEquipment,
 }: HeaderAuthActionsProps) {
   const [isPending, setIsPending] = useState(false);
 
@@ -46,11 +44,6 @@ export function HeaderAuthActions({
 
   return (
     <div className="site-header-actions">
-      {showListEquipment ? (
-        <Link href="/donor/list-equipment" className="button button-secondary">
-          List Equipment
-        </Link>
-      ) : null}
       <NotificationBell />
       <div className="header-profile-menu">
         <Link

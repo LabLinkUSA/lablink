@@ -64,7 +64,7 @@ class SupabaseListingService:
             "listings",
             params={
                 "select": self._listing_select(include_donor_institution=True),
-                "status": "in.(live,under_review,matched_reserved,fulfilled)",
+                "status": f"eq.{ListingStatus.LIVE.value}",
                 "order": "created_at.desc",
             },
         )
@@ -74,7 +74,7 @@ class SupabaseListingService:
     def get_public_listing_detail(self, listing_id: str) -> ListingDetailResponse:
         row = self._get_listing_detail_row(
             listing_id,
-            extra_params={"status": "in.(live,under_review,matched_reserved,fulfilled)"},
+            extra_params={"status": f"eq.{ListingStatus.LIVE.value}"},
         )
         if not row or not self._is_verified_donor_listing_row(row):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
@@ -125,6 +125,12 @@ class SupabaseListingService:
                 "order": "created_at.desc",
             },
         )
+        latest_request_rows: dict[str, dict[str, Any]] = {}
+        for row in request_rows:
+            listing_id = row.get("listing_id")
+            if listing_id and listing_id not in latest_request_rows:
+                latest_request_rows[listing_id] = row
+        request_rows = list(latest_request_rows.values())
 
         saved_listing_rows = self._request(
             "GET",
@@ -142,8 +148,13 @@ class SupabaseListingService:
                 self._to_equipment_request(row)
                 for row in request_rows
                 if row.get("status") != RequestStatus.REJECTED_CANCELLED.value
+                and not self._request_row_points_to_removed_listing(row)
             ],
-            saved_listings=[self._to_listing(row["listing"]) for row in saved_listing_rows if row.get("listing")],
+            saved_listings=[
+                self._to_listing(row["listing"])
+                for row in saved_listing_rows
+                if row.get("listing") and not self._listing_row_is_removed(row["listing"])
+            ],
             threads=[],
             request_board_posts=[],
         )
@@ -750,7 +761,17 @@ class SupabaseListingService:
         )
         return AdminDashboardResponse(
             pending_institutions=[self._to_institution(row) for row in pending_institution_rows],
-            listings_for_review=[self._to_listing(row) for row in listing_rows],
+            listings_for_review=[
+                self._to_listing(row)
+                for row in listing_rows
+                if self._normalize_listing_status(row["status"])
+                in {
+                    ListingStatus.PENDING_ADMIN_APPROVAL.value,
+                    ListingStatus.UNDER_REVIEW.value,
+                    ListingStatus.LIVE.value,
+                    ListingStatus.MATCHED_RESERVED.value,
+                }
+            ],
             requests_requiring_attention=self._get_requests_for_listing_ids(
                 only_verified_recipients=True,
                 exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
@@ -801,6 +822,14 @@ class SupabaseListingService:
                 detail="Match-reserved listings can only stay match reserved, be removed by admin, or be reopened through Cancel match.",
             )
 
+        affected_requests: list[EquipmentRequest] = []
+        if status_value == ListingStatus.REMOVED_BY_ADMIN:
+            affected_requests = self._get_requests_for_listing_ids(
+                [listing_id],
+                exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+                latest_per_recipient=True,
+            )
+
         patch_payload: dict[str, Any] = {
             "status": status_value.value,
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -848,6 +877,24 @@ class SupabaseListingService:
             entity_id=listing_id,
             metadata={"listing_id": listing_id, "status": status_value.value},
         )
+        if status_value == ListingStatus.REMOVED_BY_ADMIN:
+            notified_institutions: set[str] = set()
+            for request in affected_requests:
+                if request.recipient_institution_id in notified_institutions:
+                    continue
+                notified_institutions.add(request.recipient_institution_id)
+                self._notify_institution(
+                    request.recipient_institution_id,
+                    notification_type=NotificationType.LISTING_STATUS_CHANGED,
+                    message=self._with_admin_note(
+                        f"A listing you requested, {updated['title']}, was removed from the marketplace by LabLink admin.",
+                        admin_note,
+                    ),
+                    cta_href="/recipient",
+                    entity_type="listing",
+                    entity_id=listing_id,
+                    metadata={"listing_id": listing_id, "status": status_value.value, "request_id": request.id},
+                )
         if status_value == ListingStatus.LIVE:
             self._notify_role(
                 "recipient_institution",
@@ -1694,6 +1741,7 @@ class SupabaseListingService:
             params["listing_id"] = f"in.({','.join(listing_ids)})"
 
         rows = self._request("GET", "equipment_requests", params=params)
+        rows = [row for row in rows if not self._request_row_points_to_removed_listing(row)]
         if only_verified_recipients:
             rows = [row for row in rows if self._is_verified_recipient_request_row(row)]
         if latest_per_recipient:
@@ -1724,6 +1772,14 @@ class SupabaseListingService:
         rows.sort(key=lambda row: row.get("created_at", ""), reverse=True)
         rows.sort(key=lambda row: 0 if row.get("status") == RequestStatus.APPROVED_MATCHED.value else 1)
         return [self._to_equipment_request(row) for row in rows]
+
+    def _listing_row_is_removed(self, row: dict[str, Any]) -> bool:
+        normalized_status = self._normalize_listing_status(row.get("status", ""))
+        return normalized_status in {ListingStatus.REMOVED_BY_ADMIN.value, ListingStatus.REMOVED_BY_DONOR.value}
+
+    def _request_row_points_to_removed_listing(self, row: dict[str, Any]) -> bool:
+        listing = row.get("listing")
+        return bool(listing and self._listing_row_is_removed(listing))
 
     def _is_verified_donor_listing_row(self, row: dict[str, Any]) -> bool:
         donor_institution = row.get("donor_institution")

@@ -4,8 +4,11 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { DashboardPanel } from "@/components/dashboard-panel";
-import { ListingListRow } from "@/components/listing-list-row";
+import {
+  OperationsHeader,
+  OperationsMetricGrid,
+  OperationsTableSection,
+} from "@/components/operations-dashboard-ui";
 import { StatusPill } from "@/components/status-pill";
 import { formatDate } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -26,10 +29,93 @@ const REQUEST_STATUS_OPTIONS: RequestStatus[] = [
   "rejected_cancelled",
 ];
 
+function LabLinkAdminIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3.2 5.5 6.2v5.4c0 4.2 2.7 7.9 6.5 9.2 3.8-1.3 6.5-5 6.5-9.2V6.2Zm0 2.1 4.7 2.1v4.2c0 3.1-1.9 5.8-4.7 6.9-2.8-1.1-4.7-3.8-4.7-6.9V7.4Zm-2 3.2h4.1v1.4H10Zm0 3.1h4.8V13H10Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function CollapseRailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5.75 5.75h12.5A1.75 1.75 0 0 1 20 7.5v9a1.75 1.75 0 0 1-1.75 1.75H5.75A1.75 1.75 0 0 1 4 16.5v-9a1.75 1.75 0 0 1 1.75-1.75Zm0 1.5a.25.25 0 0 0-.25.25v9c0 .14.11.25.25.25H9.5v-9.5Zm5.25 9.5h7.25a.25.25 0 0 0 .25-.25v-9a.25.25 0 0 0-.25-.25H11Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function InstitutionQueueIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5 19.25V7.4L12 4l7 3.4v11.85h-1.5V8.35L12 5.7 6.5 8.35v10.9Zm3.25-1.5h1.5v-2.5h-1.5Zm0-4h1.5v-2.5h-1.5Zm4 4h1.5v-2.5h-1.5Zm0-4h1.5v-2.5h-1.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ListingQueueIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M6.5 4.75h11A1.75 1.75 0 0 1 19.25 6.5v11A1.75 1.75 0 0 1 17.5 19.25h-11A1.75 1.75 0 0 1 4.75 17.5v-11A1.75 1.75 0 0 1 6.5 4.75Zm0 1.5a.25.25 0 0 0-.25.25v11c0 .14.11.25.25.25h11a.25.25 0 0 0 .25-.25v-11a.25.25 0 0 0-.25-.25Zm2 2h7v1.5h-7Zm0 3.5h7v1.5h-7Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function CompetitionQueueIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M7 5.5a2.5 2.5 0 1 1-.01 5.01A2.5 2.5 0 0 1 7 5.5Zm10 8a2.5 2.5 0 1 1-.01 5.01A2.5 2.5 0 0 1 17 13.5Zm-8.45-4.2 6.9 5.4-.92 1.17-6.9-5.4Zm6.07-1.98.92 1.17-6.06 4.77-.93-1.18Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+const ADMIN_SECTION_ORDER = [
+  {
+    id: "institution-verification",
+    title: "Institution Verification Queue",
+    shortLabel: "Institutions",
+    icon: InstitutionQueueIcon,
+    tone: "primary",
+  },
+  {
+    id: "listing-moderation",
+    title: "Listing Moderation Queue",
+    shortLabel: "Listings",
+    icon: ListingQueueIcon,
+    tone: "primary",
+  },
+  {
+    id: "request-competition",
+    title: "Request Competition",
+    shortLabel: "Competition",
+    icon: CompetitionQueueIcon,
+    tone: "secondary",
+  },
+] as const;
+
+type AdminSectionId = (typeof ADMIN_SECTION_ORDER)[number]["id"];
+
 export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [selectedCompetitionListingId, setSelectedCompetitionListingId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<AdminSectionId>("institution-verification");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const groupedCompetitionRequests = Array.from(
     dashboard.requests_requiring_attention.reduce((groups, request) => {
       const existingGroup = groups.get(request.listing_id);
@@ -46,121 +132,321 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
     }, new Map<string, { listing: AdminDashboardResponse["requests_requiring_attention"][number]["listing"]; requests: AdminDashboardResponse["requests_requiring_attention"] }>()),
   );
 
+  useEffect(() => {
+    const storedValue = window.localStorage.getItem("lablink-admin-sidebar-collapsed");
+    if (storedValue === "true") {
+      setIsSidebarCollapsed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("lablink-admin-sidebar-collapsed", String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const sections = ADMIN_SECTION_ORDER.map((section) => document.getElementById(section.id)).filter(
+      (element): element is HTMLElement => Boolean(element),
+    );
+
+    if (sections.length === 0) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((left, right) => right.intersectionRatio - left.intersectionRatio);
+
+        if (visibleEntries[0]?.target.id) {
+          setActiveSection(visibleEntries[0].target.id as AdminSectionId);
+        }
+      },
+      {
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0.15, 0.35, 0.55],
+      },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  function scrollToSection(sectionId: AdminSectionId) {
+    setActiveSection(sectionId);
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const sectionCounts: Record<AdminSectionId, number> = {
+    "institution-verification": dashboard.pending_institutions.length,
+    "listing-moderation": dashboard.listings_for_review.length,
+    "request-competition": groupedCompetitionRequests.length,
+  };
+
   return (
     <>
-      <div className="dashboard-grid">
-        <DashboardPanel title="Institution verification queue" subtitle="Review and manage every institution regardless of verification status.">
-          <div className="list">
-            {dashboard.pending_institutions.map((institution) => (
+      <div className={`admin-ops-shell ${isSidebarCollapsed ? "admin-ops-shell-collapsed" : ""}`}>
+        <aside
+          className={`admin-ops-nav ${isSidebarCollapsed ? "admin-ops-nav-collapsed" : ""}`}
+          aria-label="Admin dashboard sections"
+        >
+          <div className="admin-ops-nav-panel">
+            <div className="admin-ops-nav-chrome">
+              {!isSidebarCollapsed ? (
+                <div className="admin-ops-nav-brand">
+                  <span className="admin-ops-nav-brand-mark" aria-hidden="true">
+                    <LabLinkAdminIcon />
+                  </span>
+                  <div className="admin-ops-nav-brand-copy">
+                    <strong>LabLink</strong>
+                    <span>Admin workspace</span>
+                  </div>
+                </div>
+              ) : <div />}
               <button
-                key={institution.id}
                 type="button"
-                className="list-row review-trigger"
-                onClick={() => setSelectedInstitution(institution)}
+                className="admin-ops-nav-toggle"
+                onClick={() => setIsSidebarCollapsed((current) => !current)}
+                aria-label={isSidebarCollapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
+                title={isSidebarCollapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
               >
-                <div className="list-row-topline">
-                  <strong>{institution.type.replaceAll("_", " ")}</strong>
-                  <StatusPill status={institution.verification_status} />
-                </div>
-                <h3>{institution.name}</h3>
-                <p>{institution.description}</p>
-                <div className="list-row-meta">
-                  <span>{institution.location}</span>
-                  <span>Open review</span>
-                </div>
+                <CollapseRailIcon />
               </button>
-            ))}
+            </div>
+
+            <nav className="admin-ops-nav-list">
+              {ADMIN_SECTION_ORDER.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  className={`admin-ops-nav-button ${activeSection === section.id ? "admin-ops-nav-button-active" : ""}`}
+                  onClick={() => scrollToSection(section.id)}
+                  aria-label={section.title}
+                  title={section.title}
+                >
+                  <span className="admin-ops-nav-button-icon" aria-hidden="true">
+                    <section.icon />
+                  </span>
+                  {!isSidebarCollapsed ? (
+                    <span className="admin-ops-nav-button-body">
+                      <span className="admin-ops-nav-button-title">
+                        <span>{section.title}</span>
+                        <strong>{sectionCounts[section.id]}</strong>
+                      </span>
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </nav>
           </div>
-        </DashboardPanel>
+        </aside>
 
-        <DashboardPanel title="Listing moderation queue" subtitle="Review and manage every listing, including approved, under-review, fulfilled, and removed records.">
-          <div className="list">
-            {dashboard.listings_for_review.map((listing) => (
-              <ListingListRow
-                key={listing.id}
-                listing={listing}
-                description={listing.handling_requirements}
-                meta={
-                  <div className="list-row-meta">
-                    <span>{listing.location}</span>
-                    <span>{listing.quantity} unit(s)</span>
-                    <span>Open review</span>
-                  </div>
-                }
-                asButton
-                onClick={() => setSelectedListing(listing)}
-              />
-            ))}
+        <div className="admin-ops-content">
+          <div className="admin-ops-content-header">
+            <OperationsHeader
+              title="Admin Dashboard"
+            />
+            <OperationsMetricGrid
+              items={[
+                {
+                  label: "Pending Approvals",
+                  value: dashboard.pending_institutions.length + dashboard.listings_for_review.length,
+                  tone: "tertiary",
+                  icon: "PA",
+                },
+                {
+                  label: "Total Donations",
+                  value: dashboard.recent_actions.length,
+                  tone: "primary",
+                  icon: "TD",
+                },
+                {
+                  label: "Successful Deliveries",
+                  value: dashboard.active_threads.length,
+                  tone: "secondary",
+                  icon: "SD",
+                },
+              ]}
+            />
           </div>
-        </DashboardPanel>
-      </div>
 
-      <div className="dashboard-grid" style={{ marginTop: "1rem" }}>
-        <DashboardPanel title="Request competition" subtitle="Multiple institutions can request the same listing. Admin chooses the match.">
-          <div className="list">
-            {groupedCompetitionRequests.map(([listingId, group]) => {
-              const matchedRequest = group.requests.find((request) => request.status === "approved_matched");
-              const primaryStatus = matchedRequest?.status ?? group.requests[0]?.status ?? "submitted";
-
-              return group.listing ? (
-                <ListingListRow
-                  key={listingId}
-                  listing={group.listing}
-                  description={
-                    matchedRequest
-                      ? `Matched to ${matchedRequest.program_or_department}`
-                      : `${group.requests.length} institution${group.requests.length === 1 ? "" : "s"} requesting this listing`
-                  }
-                  meta={
-                    <div className="list-row-meta">
-                      <span>{group.requests.length} request(s)</span>
-                      {matchedRequest ? <span>Selected institution: {matchedRequest.program_or_department}</span> : null}
-                    </div>
-                  }
-                  actions={<StatusPill status={primaryStatus} />}
-                  asButton
-                  onClick={() => setSelectedCompetitionListingId(listingId)}
-                />
+          <section id="institution-verification" className="admin-ops-section" data-admin-section>
+            <div className="admin-ops-section-intro">
+              <h2>
+                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[0].tone}`} />
+                Institution Verification Queue
+              </h2>
+            </div>
+            <OperationsTableSection
+              title="Institution Reviews"
+              tone="primary"
+              hideTitle
+              columns={["Institution", "Location", "Status", ""]}
+              footer={<span>Showing {dashboard.pending_institutions.length} institution review item(s)</span>}
+            >
+              {dashboard.pending_institutions.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="ops-table-empty-cell">
+                    <div className="ops-empty-state">No institution reviews waiting right now.</div>
+                  </td>
+                </tr>
               ) : (
-                <article key={listingId} className="list-row">
-                  <div className="list-row-topline">
-                    <strong>{group.requests.length} request(s)</strong>
-                    <StatusPill status={primaryStatus} />
-                  </div>
-                  <h3>Request competition for listing {listingId}</h3>
-                  <p>
-                    {matchedRequest
-                      ? `Matched to ${matchedRequest.program_or_department}.`
-                      : "Open review to choose which recipient institution receives this listing."}
-                  </p>
-                </article>
-              );
-            })}
-          </div>
-        </DashboardPanel>
+                dashboard.pending_institutions.map((institution) => (
+                  <tr
+                    key={institution.id}
+                    className="ops-table-row ops-table-row-clickable"
+                    onClick={() => setSelectedInstitution(institution)}
+                  >
+                    <td>
+                      <div>
+                        <p className="ops-equipment-title">{institution.name}</p>
+                        <p className="ops-equipment-subtitle">{institution.type.replaceAll("_", " ")}</p>
+                      </div>
+                    </td>
+                    <td>{institution.location}</td>
+                    <td>
+                      <StatusPill status={institution.verification_status} />
+                    </td>
+                    <td className="ops-table-align-right">
+                      <span className="ops-table-linkish">Open review</span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </OperationsTableSection>
+          </section>
 
-        <DashboardPanel title="Active threads and audit trail" subtitle="Admin visibility keeps conversations safe and operationally manageable.">
-          <div className="list">
-            {dashboard.active_threads.map((thread) => (
-              <article key={thread.id} className="list-row">
-                <div className="list-row-topline">
-                  <strong>{thread.id}</strong>
-                  <StatusPill status={thread.status} />
-                </div>
-                <p>Linked listing: {thread.listing_id}</p>
-              </article>
-            ))}
-            {dashboard.recent_actions.map((action) => (
-              <article key={action.id} className="list-row">
-                <div className="list-row-topline">
-                  <strong>{action.action_type.replaceAll("_", " ")}</strong>
-                  <span>{action.created_at.slice(0, 10)}</span>
-                </div>
-                <p>{action.notes}</p>
-              </article>
-            ))}
-          </div>
-        </DashboardPanel>
+          <section id="listing-moderation" className="admin-ops-section" data-admin-section>
+            <div className="admin-ops-section-intro">
+              <h2>
+                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[1].tone}`} />
+                Listing Moderation Queue
+              </h2>
+            </div>
+            <OperationsTableSection
+              title="Listing Reviews"
+              tone="primary"
+              hideTitle
+              columns={["Equipment", "Institution", "Condition", ""]}
+              footer={<span>Showing {dashboard.listings_for_review.length} listing review item(s)</span>}
+            >
+              {dashboard.listings_for_review.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="ops-table-empty-cell">
+                    <div className="ops-empty-state">No listings currently need moderation.</div>
+                  </td>
+                </tr>
+              ) : (
+                dashboard.listings_for_review.map((listing) => (
+                  <tr
+                    key={listing.id}
+                    className="ops-table-row ops-table-row-clickable"
+                    onClick={() => setSelectedListing(listing)}
+                  >
+                    <td>
+                      <div className="ops-equipment-cell">
+                        <div className="ops-equipment-media">
+                          {listing.photo_urls[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={listing.photo_urls[0]} alt={listing.title} className="ops-equipment-image" />
+                          ) : (
+                            <div className="ops-equipment-empty">No image</div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="ops-equipment-title">{listing.title}</p>
+                          <p className="ops-equipment-subtitle">{listing.category}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{listing.location}</td>
+                    <td>
+                      <span className="ops-condition-badge">{listing.condition}</span>
+                    </td>
+                    <td className="ops-table-align-right">
+                      <span className="ops-table-linkish">Open review</span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </OperationsTableSection>
+          </section>
+
+          <section id="request-competition" className="admin-ops-section" data-admin-section>
+            <div className="admin-ops-section-intro">
+              <h2>
+                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[2].tone}`} />
+                Request Competition
+              </h2>
+            </div>
+            <OperationsTableSection
+              title="Competition Reviews"
+              tone="secondary"
+              hideTitle
+              columns={["Listing", "Competition", "Primary Status", ""]}
+              footer={<span>Showing {groupedCompetitionRequests.length} competition review item(s)</span>}
+            >
+              {groupedCompetitionRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="ops-table-empty-cell">
+                    <div className="ops-empty-state">No request competition yet.</div>
+                  </td>
+                </tr>
+              ) : (
+                groupedCompetitionRequests.map(([listingId, group]) => {
+                  const matchedRequest = group.requests.find((request) => request.status === "approved_matched");
+                  const primaryStatus = matchedRequest?.status ?? group.requests[0]?.status ?? "submitted";
+                  const urgencyLabel = matchedRequest?.program_or_department ?? group.requests[0]?.program_or_department;
+
+                  return (
+                    <tr
+                      key={listingId}
+                      className="ops-table-row ops-table-row-clickable"
+                      onClick={() => setSelectedCompetitionListingId(listingId)}
+                    >
+                      <td>
+                        <div className="ops-equipment-cell">
+                          <div className="ops-equipment-media">
+                            {group.listing?.photo_urls[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={group.listing.photo_urls[0]}
+                                alt={group.listing.title}
+                                className="ops-equipment-image"
+                              />
+                            ) : (
+                              <div className="ops-equipment-empty">No image</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="ops-equipment-title">{group.listing?.title ?? `Listing ${listingId}`}</p>
+                            <p className="ops-equipment-subtitle">
+                              {matchedRequest
+                                ? `Matched institution: ${urgencyLabel}`
+                                : "Choose which recipient institution receives this listing."}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-ops-competition-cell">
+                          <strong>{group.requests.length} request(s)</strong>
+                          <span>{group.requests[0]?.needed_by ? `Needed by ${group.requests[0].needed_by}` : "Timeline pending"}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <StatusPill status={primaryStatus} />
+                      </td>
+                      <td className="ops-table-align-right">
+                        <span className="ops-table-linkish">Open review</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </OperationsTableSection>
+          </section>
+        </div>
       </div>
 
       {selectedInstitution ? (
@@ -564,9 +850,9 @@ function ListingReviewModal({
   const [adminNote, setAdminNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRemovalConfirmOpen, setIsRemovalConfirmOpen] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitStatusUpdate() {
     setError(null);
     setIsSubmitting(true);
 
@@ -603,11 +889,24 @@ function ListingReviewModal({
 
       router.refresh();
       onClose();
+      return true;
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not update the listing status.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (status === "removed_by_admin") {
+      setIsRemovalConfirmOpen(true);
+      return;
+    }
+
+    await submitStatusUpdate();
   }
 
   return (
@@ -741,6 +1040,43 @@ function ListingReviewModal({
             {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
           </div>
         </div>
+
+        {isRemovalConfirmOpen ? (
+          <div className="review-modal-confirm">
+            <div>
+              <span className="eyebrow eyebrow-subtle">Confirm removal</span>
+              <h3>Are you sure you want to remove this listing from the marketplace?</h3>
+              <p>
+                This will hide the listing from normal marketplace views and mark it as removed by admin. The listing
+                record will still remain in the system.
+              </p>
+            </div>
+            <div className="page-actions" style={{ marginTop: 0 }}>
+              <button
+                type="button"
+                className="button button-outline"
+                onClick={() => setIsRemovalConfirmOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => {
+                  void submitStatusUpdate().then((didSucceed) => {
+                    if (didSucceed) {
+                      setIsRemovalConfirmOpen(false);
+                    }
+                  });
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Removing..." : "Yes, remove listing"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
     </div>
   );

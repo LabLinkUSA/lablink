@@ -6,10 +6,12 @@ import { ListingRequestButton } from "@/components/listing-request-button";
 import { RecipientSaveListingButton } from "@/components/recipient-save-listing-button";
 import { StatusPill } from "@/components/status-pill";
 import { getCurrentProfile, getListingDetail, getRecipientRequestState, getRecipientSavedListingState } from "@/lib/api";
+import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = await params;
   const [detail, profile] = await Promise.all([getListingDetail(listingId), getCurrentProfile()]);
+  redirectAdminToDashboard(profile);
 
   if (!detail) {
     notFound();

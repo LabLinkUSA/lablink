@@ -1,9 +1,8 @@
 import Link from "next/link";
 
-import { ListingListRow } from "@/components/listing-list-row";
-import { DashboardPanel } from "@/components/dashboard-panel";
-import { StatusPill } from "@/components/status-pill";
+import { RecipientDashboardWorkspace } from "@/components/recipient-dashboard-workspace";
 import { getCurrentProfile, getRecipientDashboard } from "@/lib/api";
+import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
 function getInstitutionAccessStateMessage(status: string) {
   if (status === "suspended") {
@@ -25,6 +24,7 @@ function getInstitutionAccessStateMessage(status: string) {
 
 export default async function RecipientPage() {
   const [profile, dashboard] = await Promise.all([getCurrentProfile(), getRecipientDashboard()]);
+  redirectAdminToDashboard(profile);
 
   if (profile && profile.user.role !== "recipient_institution") {
     return (
@@ -84,108 +84,21 @@ export default async function RecipientPage() {
     );
   }
 
+  const activeRequests = dashboard.requests.filter((request) =>
+    !["completed", "rejected_cancelled"].includes(request.status),
+  ).length;
+  const totalImpact = dashboard.requests.filter((request) =>
+    ["approved_matched", "pickup_transfer_coordination", "completed"].includes(request.status),
+  ).length;
+
   return (
-    <section className="page-section">
-      <div className="shell">
-        <div className="page-header">
-          <div>
-            <span className="eyebrow">Verified recipient view</span>
-            <h1>{dashboard.institution.name}</h1>
-            <p>Track request status, request-scoped threads, and wanted-item posts without bypassing listing review.</p>
-          </div>
-        </div>
-
-        <div className="dashboard-grid">
-          <DashboardPanel title="Requests" subtitle="Only admin-verified institutions can submit equipment requests.">
-            <div className="list">
-              {dashboard.requests.map((request) => (
-                request.listing ? (
-                  <Link key={request.id} href={`/listings/${request.listing_id}`}>
-                    <ListingListRow
-                      listing={request.listing}
-                      status={request.status === "submitted" ? "pending_request" : request.status}
-                      description={request.intended_use}
-                      meta={
-                        <div className="list-row-meta">
-                          <span>Needed by {request.needed_by}</span>
-                          <span>{request.delivery_constraints}</span>
-                          <span>{request.storage_readiness}</span>
-                        </div>
-                      }
-                      actions={<StatusPill status={request.status} />}
-                    />
-                  </Link>
-                ) : (
-                  <article key={request.id} className="list-row">
-                    <div className="list-row-topline">
-                      <strong>{request.program_or_department}</strong>
-                      <StatusPill status={request.status} />
-                    </div>
-                    <h3>{request.intended_use}</h3>
-                    <p>{request.storage_readiness}</p>
-                    <div className="list-row-meta">
-                      <span>Needed by {request.needed_by}</span>
-                      <span>{request.delivery_constraints}</span>
-                    </div>
-                  </article>
-                )
-              ))}
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel title="Saved listings" subtitle="Recipients can save listings while they complete verification.">
-            <div className="list">
-              {dashboard.saved_listings.map((listing) => (
-                <Link key={listing.id} href={`/listings/${listing.id}`}>
-                  <ListingListRow
-                    listing={listing}
-                    description={listing.location}
-                    meta={
-                      <div className="list-row-meta">
-                        <span>{listing.quantity} unit(s)</span>
-                        <span>{listing.availability_window}</span>
-                      </div>
-                    }
-                  />
-                </Link>
-              ))}
-            </div>
-          </DashboardPanel>
-        </div>
-
-        <div className="dashboard-grid" style={{ marginTop: "1rem" }}>
-          <DashboardPanel title="Message threads" subtitle="Messaging is scoped to active requests and visible to admins.">
-            <div className="list">
-              {dashboard.threads.map((thread) => (
-                <article key={thread.id} className="message-row">
-                  <div className="message-row-topline">
-                    <strong>{thread.id}</strong>
-                    <StatusPill status={thread.status} />
-                  </div>
-                  <p>Thread linked to request {thread.request_id}</p>
-                </article>
-              ))}
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel
-            title="Equipment request board"
-            subtitle="Wanted-item posts are visible to verified donor labs and still route through listing approval."
-          >
-            <div className="list">
-              {dashboard.request_board_posts.map((post) => (
-                <article key={post.id} className="list-row">
-                  <div className="list-row-topline">
-                    <strong>{post.category}</strong>
-                    <StatusPill status={post.status} />
-                  </div>
-                  <h3>{post.title}</h3>
-                  <p>{post.description}</p>
-                </article>
-              ))}
-            </div>
-          </DashboardPanel>
-        </div>
+    <section className="page-section admin-page-section">
+      <div className="admin-page-shell">
+        <RecipientDashboardWorkspace
+          dashboard={dashboard}
+          activeRequests={activeRequests}
+          totalImpact={totalImpact}
+        />
       </div>
     </section>
   );

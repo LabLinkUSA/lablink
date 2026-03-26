@@ -2,9 +2,11 @@ import Link from "next/link";
 
 import { DonorListingForm } from "@/components/donor-listing-form";
 import { getCurrentProfile } from "@/lib/api";
+import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
 export default async function DonorListEquipmentPage() {
   const profile = await getCurrentProfile();
+  redirectAdminToDashboard(profile);
 
   if (!profile) {
     return (
@@ -72,23 +74,8 @@ export default async function DonorListEquipmentPage() {
 
   return (
     <section className="page-section">
-      <div className="shell auth-layout">
-        <div className="auth-panel">
-          <span className="eyebrow">Donor submission</span>
-          <h1>List equipment for admin approval</h1>
-          <p>
-            New donor listings stay in a pending state until an admin reviews them. Pending listings remain visible only
-            in the donor dashboard and admin panel.
-          </p>
-          <div className="auth-state-card">
-            <h2>Before you submit</h2>
-            <p>Include a clear photo, accurate condition notes, handling requirements, and delivery constraints.</p>
-          </div>
-        </div>
-
-        <div className="auth-panel">
+      <div className="shell donor-form-page">
           <DonorListingForm mode="create" />
-        </div>
       </div>
     </section>
   );

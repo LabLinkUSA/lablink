@@ -15,15 +15,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="app-body">
         <AuthStateSync />
         <NotificationProvider>
           <SiteHeader />
-          <main>{children}</main>
+          <main className="site-main">{children}</main>
           <footer className="footer">
             <div className="shell">
-              LabLink v1 is a managed donation marketplace. Verified donor labs and recipient institutions move
-              through admin-reviewed workflows, not direct checkout.
+              LabLink v1 is a managed donation marketplace. Verified donor labs and recipient institutions move through
+              admin-reviewed workflows, not direct checkout.
             </div>
           </footer>
         </NotificationProvider>

@@ -21,27 +21,23 @@ function getDashboardHref(role?: Role) {
 }
 
 function getNavItems(role?: Role) {
-  const items = [{ href: "/listings", label: "Browse Equipment" }];
-
-  if (!role) {
-    items.push({ href: "/auth", label: "Dashboard" });
-  }
-
-  if (role === "donor_lab") {
-    items.push({ href: "/donor", label: "Donor Dashboard" });
-  }
-
-  if (role === "recipient_institution") {
-    items.push({ href: "/recipient", label: "Recipient Dashboard" });
-  }
-
   if (role === "admin") {
-    items.push({ href: "/admin", label: "Admin Panel" });
+    return [];
   }
 
-  items.push({ href: "/about", label: "About" });
+  const primaryAction =
+    role === "donor_lab"
+      ? { href: "/donor/list-equipment", label: "Donate" }
+      : role === "recipient_institution"
+        ? { href: "/recipient", label: "Dashboard" }
+        : { href: "/auth", label: "Donate" };
 
-  return items;
+  return [
+    { href: "/", label: "Home" },
+    { href: "/listings", label: "Browse" },
+    primaryAction,
+    { href: "/about", label: "About" },
+  ];
 }
 
 function getProfileInitial(name: string | undefined) {
@@ -83,25 +79,26 @@ export async function SiteHeader() {
   const navItems = getNavItems(profile?.user.role);
   const profileInitial = getProfileInitial(profile?.user.full_name);
   const profileRoleLabel = getRoleLabel(profile?.user.role);
-  const showListEquipment = profile?.user.role === "donor_lab";
+  const brandHref = profile?.user.role === "admin" ? "/admin" : "/";
+  const brandLabel = profile?.user.role === "admin" ? "LabLink admin dashboard" : "LabLink home";
 
   return (
     <header className="site-header">
       <div className="shell site-header-inner">
-        <Link href="/" className="brand-mark">
-          <span className="brand-mark-badge">LL</span>
-          <span>
-            <strong>LabLink</strong>
-            <small>Managed Equipment Donation Marketplace</small>
-          </span>
+        <Link href={brandHref} className="brand-mark" aria-label={brandLabel}>
+          <strong>LabLink</strong>
         </Link>
-        <nav className="site-nav" aria-label="Primary navigation">
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {navItems.length > 0 ? (
+          <nav className="site-nav" aria-label="Primary navigation">
+            {navItems.map((item) => (
+              <Link key={item.href} href={item.href}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        ) : (
+          <div />
+        )}
         {profile ? (
           <HeaderAuthActions
             dashboardHref={dashboardHref}
@@ -110,7 +107,6 @@ export async function SiteHeader() {
             profileEmail={profile.user.email}
             profileRoleLabel={profileRoleLabel}
             institutionName={profile.institution.name}
-            showListEquipment={showListEquipment}
           />
         ) : (
           <div className="site-header-actions">

@@ -155,6 +155,9 @@ export function UpdatePasswordShell() {
                   <Link href="/auth" className="button button-outline">
                     Back to sign in
                   </Link>
+                  <Link href="/auth/sign-up" className="button button-secondary">
+                    Create account
+                  </Link>
                 </div>
               </>
             ) : (
