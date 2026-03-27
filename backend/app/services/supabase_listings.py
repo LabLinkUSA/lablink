@@ -9,6 +9,7 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import get_settings
+from app.services.notification_email import next_retry_at, render_notification_email
 from app.core.listing_documents import (
     build_blank_pdf_url,
     default_listing_document_form_data,
@@ -33,6 +34,7 @@ from app.schemas.domain import (
     MarkNotificationsViewedResponse,
     Notification,
     NotificationEmailStatus,
+    NotificationEmailProcessingResponse,
     NotificationListResponse,
     NotificationType,
     RecipientDashboardResponse,
@@ -61,6 +63,8 @@ class SupabaseListingService:
         resend_api_key: str | None = None,
         email_from: str | None = None,
         email_reply_to: str | None = None,
+        email_batch_size: int = 50,
+        email_max_attempts: int = 5,
     ):
         self.supabase_url = supabase_url.rstrip("/")
         self.service_role_key = service_role_key
@@ -70,6 +74,8 @@ class SupabaseListingService:
         self.resend_api_key = resend_api_key
         self.email_from = email_from
         self.email_reply_to = email_reply_to
+        self.email_batch_size = max(1, email_batch_size)
+        self.email_max_attempts = max(1, email_max_attempts)
 
     def list_public_listings(self) -> list[Listing]:
         rows = self._request(
@@ -313,9 +319,12 @@ class SupabaseListingService:
             entity_type="request",
             entity_id=request_id,
             metadata={
+                "email_template_key": "request_submitted",
+                "entity_title": listing["title"],
+                "request_id": request_id,
                 "listing_id": listing_id,
-                "recipient_institution_id": actor.institution.id,
-                "recipient_institution_name": actor.institution.name,
+                "institution_id": actor.institution.id,
+                "actor_institution_name": actor.institution.name,
             },
         )
         self._notify_institution(
@@ -326,9 +335,12 @@ class SupabaseListingService:
             entity_type="request",
             entity_id=request_id,
             metadata={
+                "email_template_key": "request_submitted",
+                "entity_title": listing["title"],
+                "request_id": request_id,
                 "listing_id": listing_id,
-                "recipient_institution_id": actor.institution.id,
-                "recipient_institution_name": actor.institution.name,
+                "institution_id": actor.institution.id,
+                "actor_institution_name": actor.institution.name,
             },
         )
 
@@ -434,11 +446,13 @@ class SupabaseListingService:
 
             message = f"{actor.institution.name} cancelled its request for {listing['title']}."
             metadata = {
+                "email_template_key": "request_cancelled",
+                "entity_title": listing["title"],
                 "request_id": request_row["id"],
                 "listing_id": listing_id,
                 "status": RequestStatus.REJECTED_CANCELLED.value,
-                "recipient_institution_id": actor.institution.id,
-                "recipient_institution_name": actor.institution.name,
+                "institution_id": actor.institution.id,
+                "actor_institution_name": actor.institution.name,
             }
             self._notify_role(
                 "admin",
@@ -606,6 +620,8 @@ class SupabaseListingService:
         self._ensure_donor_controls_listing(actor, existing)
         self._ensure_listing_mutable(existing, action="submit")
         self._validate_listing_ready_for_submission(existing, listing_id)
+        current_status = self._normalize_listing_status(existing["status"])
+        is_resubmission = current_status == ListingStatus.REJECTED.value
 
         self._request(
             "PATCH",
@@ -628,11 +644,23 @@ class SupabaseListingService:
         self._notify_role(
             "admin",
             notification_type=NotificationType.ADMIN_LISTING_SUBMITTED,
-            message=f"{actor.institution.name} submitted a new listing: {updated['title']}.",
+            message=(
+                f"{actor.institution.name} resubmitted a listing for review: {updated['title']}."
+                if is_resubmission
+                else f"{actor.institution.name} submitted a new listing: {updated['title']}."
+            ),
             cta_href="/admin",
             entity_type="listing",
             entity_id=listing_id,
-            metadata={"listing_id": listing_id, "donor_institution_id": actor.institution.id},
+            metadata={
+                "email_template_key": "listing_submitted_for_review",
+                "entity_title": updated["title"],
+                "listing_id": listing_id,
+                "institution_id": actor.institution.id,
+                "status": ListingStatus.PENDING_ADMIN_APPROVAL.value,
+                "actor_institution_name": actor.institution.name,
+                "resubmitted": is_resubmission,
+            },
         )
         return self._to_listing(updated)
 
@@ -745,6 +773,11 @@ class SupabaseListingService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         self._ensure_donor_controls_listing(actor, existing)
         self._ensure_listing_mutable(existing, action="remove")
+        affected_requests = self._get_requests_for_listing_ids(
+            [listing_id],
+            exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+            latest_per_recipient=True,
+        )
 
         listing_status = self._normalize_listing_status(existing["status"])
         if listing_status == ListingStatus.DRAFT.value:
@@ -766,6 +799,43 @@ class SupabaseListingService:
             },
             headers={"Prefer": "return=minimal"},
         )
+        self._notify_role(
+            "admin",
+            notification_type=NotificationType.LISTING_STATUS_CHANGED,
+            message=f"{actor.institution.name} removed listing {existing['title']} from the marketplace.",
+            cta_href="/admin",
+            entity_type="listing",
+            entity_id=listing_id,
+            metadata={
+                "email_template_key": "listing_removed",
+                "entity_title": existing["title"],
+                "listing_id": listing_id,
+                "status": ListingStatus.REMOVED_BY_DONOR.value,
+                "institution_id": actor.institution.id,
+                "actor_institution_name": actor.institution.name,
+            },
+        )
+        notified_institutions: set[str] = set()
+        for request in affected_requests:
+            if request.recipient_institution_id in notified_institutions:
+                continue
+            notified_institutions.add(request.recipient_institution_id)
+            self._notify_institution(
+                request.recipient_institution_id,
+                notification_type=NotificationType.LISTING_STATUS_CHANGED,
+                message=f"A listing you requested, {existing['title']}, was removed from the marketplace by the donor.",
+                cta_href="/recipient",
+                entity_type="listing",
+                entity_id=listing_id,
+                metadata={
+                    "email_template_key": "listing_removed",
+                    "entity_title": existing["title"],
+                    "listing_id": listing_id,
+                    "status": ListingStatus.REMOVED_BY_DONOR.value,
+                    "request_id": request.id,
+                    "actor_institution_name": actor.institution.name,
+                },
+            )
         return None
 
     def mark_donor_listing_donated(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
@@ -774,7 +844,18 @@ class SupabaseListingService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         self._ensure_donor_controls_listing(actor, existing)
         self._ensure_listing_mutable(existing, action="mark as donated")
+        listing_status = self._normalize_listing_status(existing["status"])
+        if listing_status == ListingStatus.REJECTED.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Rejected listings must be resubmitted or removed before they can be marked as donated.",
+            )
 
+        relevant_requests = self._get_requests_for_listing_ids(
+            [listing_id],
+            exclude_statuses={RequestStatus.REJECTED_CANCELLED},
+            latest_per_recipient=True,
+        )
         self._request(
             "PATCH",
             "listings",
@@ -791,6 +872,67 @@ class SupabaseListingService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Listing was marked as donated but could not be reloaded.",
+            )
+
+        matched_request = next(
+            (
+                request
+                for request in relevant_requests
+                if request.status
+                in {
+                    RequestStatus.APPROVED_MATCHED,
+                    RequestStatus.AWAITING_DONOR_CONFIRMATION,
+                    RequestStatus.PICKUP_TRANSFER_COORDINATION,
+                    RequestStatus.COMPLETED,
+                }
+            ),
+            None,
+        )
+        self._notify_role(
+            "admin",
+            notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+            message=f"{actor.institution.name} marked listing {updated['title']} as donated.",
+            cta_href="/admin",
+            entity_type="listing",
+            entity_id=listing_id,
+            metadata={
+                "email_template_key": "request_completed",
+                "entity_title": updated["title"],
+                "listing_id": listing_id,
+                "status": RequestStatus.COMPLETED.value,
+                "institution_id": actor.institution.id,
+                "actor_institution_name": actor.institution.name,
+                "request_id": matched_request.id if matched_request else "",
+            },
+        )
+        notified_institutions: set[str] = set()
+        for request in relevant_requests:
+            if request.recipient_institution_id in notified_institutions:
+                continue
+            notified_institutions.add(request.recipient_institution_id)
+            if matched_request and request.recipient_institution_id == matched_request.recipient_institution_id:
+                message = f"Your donation request for {updated['title']} is complete."
+                template_key = "request_completed"
+                status_value = RequestStatus.COMPLETED.value
+            else:
+                message = f"{updated['title']} was marked as donated and is no longer available for your request."
+                template_key = "listing_removed"
+                status_value = ListingStatus.FULFILLED.value
+            self._notify_institution(
+                request.recipient_institution_id,
+                notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+                message=message,
+                cta_href="/recipient",
+                entity_type="request",
+                entity_id=request.id,
+                metadata={
+                    "email_template_key": template_key,
+                    "entity_title": updated["title"],
+                    "request_id": request.id,
+                    "listing_id": listing_id,
+                    "status": status_value,
+                    "actor_institution_name": actor.institution.name,
+                },
             )
         return self._to_listing(updated)
 
@@ -988,6 +1130,7 @@ class SupabaseListingService:
                 if self._normalize_listing_status(row["status"])
                 in {
                     ListingStatus.PENDING_ADMIN_APPROVAL.value,
+                    ListingStatus.REJECTED.value,
                     ListingStatus.UNDER_REVIEW.value,
                     ListingStatus.LIVE.value,
                     ListingStatus.MATCHED_RESERVED.value,
@@ -1034,6 +1177,22 @@ class SupabaseListingService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
 
         current_status = self._normalize_listing_status(existing["status"])
+        if status_value == ListingStatus.REJECTED and current_status not in {
+            ListingStatus.PENDING_ADMIN_APPROVAL.value,
+            ListingStatus.UNDER_REVIEW.value,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only listings under admin review can be rejected.",
+            )
+        if current_status == ListingStatus.REJECTED.value and status_value not in {
+            ListingStatus.REJECTED,
+            ListingStatus.REMOVED_BY_ADMIN,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Rejected listings must be resubmitted by the donor before they can re-enter review.",
+            )
         if current_status == ListingStatus.MATCHED_RESERVED.value and status_value not in {
             ListingStatus.MATCHED_RESERVED,
             ListingStatus.REMOVED_BY_ADMIN,
@@ -1104,7 +1263,16 @@ class SupabaseListingService:
             cta_href="/donor",
             entity_type="listing",
             entity_id=listing_id,
-            metadata={"listing_id": listing_id, "status": status_value.value},
+            metadata={
+                "email_template_key": self._default_email_template_key(
+                    NotificationType.LISTING_STATUS_CHANGED,
+                    {"status": status_value.value},
+                ),
+                "entity_title": updated["title"],
+                "listing_id": listing_id,
+                "status": status_value.value,
+                "admin_note": admin_note,
+            },
         )
         if status_value == ListingStatus.REMOVED_BY_ADMIN:
             notified_institutions: set[str] = set()
@@ -1122,7 +1290,14 @@ class SupabaseListingService:
                     cta_href="/recipient",
                     entity_type="listing",
                     entity_id=listing_id,
-                    metadata={"listing_id": listing_id, "status": status_value.value, "request_id": request.id},
+                    metadata={
+                        "email_template_key": "listing_removed",
+                        "entity_title": updated["title"],
+                        "listing_id": listing_id,
+                        "status": status_value.value,
+                        "request_id": request.id,
+                        "admin_note": admin_note,
+                    },
                 )
         if current_status == ListingStatus.LIVE.value and status_value in {
             ListingStatus.PENDING_ADMIN_APPROVAL,
@@ -1143,7 +1318,14 @@ class SupabaseListingService:
                     cta_href="/recipient",
                     entity_type="listing",
                     entity_id=listing_id,
-                    metadata={"listing_id": listing_id, "status": status_value.value, "request_id": request.id},
+                    metadata={
+                        "email_template_key": "listing_under_review",
+                        "entity_title": updated["title"],
+                        "listing_id": listing_id,
+                        "status": status_value.value,
+                        "request_id": request.id,
+                        "admin_note": admin_note,
+                    },
                 )
         if status_value == ListingStatus.LIVE:
             self._notify_role(
@@ -1153,7 +1335,12 @@ class SupabaseListingService:
                 cta_href=f"/listings/{listing_id}",
                 entity_type="listing",
                 entity_id=listing_id,
-                metadata={"listing_id": listing_id, "status": status_value.value},
+                metadata={
+                    "email_template_key": "catalog_listing_published",
+                    "entity_title": updated["title"],
+                    "listing_id": listing_id,
+                    "status": status_value.value,
+                },
             )
         return self._to_listing(updated)
 
@@ -1229,7 +1416,16 @@ class SupabaseListingService:
             cta_href=self._dashboard_href_for_role(updated["role_type"]),
             entity_type="institution",
             entity_id=institution_id,
-            metadata={"institution_id": institution_id, "verification_status": verification_status.value},
+            metadata={
+                "email_template_key": self._default_email_template_key(
+                    NotificationType.INSTITUTION_STATUS_CHANGED,
+                    {"verification_status": verification_status.value},
+                ),
+                "institution_id": institution_id,
+                "institution_name": updated["name"],
+                "verification_status": verification_status.value,
+                "admin_note": admin_note,
+            },
         )
         return self._to_institution(updated)
 
@@ -1337,7 +1533,14 @@ class SupabaseListingService:
             cta_href="/recipient",
             entity_type="request",
             entity_id=request_id,
-            metadata={"request_id": request_id, "status": RequestStatus.APPROVED_MATCHED.value, "listing_id": listing_id},
+            metadata={
+                "email_template_key": "request_selected",
+                "entity_title": listing_title,
+                "request_id": request_id,
+                "status": RequestStatus.APPROVED_MATCHED.value,
+                "listing_id": listing_id,
+                "admin_note": admin_note,
+            },
         )
         self._notify_institution(
             listing_row["donor_institution_id"],
@@ -1350,10 +1553,13 @@ class SupabaseListingService:
             entity_type="listing",
             entity_id=listing_id,
             metadata={
+                "email_template_key": "request_selected",
+                "entity_title": listing_title,
                 "listing_id": listing_id,
                 "request_id": request_id,
                 "status": RequestStatus.APPROVED_MATCHED.value,
                 "recipient_institution_id": existing["recipient_institution_id"],
+                "admin_note": admin_note,
             },
         )
 
@@ -1370,7 +1576,14 @@ class SupabaseListingService:
                 cta_href="/recipient",
                 entity_type="request",
                 entity_id=row["id"],
-                metadata={"request_id": row["id"], "status": RequestStatus.REJECTED_CANCELLED.value, "listing_id": listing_id},
+                metadata={
+                    "email_template_key": "request_not_selected",
+                    "entity_title": listing_title,
+                    "request_id": row["id"],
+                    "status": RequestStatus.REJECTED_CANCELLED.value,
+                    "listing_id": listing_id,
+                    "admin_note": admin_note,
+                },
             )
         return self._to_equipment_request(updated)
 
@@ -1463,8 +1676,51 @@ class SupabaseListingService:
             cta_href="/recipient",
             entity_type="request",
             entity_id=request_id,
-            metadata={"request_id": request_id, "status": status_value.value, "listing_id": updated["listing_id"]},
+            metadata={
+                "email_template_key": self._default_email_template_key(
+                    NotificationType.REQUEST_STATUS_CHANGED,
+                    {"status": status_value.value},
+                ),
+                "entity_title": listing_title,
+                "request_id": request_id,
+                "status": status_value.value,
+                "listing_id": updated["listing_id"],
+                "admin_note": admin_note,
+            },
         )
+        if status_value in {
+            RequestStatus.AWAITING_DONOR_CONFIRMATION,
+            RequestStatus.PICKUP_TRANSFER_COORDINATION,
+            RequestStatus.COMPLETED,
+        }:
+            listing_row = updated.get("listing") if isinstance(updated.get("listing"), dict) else None
+            donor_institution_id = listing_row.get("donor_institution_id") if listing_row else None
+            if donor_institution_id:
+                if status_value == RequestStatus.AWAITING_DONOR_CONFIRMATION:
+                    donor_message = f"Please confirm the matched request for {listing_title}."
+                elif status_value == RequestStatus.PICKUP_TRANSFER_COORDINATION:
+                    donor_message = f"Pickup and transfer coordination can begin for {listing_title}."
+                else:
+                    donor_message = f"The donation workflow for {listing_title} is complete."
+                self._notify_institution(
+                    donor_institution_id,
+                    notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+                    message=self._with_admin_note(donor_message, admin_note),
+                    cta_href="/donor",
+                    entity_type="request",
+                    entity_id=request_id,
+                    metadata={
+                        "email_template_key": self._default_email_template_key(
+                            NotificationType.REQUEST_STATUS_CHANGED,
+                            {"status": status_value.value},
+                        ),
+                        "entity_title": listing_title,
+                        "request_id": request_id,
+                        "status": status_value.value,
+                        "listing_id": updated["listing_id"],
+                        "admin_note": admin_note,
+                    },
+                )
         return self._to_equipment_request(updated)
 
     def cancel_listing_match(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
@@ -1531,7 +1787,12 @@ class SupabaseListingService:
             cta_href="/donor",
             entity_type="listing",
             entity_id=listing_id,
-            metadata={"listing_id": listing_id, "status": RequestStatus.SUBMITTED.value},
+            metadata={
+                "email_template_key": "match_cancelled",
+                "entity_title": listing_title,
+                "listing_id": listing_id,
+                "status": RequestStatus.SUBMITTED.value,
+            },
         )
         for row in request_rows:
             self._notify_institution(
@@ -1541,7 +1802,13 @@ class SupabaseListingService:
                 cta_href="/recipient",
                 entity_type="request",
                 entity_id=row.id,
-                metadata={"request_id": row.id, "status": RequestStatus.SUBMITTED.value, "listing_id": listing_id},
+                metadata={
+                    "email_template_key": "match_cancelled",
+                    "entity_title": listing_title,
+                    "request_id": row.id,
+                    "status": RequestStatus.SUBMITTED.value,
+                    "listing_id": listing_id,
+                },
             )
 
         updated = self._get_listing_row(listing_id)
@@ -1579,6 +1846,43 @@ class SupabaseListingService:
             entity_type=entity_type,
             entity_id=entity_id,
             metadata=metadata,
+        )
+
+    def process_notification_emails(self) -> NotificationEmailProcessingResponse:
+        now = datetime.now(timezone.utc)
+        rows = self._request(
+            "GET",
+            "notifications",
+            params={
+                "select": (
+                    "id,user_id,message,cta_href,metadata,email_status,email_attempt_count,"
+                    "user:app_users(id,email,full_name,role,institution_id)"
+                ),
+                "email_status": f"in.({NotificationEmailStatus.PENDING.value},{NotificationEmailStatus.FAILED.value})",
+                "email_next_attempt_at": f"lte.{now.isoformat()}",
+                "email_attempt_count": f"lt.{self.email_max_attempts}",
+                "order": "created_at.asc",
+                "limit": str(self.email_batch_size),
+            },
+        )
+
+        processed_count = 0
+        sent_count = 0
+        failed_count = 0
+
+        for row in rows:
+            if not self._claim_notification_for_processing(row):
+                continue
+            processed_count += 1
+            if self._deliver_notification_email(row):
+                sent_count += 1
+            else:
+                failed_count += 1
+
+        return NotificationEmailProcessingResponse(
+            processed_count=processed_count,
+            sent_count=sent_count,
+            failed_count=failed_count,
         )
 
     def _notify_institution(
@@ -1622,6 +1926,14 @@ class SupabaseListingService:
         metadata: dict[str, Any] | None = None,
     ) -> None:
         for user in users:
+            notification_metadata = self._normalize_notification_metadata(
+                user=user,
+                notification_type=notification_type,
+                cta_href=cta_href,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                metadata=metadata,
+            )
             notification_id = f"notif_{uuid4().hex[:12]}"
             notification_row = {
                 "id": notification_id,
@@ -1631,7 +1943,7 @@ class SupabaseListingService:
                 "cta_href": cta_href,
                 "entity_type": entity_type,
                 "entity_id": entity_id,
-                "metadata": metadata or {},
+                "metadata": notification_metadata,
             }
             self._request(
                 "POST",
@@ -1639,84 +1951,140 @@ class SupabaseListingService:
                 json=notification_row,
                 headers={"Prefer": "return=minimal"},
             )
-            self._send_notification_email(
-                notification_id=notification_id,
-                to_email=user["email"],
-                subject=self._notification_email_subject(notification_type),
-                message=message,
-                cta_href=cta_href,
-            )
 
-    def _send_notification_email(
+    def _normalize_notification_metadata(
         self,
         *,
-        notification_id: str,
-        to_email: str,
-        subject: str,
-        message: str,
+        user: dict[str, Any],
+        notification_type: NotificationType,
         cta_href: str,
-    ) -> None:
-        attempted_at = datetime.now(timezone.utc).isoformat()
-        if not self.resend_api_key or not self.email_from:
+        entity_type: str,
+        entity_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        notification_metadata = dict(metadata or {})
+        notification_metadata.setdefault("notification_type", notification_type.value)
+        notification_metadata.setdefault("audience", user.get("role") or "")
+        notification_metadata.setdefault("entity_type", entity_type)
+        notification_metadata.setdefault("entity_id", entity_id)
+        notification_metadata.setdefault("cta_href", cta_href)
+        notification_metadata.setdefault("recipient_user_id", user["id"])
+        notification_metadata.setdefault("recipient_name", user.get("full_name") or "")
+        notification_metadata.setdefault("recipient_email", user.get("email") or "")
+        notification_metadata.setdefault("recipient_institution_id", user.get("institution_id") or "")
+        notification_metadata.setdefault(
+            "email_template_key",
+            self._default_email_template_key(notification_type, notification_metadata),
+        )
+        return notification_metadata
+
+    def _claim_notification_for_processing(self, row: dict[str, Any]) -> bool:
+        claimed_rows = self._request(
+            "PATCH",
+            "notifications",
+            params={
+                "id": f"eq.{row['id']}",
+                "email_status": f"eq.{row['email_status']}",
+                "email_attempt_count": f"eq.{int(row.get('email_attempt_count') or 0)}",
+            },
+            json={
+                "email_status": NotificationEmailStatus.SENDING.value,
+                "email_error": None,
+            },
+            headers={"Prefer": "return=representation"},
+        )
+        return bool(claimed_rows)
+
+    def _deliver_notification_email(self, row: dict[str, Any]) -> bool:
+        attempt_count = int(row.get("email_attempt_count") or 0) + 1
+        now = datetime.now(timezone.utc)
+        attempted_at = now.isoformat()
+        metadata = row.get("metadata") or {}
+        user = row.get("user") or {}
+        try:
+            to_email = str(user.get("email") or "").strip()
+            if not to_email:
+                raise RuntimeError("Notification recipient email is missing.")
+            rendered = render_notification_email(
+                message=row["message"],
+                cta_href=row["cta_href"],
+                metadata=metadata,
+                frontend_origin=self.frontend_origin,
+            )
+            provider_message_id = self._send_resend_email(
+                to_email=to_email,
+                subject=rendered.subject,
+                html=rendered.html,
+                text=rendered.text,
+            )
+        except Exception as error:
             self._set_notification_email_status(
-                notification_id,
+                row["id"],
                 NotificationEmailStatus.FAILED,
                 attempted_at=attempted_at,
-                error="Email delivery is not configured.",
+                error=str(error),
+                attempt_count=attempt_count,
+                next_attempt_at=next_retry_at(attempt_count=attempt_count, now=now).isoformat(),
+                provider_message_id=None,
             )
-            return
+            return False
+
+        self._set_notification_email_status(
+            row["id"],
+            NotificationEmailStatus.SENT,
+            attempted_at=attempted_at,
+            error=None,
+            attempt_count=attempt_count,
+            next_attempt_at=attempted_at,
+            provider_message_id=provider_message_id,
+        )
+        return True
+
+    def _send_resend_email(
+        self,
+        *,
+        to_email: str,
+        subject: str,
+        html: str,
+        text: str,
+    ) -> str | None:
+        if not self.resend_api_key or not self.email_from:
+            raise RuntimeError("Email delivery is not configured.")
 
         payload: dict[str, Any] = {
             "from": self.email_from,
             "to": [to_email],
             "subject": subject,
-            "html": (
-                f"<p>{message}</p>"
-                f"<p><a href=\"{self.frontend_origin}{cta_href}\">Open in LabLink</a></p>"
-            ),
+            "html": html,
+            "text": text,
         }
         if self.email_reply_to:
             payload["reply_to"] = self.email_reply_to
 
-        try:
-            with httpx.Client(timeout=20.0) as client:
-                response = client.post(
-                    RESEND_API_URL,
-                    headers={
-                        "Authorization": f"Bearer {self.resend_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-
-            if response.status_code >= 400:
-                detail = "Email delivery failed."
-                try:
-                    body = response.json()
-                    detail = body.get("message") or body.get("error") or detail
-                except ValueError:
-                    pass
-                self._set_notification_email_status(
-                    notification_id,
-                    NotificationEmailStatus.FAILED,
-                    attempted_at=attempted_at,
-                    error=detail,
-                )
-                return
-        except Exception as error:
-            self._set_notification_email_status(
-                notification_id,
-                NotificationEmailStatus.FAILED,
-                attempted_at=attempted_at,
-                error=str(error),
+        with httpx.Client(timeout=20.0) as client:
+            response = client.post(
+                RESEND_API_URL,
+                headers={
+                    "Authorization": f"Bearer {self.resend_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
             )
-            return
 
-        self._set_notification_email_status(
-            notification_id,
-            NotificationEmailStatus.SENT,
-            attempted_at=attempted_at,
-        )
+        if response.status_code >= 400:
+            detail = "Email delivery failed."
+            try:
+                body = response.json()
+                detail = body.get("message") or body.get("error") or detail
+            except ValueError:
+                pass
+            raise RuntimeError(detail)
+
+        try:
+            body = response.json()
+        except ValueError:
+            return None
+        return body.get("id")
 
     def _set_notification_email_status(
         self,
@@ -1724,7 +2092,10 @@ class SupabaseListingService:
         email_status: NotificationEmailStatus,
         *,
         attempted_at: str,
+        attempt_count: int,
+        next_attempt_at: str,
         error: str | None = None,
+        provider_message_id: str | None = None,
     ) -> None:
         self._request(
             "PATCH",
@@ -1733,21 +2104,60 @@ class SupabaseListingService:
             json={
                 "email_status": email_status.value,
                 "email_attempted_at": attempted_at,
+                "email_attempt_count": attempt_count,
+                "email_next_attempt_at": next_attempt_at,
+                "email_provider_message_id": provider_message_id,
                 "email_error": error,
             },
             headers={"Prefer": "return=minimal"},
         )
 
-    def _notification_email_subject(self, notification_type: NotificationType) -> str:
+    def _default_email_template_key(
+        self,
+        notification_type: NotificationType,
+        metadata: dict[str, Any],
+    ) -> str:
+        status_value = str(metadata.get("status") or metadata.get("verification_status") or "")
         if notification_type == NotificationType.ADMIN_LISTING_SUBMITTED:
-            return "LabLink admin notification: new listing submitted"
+            return "listing_submitted_for_review"
         if notification_type == NotificationType.ADMIN_REQUEST_SUBMITTED:
-            return "LabLink notification: new equipment request"
+            return "request_submitted"
         if notification_type == NotificationType.RECIPIENT_CATALOG_UPDATED:
-            return "LabLink notification: new catalog listing"
-        return "LabLink notification"
+            return "catalog_listing_published"
+        if notification_type == NotificationType.INSTITUTION_STATUS_CHANGED:
+            if status_value == VerificationStatus.VERIFIED.value:
+                return "institution_verified"
+            if status_value == VerificationStatus.REJECTED.value:
+                return "institution_rejected"
+            if status_value == VerificationStatus.SUSPENDED.value:
+                return "institution_suspended"
+            return "institution_pending_verification"
+        if notification_type == NotificationType.LISTING_STATUS_CHANGED:
+            if status_value == ListingStatus.LIVE.value:
+                return "listing_approved"
+            if status_value == ListingStatus.REJECTED.value:
+                return "listing_rejected"
+            if status_value in {ListingStatus.PENDING_ADMIN_APPROVAL.value, ListingStatus.UNDER_REVIEW.value}:
+                return "listing_under_review"
+            if status_value == ListingStatus.FULFILLED.value:
+                return "listing_marked_donated"
+            return "listing_removed"
+        if notification_type == NotificationType.REQUEST_STATUS_CHANGED:
+            if status_value == RequestStatus.APPROVED_MATCHED.value:
+                return "request_selected"
+            if status_value == RequestStatus.AWAITING_DONOR_CONFIRMATION.value:
+                return "request_awaiting_donor_confirmation"
+            if status_value == RequestStatus.PICKUP_TRANSFER_COORDINATION.value:
+                return "request_pickup_transfer_coordination"
+            if status_value == RequestStatus.COMPLETED.value:
+                return "request_completed"
+            if status_value == RequestStatus.REJECTED_CANCELLED.value:
+                return "request_cancelled"
+        return "generic_notification"
 
     def _friendly_status_label(self, status_value: str) -> str:
+        if status_value == ListingStatus.REJECTED.value:
+            return "rejected"
         return status_value.replace("_", " ")
 
     def _friendly_request_status_label(self, status_value: str) -> str:
@@ -2263,4 +2673,6 @@ def get_supabase_listing_service() -> SupabaseListingService:
         resend_api_key=settings.resend_api_key,
         email_from=settings.email_from,
         email_reply_to=settings.email_reply_to,
+        email_batch_size=settings.email_batch_size,
+        email_max_attempts=settings.email_max_attempts,
     )

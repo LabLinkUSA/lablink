@@ -102,7 +102,7 @@ export function getAdminDashboardFromSeed(): AdminDashboardResponse {
       (institution) => institution.type !== "admin" && institution.verification_status !== "verified",
     ),
     listings_for_review: seed.listings.filter((listing) =>
-      ["pending_admin_approval", "under_review", "live", "matched_reserved"].includes(listing.status),
+      ["pending_admin_approval", "rejected", "under_review", "live", "matched_reserved"].includes(listing.status),
     ),
     requests_requiring_attention: seed.equipment_requests.filter((request) =>
       ["submitted", "admin_review", "awaiting_donor_confirmation"].includes(request.status) &&

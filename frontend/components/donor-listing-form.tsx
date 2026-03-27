@@ -81,8 +81,47 @@ function buildInitialDraft(listing: Listing): ListingDraftSaveInput {
   };
 }
 
+function createEmptyDraft(): ListingDraftSaveInput {
+  return {
+    title: "",
+    category: "",
+    condition: "",
+    quantity: 1,
+    location: "",
+    availability_window: "",
+    description: "",
+    dimensions_weight: "",
+    handling_requirements: "",
+    working_status: "",
+    documentation_included: "",
+    special_handling_flags: "",
+    delivery_mode: "pickup_only",
+    photo_urls: [],
+  };
+}
+
 function serializeDraft(payload: ListingDraftSaveInput) {
   return JSON.stringify(payload);
+}
+
+function hasMeaningfulDraftContent(payload: ListingDraftSaveInput) {
+  const emptyDraft = createEmptyDraft();
+  return (
+    payload.title.trim().length > 0 ||
+    payload.category.trim().length > 0 ||
+    payload.condition.trim().length > 0 ||
+    payload.location.trim().length > 0 ||
+    payload.availability_window.trim().length > 0 ||
+    payload.description.trim().length > 0 ||
+    payload.dimensions_weight.trim().length > 0 ||
+    payload.handling_requirements.trim().length > 0 ||
+    payload.working_status.trim().length > 0 ||
+    payload.documentation_included.trim().length > 0 ||
+    payload.special_handling_flags.trim().length > 0 ||
+    payload.quantity !== emptyDraft.quantity ||
+    payload.delivery_mode !== emptyDraft.delivery_mode ||
+    payload.photo_urls.length > 0
+  );
 }
 
 function validateListingFieldState(payload: ListingDraftSaveInput): ListingFieldErrors {
@@ -166,12 +205,14 @@ export function DonorListingForm({
   const [isSavingDocument, setIsSavingDocument] = useState(false);
   const [selectedPdfName, setSelectedPdfName] = useState<string | null>(null);
   const [hasUploadedCurrentPdf, setHasUploadedCurrentPdf] = useState(false);
+  const [listingId, setListingId] = useState<string | null>(listing.id || null);
 
   const saveTimeoutRef = useRef<number | null>(null);
   const pendingSaveRef = useRef<{ payload: ListingDraftSaveInput; snapshot: string } | null>(null);
   const lastSavedSnapshotRef = useRef(serializeDraft(buildInitialDraft(listing)));
   const savePromiseRef = useRef<Promise<boolean> | null>(null);
   const pdfUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const createDraftPromiseRef = useRef<Promise<string | null> | null>(null);
 
   useEffect(() => {
     setTemplates(documentTemplates);
@@ -189,9 +230,11 @@ export function DonorListingForm({
     () => templates.find((template) => template.form_type === activeTemplateKey) ?? null,
     [activeTemplateKey, templates],
   );
+  const isRejectedListing = listing.status === "rejected";
 
   const listingErrors = useMemo(() => validateListingFieldState(draft), [draft]);
-  const documentsComplete = templates.every((template) => template.document.status === "completed");
+  const complianceReady = Boolean(listingId) && templates.length > 0;
+  const documentsComplete = complianceReady && templates.every((template) => template.document.status === "completed");
   const canSubmit = Object.keys(listingErrors).length === 0 && documentsComplete && !isUploadingImage && !isSubmitting;
   const progress = ((currentStep + 1) / FORM_STEPS.length) * 100;
 
@@ -207,10 +250,88 @@ export function DonorListingForm({
     return accessToken;
   }
 
+  async function loadDocumentTemplates(nextListingId: string) {
+    const accessToken = await getAccessToken();
+    const response = await fetch(`${API_BASE_URL}/donor/listings/${nextListingId}/form-templates`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Could not load the compliance PDF templates for this draft.");
+    }
+
+    const body = (await response.json()) as { templates: ListingDocumentTemplate[] };
+    setTemplates(body.templates);
+  }
+
+  async function ensureDraftExists() {
+    if (listingId) {
+      return listingId;
+    }
+
+    if (createDraftPromiseRef.current) {
+      return createDraftPromiseRef.current;
+    }
+
+    createDraftPromiseRef.current = (async () => {
+      setSaveState("saving");
+      setSaveMessage("Creating draft...");
+
+      try {
+        const accessToken = await getAccessToken();
+        const response = await fetch(`${API_BASE_URL}/donor/listings/drafts`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          let message = "Could not start the draft listing.";
+          try {
+            const body = (await response.json()) as { detail?: string };
+            if (body.detail) {
+              message = body.detail;
+            }
+          } catch {}
+          throw new Error(message);
+        }
+
+        const createdListing = (await response.json()) as Listing;
+        setListingId(createdListing.id);
+        try {
+          await loadDocumentTemplates(createdListing.id);
+          setDocumentError(null);
+        } catch (error) {
+          setDocumentError(
+            error instanceof Error ? error.message : "Could not load the compliance PDF templates for this draft.",
+          );
+        }
+        window.history.replaceState({}, "", `/donor/list-equipment?draft=${createdListing.id}`);
+        return createdListing.id;
+      } catch (error) {
+        setSaveState("error");
+        setSaveMessage(error instanceof Error ? error.message : "Could not start the draft listing.");
+        return null;
+      } finally {
+        createDraftPromiseRef.current = null;
+      }
+    })();
+
+    return createDraftPromiseRef.current;
+  }
+
   async function persistDraft(payload: ListingDraftSaveInput, snapshot: string) {
     try {
+      const resolvedListingId = await ensureDraftExists();
+      if (!resolvedListingId) {
+        throw new Error("Could not start the draft listing.");
+      }
+
       const accessToken = await getAccessToken();
-      const response = await fetch(`${API_BASE_URL}/donor/listings/${listing.id}`, {
+      const response = await fetch(`${API_BASE_URL}/donor/listings/${resolvedListingId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -266,6 +387,16 @@ export function DonorListingForm({
   function scheduleDraftSave(nextPayload: ListingDraftSaveInput) {
     const snapshot = serializeDraft(nextPayload);
     if (snapshot === lastSavedSnapshotRef.current) {
+      return;
+    }
+
+    if (!hasMeaningfulDraftContent(nextPayload)) {
+      pendingSaveRef.current = null;
+      if (saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current);
+      }
+      setSaveState("idle");
+      setSaveMessage(mode === "create" && !listingId ? "Draft will start saving after your first entry." : "Draft saved.");
       return;
     }
 
@@ -391,7 +522,7 @@ export function DonorListingForm({
 
   async function handleCompletedPdfSelected(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file || !activeTemplate) {
+    if (!file || !activeTemplate || !listingId) {
       return;
     }
 
@@ -406,7 +537,7 @@ export function DonorListingForm({
       formData.append("original_filename", file.name);
       formData.append("file", file);
 
-      const response = await fetch(`${API_BASE_URL}/donor/listings/${listing.id}/documents/${activeTemplate.form_type}`, {
+      const response = await fetch(`${API_BASE_URL}/donor/listings/${listingId}/documents/${activeTemplate.form_type}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -473,8 +604,12 @@ export function DonorListingForm({
         throw new Error("LabLink could not save the latest draft changes before submission.");
       }
 
+      if (!listingId) {
+        throw new Error("Start the listing by filling out at least one field before submitting.");
+      }
+
       const accessToken = await getAccessToken();
-      const response = await fetch(`${API_BASE_URL}/donor/listings/${listing.id}/submit`, {
+      const response = await fetch(`${API_BASE_URL}/donor/listings/${listingId}/submit`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -512,15 +647,27 @@ export function DonorListingForm({
           <div className="donor-form-header-topbar">
             <span className={`donor-draft-status donor-draft-status-${saveState}`}>
               <span aria-hidden="true">{saveState === "error" ? "!" : "✓"}</span>
-              {saveMessage ?? "Draft saved"}
+              {saveMessage ?? (mode === "create" && !listingId ? "Draft will start saving after your first entry." : "Draft saved.")}
             </span>
           </div>
           <div className="donor-form-header-row">
-            <h1>{mode === "create" ? "Prepare the equipment listing for admin review" : "Update the donor listing"}</h1>
+            <h1>
+              {mode === "create"
+                ? "Prepare the equipment listing for admin review"
+                : isRejectedListing
+                  ? "Revise and resubmit the donor listing"
+                  : "Update the donor listing"}
+            </h1>
             <Link href="/donor" className="button button-primary donor-header-link">
               Back to donor dashboard
             </Link>
           </div>
+          {isRejectedListing ? (
+            <p className="listing-detail-note">
+              This listing was rejected during admin review. Update the submission details below, then resubmit the same
+              listing for another review pass.
+            </p>
+          ) : null}
         </header>
 
         <div className="donor-form-progress" aria-label="Listing progress">
@@ -564,37 +711,76 @@ export function DonorListingForm({
                 <div className="auth-field-grid">
                   <div className={getFieldClassName("title")}>
                     <label htmlFor="listing-title">Equipment title</label>
-                    <input id="listing-title" value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
+                    <input
+                      id="listing-title"
+                      value={draft.title}
+                      onChange={(event) => updateDraft("title", event.target.value)}
+                      placeholder="PCR machine, Leica microscope, centrifuge..."
+                    />
                     {fieldErrors.title ? <span className="auth-field-error">{fieldErrors.title}</span> : null}
                   </div>
                   <div className={getFieldClassName("category")}>
                     <label htmlFor="listing-category">Category</label>
-                    <input id="listing-category" value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} />
+                    <input
+                      id="listing-category"
+                      value={draft.category}
+                      onChange={(event) => updateDraft("category", event.target.value)}
+                      placeholder="Molecular biology, imaging, clinical diagnostics..."
+                    />
                     {fieldErrors.category ? <span className="auth-field-error">{fieldErrors.category}</span> : null}
                   </div>
                   <div className={getFieldClassName("condition")}>
                     <label htmlFor="listing-condition">Condition</label>
-                    <input id="listing-condition" value={draft.condition} onChange={(event) => updateDraft("condition", event.target.value)} />
+                    <input
+                      id="listing-condition"
+                      value={draft.condition}
+                      onChange={(event) => updateDraft("condition", event.target.value)}
+                      placeholder="Used, like new, needs calibration..."
+                    />
                     {fieldErrors.condition ? <span className="auth-field-error">{fieldErrors.condition}</span> : null}
                   </div>
                   <div className={getFieldClassName("quantity")}>
                     <label htmlFor="listing-quantity">Quantity</label>
-                    <input id="listing-quantity" type="number" min={1} step={1} value={draft.quantity} onChange={(event) => updateDraft("quantity", Number(event.target.value || 0))} />
+                    <input
+                      id="listing-quantity"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={draft.quantity}
+                      onChange={(event) => updateDraft("quantity", Number(event.target.value || 0))}
+                      placeholder="1"
+                    />
                     {fieldErrors.quantity ? <span className="auth-field-error">{fieldErrors.quantity}</span> : null}
                   </div>
                   <div className={getFieldClassName("availability_window")}>
                     <label htmlFor="listing-window">Availability window</label>
-                    <input id="listing-window" value={draft.availability_window} onChange={(event) => updateDraft("availability_window", event.target.value)} />
+                    <input
+                      id="listing-window"
+                      value={draft.availability_window}
+                      onChange={(event) => updateDraft("availability_window", event.target.value)}
+                      placeholder="Available now, pickup by May 15, end of semester..."
+                    />
                     {fieldErrors.availability_window ? <span className="auth-field-error">{fieldErrors.availability_window}</span> : null}
                   </div>
                   <div className={getFieldClassName("working_status")}>
                     <label htmlFor="listing-working-status">Working status</label>
-                    <input id="listing-working-status" value={draft.working_status} onChange={(event) => updateDraft("working_status", event.target.value)} />
+                    <input
+                      id="listing-working-status"
+                      value={draft.working_status}
+                      onChange={(event) => updateDraft("working_status", event.target.value)}
+                      placeholder="Fully functional, powers on but untested, for parts..."
+                    />
                     {fieldErrors.working_status ? <span className="auth-field-error">{fieldErrors.working_status}</span> : null}
                   </div>
                   <div className={`${getFieldClassName("description")} auth-field-span-full`}>
                     <label htmlFor="listing-description">Description</label>
-                    <textarea id="listing-description" rows={6} value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} />
+                    <textarea
+                      id="listing-description"
+                      rows={6}
+                      value={draft.description}
+                      onChange={(event) => updateDraft("description", event.target.value)}
+                      placeholder="Include manufacturer, model number, age, known issues, included accessories, and anything a recipient should know before requesting it."
+                    />
                     {fieldErrors.description ? <span className="auth-field-error">{fieldErrors.description}</span> : null}
                   </div>
                 </div>
@@ -637,7 +823,12 @@ export function DonorListingForm({
                   <div className="auth-field-grid">
                     <div className={getFieldClassName("location")}>
                       <label htmlFor="listing-location">Pickup location</label>
-                      <input id="listing-location" value={draft.location} onChange={(event) => updateDraft("location", event.target.value)} />
+                      <input
+                        id="listing-location"
+                        value={draft.location}
+                        onChange={(event) => updateDraft("location", event.target.value)}
+                        placeholder="Yale School of Medicine, New Haven, CT"
+                      />
                       {fieldErrors.location ? <span className="auth-field-error">{fieldErrors.location}</span> : null}
                     </div>
                     <div className={getFieldClassName("delivery_mode")}>
@@ -650,22 +841,43 @@ export function DonorListingForm({
                     </div>
                     <div className={getFieldClassName("dimensions_weight")}>
                       <label htmlFor="listing-dimensions">Dimensions and weight</label>
-                      <input id="listing-dimensions" value={draft.dimensions_weight} onChange={(event) => updateDraft("dimensions_weight", event.target.value)} />
+                      <input
+                        id="listing-dimensions"
+                        value={draft.dimensions_weight}
+                        onChange={(event) => updateDraft("dimensions_weight", event.target.value)}
+                        placeholder='24" x 18" x 20", approximately 45 lbs'
+                      />
                       {fieldErrors.dimensions_weight ? <span className="auth-field-error">{fieldErrors.dimensions_weight}</span> : null}
                     </div>
                     <div className={getFieldClassName("handling_requirements")}>
                       <label htmlFor="listing-handling">Handling requirements</label>
-                      <input id="listing-handling" value={draft.handling_requirements} onChange={(event) => updateDraft("handling_requirements", event.target.value)} />
+                      <input
+                        id="listing-handling"
+                        value={draft.handling_requirements}
+                        onChange={(event) => updateDraft("handling_requirements", event.target.value)}
+                        placeholder="Two-person lift, keep upright, cold storage needed..."
+                      />
                       {fieldErrors.handling_requirements ? <span className="auth-field-error">{fieldErrors.handling_requirements}</span> : null}
                     </div>
                     <div className={getFieldClassName("documentation_included")}>
                       <label htmlFor="listing-docs">Documentation included</label>
-                      <input id="listing-docs" value={draft.documentation_included} onChange={(event) => updateDraft("documentation_included", event.target.value)} />
+                      <input
+                        id="listing-docs"
+                        value={draft.documentation_included}
+                        onChange={(event) => updateDraft("documentation_included", event.target.value)}
+                        placeholder="User manual, maintenance log, calibration records..."
+                      />
                       {fieldErrors.documentation_included ? <span className="auth-field-error">{fieldErrors.documentation_included}</span> : null}
                     </div>
                     <div className={`${getFieldClassName("special_handling_flags")} auth-field-span-full`}>
                       <label htmlFor="listing-special-flags">Special handling flags</label>
-                      <textarea id="listing-special-flags" rows={4} value={draft.special_handling_flags} onChange={(event) => updateDraft("special_handling_flags", event.target.value)} />
+                      <textarea
+                        id="listing-special-flags"
+                        rows={4}
+                        value={draft.special_handling_flags}
+                        onChange={(event) => updateDraft("special_handling_flags", event.target.value)}
+                        placeholder="List decontamination status, missing parts, biohazard clearance, export restrictions, or any other special review notes."
+                      />
                       {fieldErrors.special_handling_flags ? <span className="auth-field-error">{fieldErrors.special_handling_flags}</span> : null}
                     </div>
                   </div>
@@ -674,43 +886,53 @@ export function DonorListingForm({
 
               {step.key === "compliance" ? (
                 <>
-                  <div className="donor-compliance-stack">
-                    {templates.map((template) => (
-                      <article
-                        key={template.form_type}
-                        className={`donor-compliance-card ${template.document.status === "completed" ? "donor-compliance-card-complete" : "donor-compliance-card-invalid"}`}
-                      >
-                        <div className="donor-compliance-card-row">
-                          <div className="donor-compliance-card-header">
-                            <h3>{template.title}</h3>
-                            <span className={getDocumentStatusClass(template.document.status)}>{getDocumentStatusLabel(template.document.status)}</span>
+                  {complianceReady ? (
+                    <div className="donor-compliance-stack">
+                      {templates.map((template) => (
+                        <article
+                          key={template.form_type}
+                          className={`donor-compliance-card ${template.document.status === "completed" ? "donor-compliance-card-complete" : "donor-compliance-card-invalid"}`}
+                        >
+                          <div className="donor-compliance-card-row">
+                            <div className="donor-compliance-card-header">
+                              <h3>{template.title}</h3>
+                              <span className={getDocumentStatusClass(template.document.status)}>{getDocumentStatusLabel(template.document.status)}</span>
+                            </div>
+                            <button type="button" className="button button-secondary" onClick={() => openDocumentModal(template)}>
+                              {template.document.status === "not_started" ? "Open PDF form" : "Replace PDF"}
+                            </button>
                           </div>
-                          <button type="button" className="button button-secondary" onClick={() => openDocumentModal(template)}>
-                            {template.document.status === "not_started" ? "Open PDF form" : "Replace PDF"}
-                          </button>
-                        </div>
 
-                        <div className="donor-document-meta">
-                          {template.document.completed_by_name ? (
-                            <span>
-                              Completed by {template.document.completed_by_name}
-                              {template.document.completed_at ? ` on ${new Date(template.document.completed_at).toLocaleDateString()}` : ""}
-                            </span>
-                          ) : null}
-                          {template.document.preview_url ? (
-                            <a href={template.document.preview_url} target="_blank" rel="noreferrer" className="button button-outline donor-document-preview-link">
-                              Preview PDF
-                            </a>
-                          ) : null}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                          <div className="donor-document-meta">
+                            {template.document.completed_by_name ? (
+                              <span>
+                                Completed by {template.document.completed_by_name}
+                                {template.document.completed_at ? ` on ${new Date(template.document.completed_at).toLocaleDateString()}` : ""}
+                              </span>
+                            ) : null}
+                            {template.document.preview_url ? (
+                              <a href={template.document.preview_url} target="_blank" rel="noreferrer" className="button button-outline donor-document-preview-link">
+                                Preview PDF
+                              </a>
+                            ) : null}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="auth-notice">
+                      Start the form by filling out at least one field. LabLink will create the draft first, then load the compliance PDFs here.
+                    </div>
+                  )}
                 </>
               ) : null}
 
               <div className="donor-form-actions">
-                <span className="donor-form-actions-note">The listing stays private until you submit it. Draft changes save automatically while you work.</span>
+                <span className="donor-form-actions-note">
+                  {mode === "create" && !listingId
+                    ? "The listing stays private until you submit it. LabLink will start the draft after your first entry."
+                    : "The listing stays private until you submit it. Draft changes save automatically while you work."}
+                </span>
                 <div className="donor-form-actions-buttons">
                   {currentStep > 0 ? (
                     <button type="button" className="button button-outline donor-form-secondary-action" onClick={() => attemptStepChange(currentStep - 1)}>
@@ -723,7 +945,7 @@ export function DonorListingForm({
                     </button>
                   ) : (
                     <button type="submit" className="button button-primary donor-form-primary-action" disabled={!canSubmit}>
-                      {isSubmitting ? "Submitting..." : "Submit for admin review"}
+                      {isSubmitting ? "Submitting..." : isRejectedListing ? "Resubmit for admin review" : "Submit for admin review"}
                     </button>
                   )}
                 </div>

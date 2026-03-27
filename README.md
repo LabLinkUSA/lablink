@@ -49,5 +49,10 @@ Notes:
 3. `pip install -e .`
 4. `uvicorn app.main:app --reload --reload-dir app`
 
+### Notification Email Setup
+- Set `LABLINK_RESEND_API_KEY`, `LABLINK_EMAIL_FROM`, and optionally `LABLINK_EMAIL_REPLY_TO` in `backend/.env`.
+- Set `LABLINK_EMAIL_CRON_TOKEN` for the protected outbox processor endpoint.
+- Run the notification email outbox job on a schedule by calling `POST /api/v1/internal/jobs/notification-emails/process` with `Authorization: Bearer <LABLINK_EMAIL_CRON_TOKEN>`.
+
 ### Handy root commands
 For local development, point the frontend API base URL at `http://127.0.0.1:8000/api/v1` so the browser and backend use the same loopback host consistently.

@@ -5,7 +5,7 @@ export default async function ListingsPage() {
   const [profile, listings] = await Promise.all([getCurrentProfile(), getPublicListings()]);
 
   return (
-    <section className="page-section">
+    <section className="page-section listings-page-section">
       <div className="shell">
         {listings.length > 0 ? (
           <PublicCatalogBrowser listings={listings} />

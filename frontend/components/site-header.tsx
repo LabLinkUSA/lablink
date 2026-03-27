@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { HeaderAuthActions } from "@/components/header-auth-actions";
@@ -41,7 +42,6 @@ function getNavItems(profile?: AuthenticatedUser | null) {
     navItems.push({ href: "/auth", label: "Donate" });
   }
 
-  navItems.push({ href: "/about", label: "About" });
   return navItems;
 }
 
@@ -91,7 +91,7 @@ export async function SiteHeader() {
     <header className="site-header">
       <div className="shell site-header-inner">
         <Link href={brandHref} className="brand-mark" aria-label={brandLabel}>
-          <strong>LabLink</strong>
+          <Image src="/lablink-header-logo.png" alt="LabLink" width={760} height={240} className="brand-mark-image" priority />
         </Link>
         {navItems.length > 0 ? (
           <nav className="site-nav" aria-label="Primary navigation">

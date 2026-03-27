@@ -1,0 +1,112 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /AcroForm 16 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R /Annots [15 0 R 7 0 R 8 0 R 9 0 R 10 0 R 11 0 R 12 0 R 13 0 R 14 0 R] >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+6 0 obj
+<< /Length 1961 >>
+stream
+0.9 w
+BT /F2 20 Tf 1 0 0 1 48 748 Tm (LabLink Decontamination Form) Tj ET
+BT /F2 12.5 Tf 1 0 0 1 48 712 Tm (Complete this form before transferring laboratory equipment through LabLink.) Tj ET
+BT /F1 9.8 Tf 1 0 0 1 48 686 Tm (Donors must confirm that the equipment has been assessed, cleaned, and prepared according to:) Tj ET
+BT /F1 9.8 Tf 1 0 0 1 68 668 Tm (1. institutional EHS procedures) Tj ET
+BT /F1 9.8 Tf 1 0 0 1 68 652 Tm (2. equipment-specific SOPs) Tj ET
+BT /F1 9.8 Tf 1 0 0 1 68 636 Tm (3. biosafety and hazard-control requirements) Tj ET
+BT /F1 9.8 Tf 1 0 0 1 48 614 Tm (Reference guide:) Tj ET
+0 0 1 rg
+BT /F1 9.8 Tf 1 0 0 1 132 614 Tm (NIH DOHS Decontamination) Tj ET
+132 612 m 258 612 l S
+0 0 0 rg
+BT /F2 10.2 Tf 1 0 0 1 48 584 Tm (Before you certify:) Tj ET
+BT /F1 9.0 Tf 1 0 0 1 68 568 Tm (- Remove or identify residual biological, chemical, and radiological materials.) Tj ET
+BT /F1 9.0 Tf 1 0 0 1 68 553 Tm (- Clean accessible surfaces, compartments, and detachable parts.) Tj ET
+BT /F1 9.0 Tf 1 0 0 1 68 538 Tm (- Label remaining hazards, damaged components, or handling restrictions.) Tj ET
+BT /F1 9.0 Tf 1 0 0 1 68 523 Tm (- Confirm whether manuals, maintenance logs, or service records are included.) Tj ET
+BT /F2 9.0 Tf 1 0 0 1 76 486 Tm (I confirm that I reviewed the applicable EHS, SOP, and biosafety requirements before releasing this equipment.) Tj ET
+BT /F2 10.2 Tf 1 0 0 1 48 434 Tm (Describe the decontamination steps completed.) Tj ET
+BT /F2 10.2 Tf 1 0 0 1 48 276 Tm (Residual hazards, contamination concerns, or handling restrictions) Tj ET
+BT /F2 9.0 Tf 1 0 0 1 76 124 Tm (I disclosed any remaining hazards, restrictions, or special handling requirements in the LabLink listing.) Tj ET
+BT /F2 10.2 Tf 1 0 0 1 48 86 Tm (Electronic signature \(full name\)) Tj ET
+BT /F2 10.2 Tf 1 0 0 1 324 86 Tm (Date signed) Tj ET
+48 478 18 18 re S
+48 326 516 92 re S
+48 174 516 92 re S
+48 116 18 18 re S
+48 44 232 22 re S
+324 44 240 22 re S
+endstream
+endobj
+7 0 obj
+<< /FT /Tx /T (lablink_form_type) /Rect [-100 -100 -80 -80] /DA (/Helv 10 Tf 0 g) /V (decontamination) /F 6 /Ff 1 /Subtype /Widget /Type /Annot /P 3 0 R >>
+endobj
+8 0 obj
+<< /FT /Tx /T (lablink_template_version) /Rect [-100 -130 -80 -110] /DA (/Helv 10 Tf 0 g) /V (2026-03-27) /F 6 /Ff 1 /Subtype /Widget /Type /Annot /P 3 0 R >>
+endobj
+9 0 obj
+<< /FT /Btn /T (ehs_protocol_reviewed) /Rect [48 478 66 496] /Subtype /Widget /Type /Annot /F 4 /V /Off /AS /Off /MK << /CA (4) >> /AP << /N << /Yes << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 35 >> stream
+0 0 0 rg 0 0 18 18 re S 4 9 m 7 4 l 14 14 l S
+endstream >> /Off << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 18 >> stream
+0 0 18 18 re S
+endstream >> >> >> /P 3 0 R >>
+endobj
+10 0 obj
+<< /FT /Tx /T (decontamination_method) /Rect [48 326 564 418] /DA (/Helv 10 Tf 0 g) /V () /F 4 /Ff 4096 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+11 0 obj
+<< /FT /Tx /T (residual_hazards) /Rect [48 174 564 266] /DA (/Helv 10 Tf 0 g) /V () /F 4 /Ff 4096 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+12 0 obj
+<< /FT /Btn /T (special_handling_disclosed) /Rect [48 116 66 134] /Subtype /Widget /Type /Annot /F 4 /V /Off /AS /Off /MK << /CA (4) >> /AP << /N << /Yes << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 35 >> stream
+0 0 0 rg 0 0 18 18 re S 4 9 m 7 4 l 14 14 l S
+endstream >> /Off << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 18 >> stream
+0 0 18 18 re S
+endstream >> >> >> /P 3 0 R >>
+endobj
+13 0 obj
+<< /FT /Tx /T (signer_name) /Rect [48 44 280 66] /DA (/Helv 10 Tf 0 g) /V () /F 4 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+14 0 obj
+<< /FT /Tx /T (signed_on) /Rect [324 44 564 66] /DA (/Helv 10 Tf 0 g) /V () /F 4 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+15 0 obj
+<< /Type /Annot /Subtype /Link /Rect [132 608 258 620] /Border [0 0 0] /A << /S /URI /URI (https://ors.od.nih.gov/sr/dohs/safety/laboratory/BioSafety/Pages/decontamination.aspx#table1) >> /P 3 0 R >>
+endobj
+16 0 obj
+<< /Fields [7 0 R 8 0 R 9 0 R 10 0 R 11 0 R 12 0 R 13 0 R 14 0 R] /DA (/Helv 10 Tf 0 g) /DR << /Font << /Helv 4 0 R >> >> >>
+endobj
+xref
+0 17
+0000000000 65535 f
+0000000009 00000 n
+0000000075 00000 n
+0000000132 00000 n
+0000000338 00000 n
+0000000408 00000 n
+0000000483 00000 n
+0000002495 00000 n
+0000002666 00000 n
+0000002840 00000 n
+0000003292 00000 n
+0000003497 00000 n
+0000003696 00000 n
+0000004154 00000 n
+0000004337 00000 n
+0000004519 00000 n
+0000004735 00000 n
+trailer
+<< /Size 17 /Root 1 0 R >>
+startxref
+4876
+%%EOF

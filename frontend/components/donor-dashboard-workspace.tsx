@@ -97,7 +97,6 @@ export function DonorDashboardWorkspace({
                         </div>
                         <div>
                           <p className="ops-equipment-title">{listing.title}</p>
-                          <p className="ops-equipment-subtitle">{listing.category}</p>
                         </div>
                       </div>
                     </td>
@@ -163,7 +162,6 @@ export function DonorDashboardWorkspace({
                             </div>
                             <div>
                               <p className="ops-equipment-title">{group.listing?.title ?? "Request competition"}</p>
-                              <p className="ops-equipment-subtitle">{group.requests.length} institution request(s)</p>
                             </div>
                           </div>
                         </td>

@@ -40,6 +40,18 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("LABLINK_EMAIL_REPLY_TO", "EMAIL_REPLY_TO"),
     )
+    email_cron_token: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LABLINK_EMAIL_CRON_TOKEN", "EMAIL_CRON_TOKEN"),
+    )
+    email_batch_size: int = Field(
+        default=50,
+        validation_alias=AliasChoices("LABLINK_EMAIL_BATCH_SIZE", "EMAIL_BATCH_SIZE"),
+    )
+    email_max_attempts: int = Field(
+        default=5,
+        validation_alias=AliasChoices("LABLINK_EMAIL_MAX_ATTEMPTS", "EMAIL_MAX_ATTEMPTS"),
+    )
     supabase_jwt_audience: str = Field(
         default="authenticated",
         validation_alias=AliasChoices("LABLINK_SUPABASE_JWT_AUDIENCE", "SUPABASE_JWT_AUDIENCE"),

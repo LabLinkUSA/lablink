@@ -30,6 +30,7 @@ class AccountStatus(StrEnum):
 class ListingStatus(StrEnum):
     DRAFT = "draft"
     PENDING_ADMIN_APPROVAL = "pending_admin_approval"
+    REJECTED = "rejected"
     LIVE = "live"
     UNDER_REVIEW = "under_review"
     MATCHED_RESERVED = "matched_reserved"
@@ -71,6 +72,7 @@ class NotificationType(StrEnum):
 
 class NotificationEmailStatus(StrEnum):
     PENDING = "pending"
+    SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"
 
@@ -403,6 +405,12 @@ class NotificationListResponse(BaseModel):
 class MarkNotificationsViewedResponse(BaseModel):
     marked_count: int
     viewed_at: datetime
+
+
+class NotificationEmailProcessingResponse(BaseModel):
+    processed_count: int
+    sent_count: int
+    failed_count: int
 
 
 class MessageCreate(BaseModel):

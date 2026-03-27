@@ -1,9 +1,32 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { DonorListingForm } from "@/components/donor-listing-form";
-import { createDonorListingDraft, getCurrentProfile, getDonorListingDetail, getDonorListingFormTemplates } from "@/lib/api";
+import { getCurrentProfile, getDonorListingDetail, getDonorListingFormTemplates } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
+import type { Listing } from "@/lib/types";
+
+const EMPTY_CREATE_LISTING: Listing = {
+  id: "",
+  title: "",
+  category: "",
+  condition: "",
+  quantity: 1,
+  location: "",
+  availability_window: "",
+  description: "",
+  dimensions_weight: "",
+  handling_requirements: "",
+  working_status: "",
+  documentation_included: "",
+  special_handling_flags: "",
+  delivery_mode: "pickup_only",
+  status: "draft",
+  photo_urls: [],
+  donor_institution_id: "",
+  created_by_user_id: "",
+  created_at: "",
+  request_count: 0,
+};
 
 export default async function DonorListEquipmentPage({
   searchParams,
@@ -79,24 +102,10 @@ export default async function DonorListEquipmentPage({
   }
 
   if (!draft) {
-    const draftListing = await createDonorListingDraft();
-    if (draftListing) {
-      redirect(`/donor/list-equipment?draft=${draftListing.id}`);
-    }
-  }
-
-  if (!draft) {
     return (
       <section className="page-section">
-        <div className="shell empty-state">
-          <span className="eyebrow">Draft unavailable</span>
-          <h1>We couldn&apos;t start a draft equipment listing.</h1>
-          <p>Try again in a moment. LabLink could not provision the draft listing needed for this workflow.</p>
-          <div className="page-actions">
-            <Link href="/donor" className="button button-secondary">
-              Back to donor dashboard
-            </Link>
-          </div>
+        <div className="shell donor-form-page">
+          <DonorListingForm mode="create" listing={EMPTY_CREATE_LISTING} documentTemplates={[]} />
         </div>
       </section>
     );

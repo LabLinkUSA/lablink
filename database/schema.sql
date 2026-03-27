@@ -6,6 +6,7 @@ create type public.account_status as enum ('pending_verification', 'verified', '
 create type public.listing_status as enum (
   'draft',
   'pending_admin_approval',
+  'rejected',
   'live',
   'under_review',
   'matched_reserved',
@@ -32,7 +33,7 @@ create type public.notification_type as enum (
   'request_status_changed',
   'recipient_catalog_updated'
 );
-create type public.notification_email_status as enum ('pending', 'sent', 'failed');
+create type public.notification_email_status as enum ('pending', 'sending', 'sent', 'failed');
 
 create table if not exists public.institutions (
   id text primary key,
@@ -210,7 +211,10 @@ create table if not exists public.notifications (
   created_at timestamptz not null default timezone('utc', now()),
   viewed_at timestamptz,
   email_status public.notification_email_status not null default 'pending',
+  email_attempt_count integer not null default 0,
   email_attempted_at timestamptz,
+  email_next_attempt_at timestamptz not null default timezone('utc', now()),
+  email_provider_message_id text,
   email_error text
 );
 
@@ -232,3 +236,4 @@ create index if not exists threads_request_idx on public.request_message_threads
 create index if not exists board_posts_status_idx on public.request_board_posts(status);
 create index if not exists notifications_user_created_at_idx on public.notifications(user_id, created_at desc);
 create index if not exists notifications_user_viewed_at_idx on public.notifications(user_id, viewed_at, created_at desc);
+create index if not exists notifications_email_outbox_idx on public.notifications(email_status, email_next_attempt_at, created_at);

@@ -4,6 +4,7 @@ export type AccountStatus = "pending_verification" | "verified" | "restricted" |
 export type ListingStatus =
   | "draft"
   | "pending_admin_approval"
+  | "rejected"
   | "live"
   | "under_review"
   | "matched_reserved"
@@ -27,7 +28,7 @@ export type NotificationType =
   | "listing_status_changed"
   | "request_status_changed"
   | "recipient_catalog_updated";
-export type NotificationEmailStatus = "pending" | "sent" | "failed";
+export type NotificationEmailStatus = "pending" | "sending" | "sent" | "failed";
 export type ListingDocumentFormType = "decontamination" | "liability_release";
 export type ListingDocumentStatus = "not_started" | "completed" | "outdated";
 export type ListingDocumentFieldType = "text" | "textarea" | "checkbox" | "date";

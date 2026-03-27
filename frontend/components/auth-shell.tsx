@@ -446,6 +446,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
   }
 
   const isSignIn = mode === "sign_in";
+  const shouldHideSignedInState = isSignIn && sessionUser !== null;
   const title = isSignIn ? "Welcome Back" : "Create your account";
   const subtitle = isSignIn
     ? "Access your clinical dashboard and equipment inventory."
@@ -508,7 +509,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
               <p>{subtitle}</p>
             </div>
 
-            {sessionUser ? (
+            {shouldHideSignedInState ? null : sessionUser ? (
               <div className="auth-state-card">
                 <div className="list-row-topline">
                   <strong>Signed in</strong>

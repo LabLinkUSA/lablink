@@ -1073,8 +1073,16 @@ function ListingReviewModal({
                   value={status}
                   onChange={(event) => setStatus(event.target.value as Listing["status"])}
                 >
-                  {reviewListing.status !== "matched_reserved" ? <option value="pending_admin_approval">Pending</option> : null}
-                  {reviewListing.status !== "matched_reserved" ? <option value="live">Approved</option> : null}
+                  {reviewListing.status !== "matched_reserved" && reviewListing.status !== "rejected" ? (
+                    <option value="pending_admin_approval">Pending</option>
+                  ) : null}
+                  {["pending_admin_approval", "under_review"].includes(reviewListing.status) ? (
+                    <option value="rejected">Rejected</option>
+                  ) : null}
+                  {reviewListing.status !== "matched_reserved" && reviewListing.status !== "rejected" ? (
+                    <option value="live">Approved</option>
+                  ) : null}
+                  {reviewListing.status === "rejected" ? <option value="rejected">Rejected</option> : null}
                   {reviewListing.status === "matched_reserved" ? <option value="matched_reserved">Match reserved</option> : null}
                   <option value="removed_by_admin">Remove from marketplace</option>
                 </select>

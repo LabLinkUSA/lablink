@@ -49,7 +49,7 @@ export function ForgotPasswordShell() {
             <span className="eyebrow">Password reset</span>
             <h1>Request a secure reset link.</h1>
             <p>
-              Enter the email address tied to your LabLink account. If it exists, Supabase will send a password reset
+              Enter the email address tied to your LabLink account. If it exists, LabLink will send a password reset
               link to that inbox.
             </p>
           </div>

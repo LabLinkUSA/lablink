@@ -32,6 +32,7 @@ class AccountStatus(str, Enum):
 class ListingStatus(str, Enum):
     DRAFT = "draft"
     PENDING_ADMIN_APPROVAL = "pending_admin_approval"
+    REJECTED = "rejected"
     LIVE = "live"
     UNDER_REVIEW = "under_review"
     MATCHED_RESERVED = "matched_reserved"

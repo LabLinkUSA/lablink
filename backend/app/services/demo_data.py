@@ -167,7 +167,13 @@ class DemoRepository:
         listings_for_review = [
             listing
             for listing in self.listings.values()
-            if listing.status in {ListingStatus.PENDING_ADMIN_APPROVAL, ListingStatus.UNDER_REVIEW}
+            if listing.status in {
+                ListingStatus.PENDING_ADMIN_APPROVAL,
+                ListingStatus.REJECTED,
+                ListingStatus.UNDER_REVIEW,
+                ListingStatus.LIVE,
+                ListingStatus.MATCHED_RESERVED,
+            }
         ]
         requests_requiring_attention = [
             request

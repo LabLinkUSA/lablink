@@ -11,50 +11,52 @@ LISTING_DOCUMENT_TEMPLATES: list[dict[str, Any]] = [
     {
         "form_type": "decontamination",
         "template_version": "2026-03-27",
-        "blank_pdf_path": "/forms/decontamination-template-2026-03-27.pdf",
+        "blank_pdf_path": "/forms/lablink-decontamination-form.pdf",
         "title": "Decontamination Form",
         "summary": "Open the fillable PDF, complete it in your PDF viewer, then upload the finished file back to LabLink.",
         "body_sections": [
-            "Complete this PDF before transferring laboratory equipment through LabLink.",
-            (
-                "Donors must follow their institution's environmental health and safety procedures, equipment SOPs, "
-                "and any applicable biosafety protocols. The CDC/NIH BMBL 6th Edition remains an advisory guide."
-            ),
+            "Complete this form before transferring laboratory equipment through LabLink.",
+            "Donors must confirm that the equipment has been assessed, cleaned, and prepared according to:",
+            "1. institutional EHS procedures",
+            "2. equipment-specific SOPs",
+            "3. biosafety and hazard-control requirements",
+            "Reference guide: NIH DOHS Decontamination Table 1.",
+            "Before you certify:",
+            "Remove or identify all residual biological, chemical, and radiological materials.",
+            "Clean and decontaminate all accessible surfaces, compartments, and detachable parts.",
+            "Label any remaining hazards, damaged components, or handling restrictions.",
+            "Confirm whether manuals, maintenance logs, or service records are included.",
         ],
         "guide_links": [
             {
-                "label": "CDC/NIH BMBL 6th Edition",
-                "url": "https://www.cdc.gov/labs/bmbl/index.html",
-            },
-            {
-                "label": "BMBL 6th Edition PDF",
-                "url": "https://www.cdc.gov/labs/media/pdfs/2025/08/SF__19a_308133-A_BMBL6_00-BOOK-WEB-final-3.pdf",
+                "label": "NIH DOHS Decontamination Table 1",
+                "url": "https://ors.od.nih.gov/sr/dohs/safety/laboratory/BioSafety/Pages/decontamination.aspx#table1",
             },
         ],
         "fields": [
             {
                 "key": "ehs_protocol_reviewed",
-                "label": "I reviewed the applicable EHS / biosafety procedures for this equipment.",
+                "label": "I confirm that I reviewed the applicable EHS, SOP, and biosafety requirements before releasing this equipment.",
                 "type": "checkbox",
                 "required": True,
             },
             {
                 "key": "decontamination_method",
-                "label": "Describe the decontamination method used.",
+                "label": "Describe the decontamination steps completed.",
                 "type": "textarea",
                 "required": True,
-                "placeholder": "Summarize the cleaning or decontamination steps completed before transfer.",
+                "placeholder": "Include the agent or method used, surfaces/components treated, date completed, and who performed or verified the work.",
             },
             {
                 "key": "residual_hazards",
-                "label": "Residual hazards or contamination concerns",
+                "label": "Residual hazards, contamination concerns, or handling restrictions",
                 "type": "textarea",
                 "required": True,
-                "placeholder": "Write None if there are no known residual hazards.",
+                "placeholder": "Include known limitations, missing covers, inaccessible areas, broken seals, sharp edges, chemical residue concerns, or write None known.",
             },
             {
                 "key": "special_handling_disclosed",
-                "label": "I disclosed any remaining special handling requirements in the LabLink listing.",
+                "label": "I disclosed any remaining hazards, restrictions, or special handling requirements in the LabLink listing.",
                 "type": "checkbox",
                 "required": True,
             },
@@ -75,7 +77,7 @@ LISTING_DOCUMENT_TEMPLATES: list[dict[str, Any]] = [
     {
         "form_type": "liability_release",
         "template_version": "2026-03-27",
-        "blank_pdf_path": "/forms/liability-release-template-2026-03-27.pdf",
+        "blank_pdf_path": "/forms/lablink-liability-release.pdf",
         "title": "Liability Release",
         "summary": "Open the fillable PDF, complete it in your PDF viewer, then upload the finished file back to LabLink.",
         "draft_notice": "Draft legal language pending counsel review",
