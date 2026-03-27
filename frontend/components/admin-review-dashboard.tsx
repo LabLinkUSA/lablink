@@ -12,7 +12,7 @@ import {
 import { StatusPill } from "@/components/status-pill";
 import { formatDate } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AdminDashboardResponse, Institution, Listing, ListingDetailResponse, RequestStatus } from "@/lib/types";
+import type { AdminDashboardResponse, Institution, InternalListingDetailResponse, Listing, ListingDetailResponse } from "@/lib/types";
 
 type AdminReviewDashboardProps = {
   dashboard: AdminDashboardResponse;
@@ -20,14 +20,6 @@ type AdminReviewDashboardProps = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const supabase = createSupabaseBrowserClient();
-const REQUEST_STATUS_OPTIONS: RequestStatus[] = [
-  "admin_review",
-  "awaiting_donor_confirmation",
-  "approved_matched",
-  "pickup_transfer_coordination",
-  "completed",
-  "rejected_cancelled",
-];
 
 function LabLinkAdminIcon() {
   return (
@@ -87,21 +79,21 @@ function CompetitionQueueIcon() {
 const ADMIN_SECTION_ORDER = [
   {
     id: "institution-verification",
-    title: "Institution Verification Queue",
+    title: "Institution Verification",
     shortLabel: "Institutions",
     icon: InstitutionQueueIcon,
     tone: "primary",
   },
   {
     id: "listing-moderation",
-    title: "Listing Moderation Queue",
+    title: "Listing Verification",
     shortLabel: "Listings",
     icon: ListingQueueIcon,
     tone: "primary",
   },
   {
     id: "request-competition",
-    title: "Request Competition",
+    title: "Recipient Selection",
     shortLabel: "Competition",
     icon: CompetitionQueueIcon,
     tone: "secondary",
@@ -274,7 +266,7 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             <div className="admin-ops-section-intro">
               <h2>
                 <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[0].tone}`} />
-                Institution Verification Queue
+                Institution Verification
               </h2>
             </div>
             <OperationsTableSection
@@ -320,14 +312,14 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             <div className="admin-ops-section-intro">
               <h2>
                 <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[1].tone}`} />
-                Listing Moderation Queue
+                Listing Verification
               </h2>
             </div>
             <OperationsTableSection
               title="Listing Reviews"
               tone="primary"
               hideTitle
-              columns={["Equipment", "Institution", "Condition", ""]}
+              columns={["Equipment", "Institution", "Condition", "Status"]}
               footer={<span>Showing {dashboard.listings_for_review.length} listing review item(s)</span>}
             >
               {dashboard.listings_for_review.length === 0 ? (
@@ -364,7 +356,7 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                       <span className="ops-condition-badge">{listing.condition}</span>
                     </td>
                     <td className="ops-table-align-right">
-                      <span className="ops-table-linkish">Open review</span>
+                      <StatusPill status={listing.status} />
                     </td>
                   </tr>
                 ))
@@ -376,20 +368,20 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             <div className="admin-ops-section-intro">
               <h2>
                 <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[2].tone}`} />
-                Request Competition
+                Recipient Selection
               </h2>
             </div>
             <OperationsTableSection
-              title="Competition Reviews"
+              title="Recipient Selection"
               tone="secondary"
               hideTitle
-              columns={["Listing", "Competition", "Primary Status", ""]}
-              footer={<span>Showing {groupedCompetitionRequests.length} competition review item(s)</span>}
+              columns={["Listing", "Recipients", "Primary Status", ""]}
+              footer={<span>Showing {groupedCompetitionRequests.length} recipient selection item(s)</span>}
             >
               {groupedCompetitionRequests.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="ops-table-empty-cell">
-                    <div className="ops-empty-state">No request competition yet.</div>
+                    <div className="ops-empty-state">No recipient selection items yet.</div>
                   </td>
                 </tr>
               ) : (
@@ -397,12 +389,14 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                   const matchedRequest = group.requests.find((request) => request.status === "approved_matched");
                   const primaryStatus = matchedRequest?.status ?? group.requests[0]?.status ?? "submitted";
                   const urgencyLabel = matchedRequest?.program_or_department ?? group.requests[0]?.program_or_department;
+                  const isCompetitionListingInactive =
+                    group.listing?.status === "pending_admin_approval" || group.listing?.status === "under_review";
 
                   return (
                     <tr
                       key={listingId}
-                      className="ops-table-row ops-table-row-clickable"
-                      onClick={() => setSelectedCompetitionListingId(listingId)}
+                      className={`ops-table-row${isCompetitionListingInactive ? " ops-table-row-muted" : " ops-table-row-clickable"}`}
+                      onClick={isCompetitionListingInactive ? undefined : () => setSelectedCompetitionListingId(listingId)}
                     >
                       <td>
                         <div className="ops-equipment-cell">
@@ -431,14 +425,14 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                       <td>
                         <div className="admin-ops-competition-cell">
                           <strong>{group.requests.length} request(s)</strong>
-                          <span>{group.requests[0]?.needed_by ? `Needed by ${group.requests[0].needed_by}` : "Timeline pending"}</span>
+                          {matchedRequest ? <span>Recipient selected</span> : null}
                         </div>
                       </td>
                       <td>
                         <StatusPill status={primaryStatus} />
                       </td>
                       <td className="ops-table-align-right">
-                        <span className="ops-table-linkish">Open review</span>
+                        <span className="ops-table-linkish">{isCompetitionListingInactive ? "Unavailable" : "Open review"}</span>
                       </td>
                     </tr>
                   );
@@ -477,8 +471,6 @@ function RequestCompetitionModal({
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [requestStatuses, setRequestStatuses] = useState<Record<string, RequestStatus>>({});
-  const [adminNote, setAdminNote] = useState("");
 
   useEffect(() => {
     void (async () => {
@@ -490,7 +482,7 @@ function RequestCompetitionModal({
 
         const accessToken = data.session?.access_token;
         if (!accessToken) {
-          throw new Error("You must be signed in as an admin to review request competition.");
+          throw new Error("You must be signed in as an admin to review recipient selection.");
         }
 
         const response = await fetch(`${API_BASE_URL}/admin/listings/${listingId}`, {
@@ -500,7 +492,7 @@ function RequestCompetitionModal({
         });
 
         if (!response.ok) {
-          let message = "Could not load the request competition view.";
+          let message = "Could not load the recipient selection view.";
           try {
             const body = (await response.json()) as { detail?: string };
             if (body.detail) {
@@ -512,11 +504,8 @@ function RequestCompetitionModal({
 
         const nextDetail = (await response.json()) as ListingDetailResponse;
         setDetail(nextDetail);
-        setRequestStatuses(
-          Object.fromEntries(nextDetail.related_requests.map((request) => [request.id, request.status as RequestStatus])),
-        );
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Could not load the request competition view.");
+        setError(loadError instanceof Error ? loadError.message : "Could not load the recipient selection view.");
       } finally {
         setIsLoading(false);
       }
@@ -545,8 +534,7 @@ function RequestCompetitionModal({
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          status: requestStatuses[requestId] ?? "approved_matched",
-          admin_note: adminNote.trim() || undefined,
+          status: "approved_matched",
         }),
       });
 
@@ -625,7 +613,7 @@ function RequestCompetitionModal({
       >
         <div className="review-modal-header">
           <div>
-            <span className="eyebrow">Request competition</span>
+            <span className="eyebrow">Recipient selection</span>
             <h2 id={`request-competition-${listingId}`}>{detail?.listing.title ?? "Loading listing..."}</h2>
           </div>
           <div className="page-actions" style={{ marginTop: 0 }}>
@@ -640,22 +628,11 @@ function RequestCompetitionModal({
           </div>
         </div>
 
-        {isLoading ? <p className="auth-notice">Loading request competition...</p> : null}
+        {isLoading ? <p className="auth-notice">Loading recipient selection...</p> : null}
         {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
 
         {detail ? (
           <div className="list">
-            <div className="auth-field">
-              <label htmlFor={`request-admin-note-${listingId}`}>Admin note</label>
-              <textarea
-                id={`request-admin-note-${listingId}`}
-                name="adminNote"
-                value={adminNote}
-                onChange={(event) => setAdminNote(event.target.value)}
-                rows={3}
-                placeholder="Optional note included in recipient notifications"
-              />
-            </div>
             {detail.related_requests.map((request) => (
               <article key={request.id} className="list-row">
                 <div className="list-row-topline">
@@ -665,36 +642,17 @@ function RequestCompetitionModal({
                 <h3>{request.intended_use}</h3>
                 <p>{request.storage_readiness}</p>
                 <div className="list-row-meta">
-                  <span>Needed by {request.needed_by}</span>
+                  <span>{request.audience}</span>
                   <span>{request.delivery_constraints}</span>
                 </div>
                 <div className="list-row-actions">
-                  <label className="sr-only" htmlFor={`request-status-${request.id}`}>
-                    Request status
-                  </label>
-                  <select
-                    id={`request-status-${request.id}`}
-                    value={requestStatuses[request.id] ?? request.status}
-                    onChange={(event) =>
-                      setRequestStatuses((current) => ({
-                        ...current,
-                        [request.id]: event.target.value as RequestStatus,
-                      }))
-                    }
-                  >
-                    {REQUEST_STATUS_OPTIONS.map((statusValue) => (
-                      <option key={statusValue} value={statusValue}>
-                        {statusValue.replaceAll("_", " ")}
-                      </option>
-                    ))}
-                  </select>
                   <button
                     type="button"
                     className="button button-primary"
                     onClick={() => handleSelectRecipient(request.id)}
                     disabled={selectedRequestId === request.id}
                   >
-                    {selectedRequestId === request.id ? "Updating..." : "Update status"}
+                    {selectedRequestId === request.id ? "Selecting..." : "Select recipient"}
                   </button>
                 </div>
               </article>
@@ -851,6 +809,50 @@ function ListingReviewModal({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRemovalConfirmOpen, setIsRemovalConfirmOpen] = useState(false);
+  const [detail, setDetail] = useState<InternalListingDetailResponse | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(true);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+
+        const accessToken = data.session?.access_token;
+        if (!accessToken) {
+          throw new Error("You must be signed in as an admin to review this listing.");
+        }
+
+        const response = await fetch(`${API_BASE_URL}/admin/listings/${listing.id}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          let message = "Could not load the listing review details.";
+          try {
+            const body = (await response.json()) as { detail?: string };
+            if (body.detail) {
+              message = body.detail;
+            }
+          } catch {}
+          throw new Error(message);
+        }
+
+        setDetail((await response.json()) as InternalListingDetailResponse);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Could not load the listing review details.");
+      } finally {
+        setIsDetailLoading(false);
+      }
+    })();
+  }, [listing.id]);
+
+  const reviewListing = detail?.listing ?? listing;
+  const documents = detail?.documents ?? [];
 
   async function submitStatusUpdate() {
     setError(null);
@@ -915,13 +917,13 @@ function ListingReviewModal({
         className="review-modal-card review-modal-card-wide"
         role="dialog"
         aria-modal="true"
-        aria-labelledby={`listing-review-${listing.id}`}
+        aria-labelledby={`listing-review-${reviewListing.id}`}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="review-modal-header">
           <div>
             <span className="eyebrow">Listing review</span>
-            <h2 id={`listing-review-${listing.id}`}>{listing.title}</h2>
+            <h2 id={`listing-review-${reviewListing.id}`}>{reviewListing.title}</h2>
           </div>
           <button type="button" className="button button-outline" onClick={onClose}>
             Close
@@ -930,10 +932,10 @@ function ListingReviewModal({
 
         <div className="review-modal-layout">
           <div className="review-modal-image">
-            {listing.photo_urls[0] ? (
+            {reviewListing.photo_urls[0] ? (
               <Image
-                src={listing.photo_urls[0]}
-                alt={listing.title}
+                src={reviewListing.photo_urls[0]}
+                alt={reviewListing.title}
                 fill
                 sizes="(max-width: 980px) 100vw, 40vw"
                 className="listing-card-image"
@@ -945,35 +947,35 @@ function ListingReviewModal({
 
           <div className="review-modal-content">
             <div className="list-row-topline">
-              <strong>{listing.category}</strong>
-              <StatusPill status={listing.status} />
+              <strong>{reviewListing.category}</strong>
+              <StatusPill status={reviewListing.status} />
             </div>
-            <p>{listing.description}</p>
+            <p>{reviewListing.description}</p>
 
             <div className="review-detail-grid">
               <div className="review-detail-card">
                 <span>Condition</span>
-                <strong>{listing.condition}</strong>
+                <strong>{reviewListing.condition}</strong>
               </div>
               <div className="review-detail-card">
                 <span>Quantity</span>
-                <strong>{listing.quantity}</strong>
+                <strong>{reviewListing.quantity}</strong>
               </div>
               <div className="review-detail-card">
                 <span>Location</span>
-                <strong>{listing.location}</strong>
+                <strong>{reviewListing.location}</strong>
               </div>
               <div className="review-detail-card">
                 <span>Posted</span>
-                <strong>{formatDate(listing.created_at)}</strong>
+                <strong>{formatDate(reviewListing.created_at)}</strong>
               </div>
               <div className="review-detail-card">
                 <span>Availability window</span>
-                <strong>{listing.availability_window}</strong>
+                <strong>{reviewListing.availability_window}</strong>
               </div>
               <div className="review-detail-card">
                 <span>Request count</span>
-                <strong>{listing.request_count}</strong>
+                <strong>{reviewListing.request_count}</strong>
               </div>
             </div>
 
@@ -982,50 +984,105 @@ function ListingReviewModal({
               <dl className="review-spec-grid">
                 <div>
                   <dt>Handling requirements</dt>
-                  <dd>{listing.handling_requirements}</dd>
+                  <dd>{reviewListing.handling_requirements}</dd>
                 </div>
                 <div>
                   <dt>Dimensions and weight</dt>
-                  <dd>{listing.dimensions_weight}</dd>
+                  <dd>{reviewListing.dimensions_weight}</dd>
                 </div>
                 <div>
                   <dt>Working status</dt>
-                  <dd>{listing.working_status}</dd>
+                  <dd>{reviewListing.working_status}</dd>
                 </div>
                 <div>
                   <dt>Documentation included</dt>
-                  <dd>{listing.documentation_included}</dd>
+                  <dd>{reviewListing.documentation_included}</dd>
                 </div>
                 <div>
                   <dt>Special handling flags</dt>
-                  <dd>{listing.special_handling_flags}</dd>
+                  <dd>{reviewListing.special_handling_flags}</dd>
                 </div>
                 <div>
                   <dt>Delivery mode</dt>
-                  <dd>{listing.delivery_mode.replaceAll("_", " ")}</dd>
+                  <dd>{reviewListing.delivery_mode.replaceAll("_", " ")}</dd>
                 </div>
               </dl>
             </div>
 
+            <div className="review-modal-section">
+              <h3>Compliance Forms</h3>
+              {isDetailLoading ? <p>Loading compliance documents...</p> : null}
+              {!isDetailLoading && documents.length === 0 ? (
+                <p>No compliance PDFs are attached to this listing.</p>
+              ) : null}
+              {!isDetailLoading && documents.length > 0 ? (
+                <div className="admin-document-grid">
+                  {documents.map((document) => (
+                    <article key={document.form_type} className="admin-document-card">
+                      <div className="admin-document-card-header">
+                        <div>
+                          <strong>{document.title}</strong>
+                          <p>
+                            {document.completed_by_name
+                              ? `Completed by ${document.completed_by_name}`
+                              : "Not yet completed"}
+                            {document.completed_at
+                              ? ` on ${new Date(document.completed_at).toLocaleDateString()}`
+                              : ""}
+                          </p>
+                        </div>
+                        <span className={`admin-document-badge admin-document-badge-${document.status}`}>
+                          {document.status.replaceAll("_", " ")}
+                        </span>
+                      </div>
+
+                      {document.preview_url ? (
+                        <iframe
+                          title={`${document.title} preview`}
+                          src={document.preview_url}
+                          className="admin-document-preview"
+                        />
+                      ) : (
+                        <div className="admin-document-preview admin-document-preview-empty">No PDF preview available</div>
+                      )}
+
+                      <div className="admin-document-actions">
+                        {document.download_url ? (
+                          <a
+                            className="button button-secondary"
+                            href={document.download_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Download PDF
+                          </a>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
             <form onSubmit={handleSubmit} className="review-modal-form">
               <div className="auth-field">
-                <label htmlFor={`listing-status-${listing.id}`}>Change Listing Status</label>
+                <label htmlFor={`listing-status-${reviewListing.id}`}>Change Listing Status</label>
                 <select
-                  id={`listing-status-${listing.id}`}
+                  id={`listing-status-${reviewListing.id}`}
                   name="status"
                   value={status}
                   onChange={(event) => setStatus(event.target.value as Listing["status"])}
                 >
-                  {listing.status !== "matched_reserved" ? <option value="pending_admin_approval">Pending</option> : null}
-                  {listing.status !== "matched_reserved" ? <option value="live">Approved</option> : null}
-                  {listing.status === "matched_reserved" ? <option value="matched_reserved">Match reserved</option> : null}
+                  {reviewListing.status !== "matched_reserved" ? <option value="pending_admin_approval">Pending</option> : null}
+                  {reviewListing.status !== "matched_reserved" ? <option value="live">Approved</option> : null}
+                  {reviewListing.status === "matched_reserved" ? <option value="matched_reserved">Match reserved</option> : null}
                   <option value="removed_by_admin">Remove from marketplace</option>
                 </select>
               </div>
               <div className="auth-field">
-                <label htmlFor={`listing-note-${listing.id}`}>Admin note</label>
+                <label htmlFor={`listing-note-${reviewListing.id}`}>Admin note</label>
                 <textarea
-                  id={`listing-note-${listing.id}`}
+                  id={`listing-note-${reviewListing.id}`}
                   name="adminNote"
                   value={adminNote}
                   onChange={(event) => setAdminNote(event.target.value)}

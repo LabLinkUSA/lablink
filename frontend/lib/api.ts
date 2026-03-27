@@ -5,7 +5,10 @@ import type {
   AdminDashboardResponse,
   AuthenticatedUser,
   DonorDashboardResponse,
+  InternalListingDetailResponse,
   Listing,
+  ListingDocumentSaveResponse,
+  ListingDocumentTemplatesResponse,
   ListingDetailResponse,
   RecipientDashboardResponse,
   RequestBoardPost,
@@ -71,8 +74,16 @@ export async function getDonorRequestBoard(): Promise<RequestBoardPost[] | null>
   return fetchAuthedJson<RequestBoardPost[]>("/donor/request-board");
 }
 
-export async function getDonorListingDetail(listingId: string): Promise<ListingDetailResponse | null> {
-  return fetchAuthedJson<ListingDetailResponse>(`/donor/listings/${listingId}`);
+export async function createDonorListingDraft(): Promise<Listing | null> {
+  return fetchAuthedJson<Listing>("/donor/listings/drafts", { method: "POST" });
+}
+
+export async function getDonorListingDetail(listingId: string): Promise<InternalListingDetailResponse | null> {
+  return fetchAuthedJson<InternalListingDetailResponse>(`/donor/listings/${listingId}`);
+}
+
+export async function getDonorListingFormTemplates(listingId: string): Promise<ListingDocumentTemplatesResponse | null> {
+  return fetchAuthedJson<ListingDocumentTemplatesResponse>(`/donor/listings/${listingId}/form-templates`);
 }
 
 export async function getRecipientDashboard(): Promise<RecipientDashboardResponse | null> {
@@ -81,6 +92,17 @@ export async function getRecipientDashboard(): Promise<RecipientDashboardRespons
 
 export async function getAdminDashboard(): Promise<AdminDashboardResponse | null> {
   return fetchAuthedJson<AdminDashboardResponse>("/admin/dashboard");
+}
+
+export async function saveDonorListingDocument(
+  listingId: string,
+  formType: string,
+  payload: FormData,
+): Promise<ListingDocumentSaveResponse | null> {
+  return fetchAuthedJson<ListingDocumentSaveResponse>(`/donor/listings/${listingId}/documents/${formType}`, {
+    method: "PUT",
+    body: payload,
+  });
 }
 
 export async function getRecipientSavedListingState(listingId: string): Promise<SavedListingStateResponse | null> {

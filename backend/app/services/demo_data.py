@@ -95,7 +95,7 @@ class DemoRepository:
         active_requests = [
             request
             for request in self.requests.values()
-            if request.listing_id in listing_ids and request.status != RequestStatus.REJECTED_CANCELLED
+            if request.listing_id in listing_ids and request.status != RequestStatus.COMPLETED
         ]
         impact_summary = {
             "total_items_donated": sum(listing.quantity for listing in owned_listings if listing.status == ListingStatus.FULFILLED),
@@ -125,17 +125,31 @@ class DemoRepository:
         )
 
     def recipient_dashboard(self, user: AuthenticatedUser) -> RecipientDashboardResponse:
-        institution_requests = sorted(
+        latest_requests_by_listing: dict[str, EquipmentRequest] = {}
+        for request in sorted(
             [request for request in self.requests.values() if request.recipient_institution_id == user.institution.id],
             key=lambda request: request.submitted_at,
             reverse=True,
-        )
+        ):
+            listing = self.listings.get(request.listing_id)
+            if listing and listing.status in {ListingStatus.REMOVED_BY_ADMIN, ListingStatus.REMOVED_BY_DONOR}:
+                continue
+            if request.listing_id not in latest_requests_by_listing:
+                latest_requests_by_listing[request.listing_id] = request
+        institution_requests = list(latest_requests_by_listing.values())
+        institution_requests = [
+            request for request in institution_requests if request.status != RequestStatus.REJECTED_CANCELLED
+        ]
         request_ids = {request.id for request in institution_requests}
         threads = [thread for thread in self.threads.values() if thread.request_id in request_ids]
         request_board_posts = [
             post for post in self.request_board_posts.values() if post.institution_id == user.institution.id
         ]
-        saved_listings = self.public_listings()[:3]
+        saved_listings = [
+            listing
+            for listing in sorted(self.listings.values(), key=lambda listing: listing.created_at, reverse=True)
+            if listing.status not in {ListingStatus.REMOVED_BY_ADMIN, ListingStatus.REMOVED_BY_DONOR}
+        ][:3]
         return RecipientDashboardResponse(
             institution=user.institution,
             requests=institution_requests,

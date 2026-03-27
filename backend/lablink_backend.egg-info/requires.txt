@@ -6,3 +6,4 @@ sqlalchemy<3.0.0,>=2.0.38
 httpx<1.0.0,>=0.28.0
 python-multipart<1.0.0,>=0.0.20
 email-validator<3.0.0,>=2.2.0
+pypdf<6.0.0,>=5.4.0

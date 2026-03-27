@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, List, Optional
@@ -71,6 +73,24 @@ class NotificationEmailStatus(StrEnum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
+
+
+class ListingDocumentFormType(StrEnum):
+    DECONTAMINATION = "decontamination"
+    LIABILITY_RELEASE = "liability_release"
+
+
+class ListingDocumentStatus(StrEnum):
+    NOT_STARTED = "not_started"
+    COMPLETED = "completed"
+    OUTDATED = "outdated"
+
+
+class ListingDocumentFieldType(StrEnum):
+    TEXT = "text"
+    TEXTAREA = "textarea"
+    CHECKBOX = "checkbox"
+    DATE = "date"
 
 
 class Institution(BaseModel):
@@ -196,6 +216,46 @@ class LabLinkSeed(BaseModel):
     admin_actions: List[AdminAction]
 
 
+class ListingDraftSave(BaseModel):
+    title: str = ""
+    category: str = ""
+    condition: str = ""
+    quantity: int = Field(default=1, ge=1)
+    location: str = ""
+    availability_window: str = ""
+    description: str = ""
+    dimensions_weight: str = ""
+    handling_requirements: str = ""
+    working_status: str = ""
+    documentation_included: str = ""
+    special_handling_flags: str = ""
+    delivery_mode: str = "pickup_only"
+    photo_urls: List[str] = Field(default_factory=list)
+
+    @field_validator(
+        "title",
+        "category",
+        "condition",
+        "location",
+        "availability_window",
+        "description",
+        "dimensions_weight",
+        "handling_requirements",
+        "working_status",
+        "documentation_included",
+        "special_handling_flags",
+        "delivery_mode",
+    )
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("photo_urls")
+    @classmethod
+    def validate_photo_urls(cls, value: List[str]) -> List[str]:
+        return [photo_url.strip() for photo_url in value if photo_url.strip()]
+
+
 class ListingPayloadBase(BaseModel):
     title: str
     category: str
@@ -267,6 +327,54 @@ class RequestStatusUpdate(BaseModel):
 
 class ListingImageUploadResponse(BaseModel):
     photo_url: str
+
+
+class ListingDocumentGuideLink(BaseModel):
+    label: str
+    url: str
+
+
+class ListingDocumentTemplateField(BaseModel):
+    key: str
+    label: str
+    type: ListingDocumentFieldType
+    required: bool = False
+    placeholder: Optional[str] = None
+
+
+class ListingDocumentSummary(BaseModel):
+    form_type: ListingDocumentFormType
+    template_version: str
+    title: str
+    status: ListingDocumentStatus
+    file_name: Optional[str] = None
+    preview_url: Optional[str] = None
+    download_url: Optional[str] = None
+    completed_by_name: Optional[str] = None
+    completed_at: Optional[datetime] = None
+    form_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ListingDocumentTemplate(BaseModel):
+    form_type: ListingDocumentFormType
+    template_version: str
+    blank_pdf_url: str
+    title: str
+    summary: str
+    body_sections: List[str] = Field(default_factory=list)
+    guide_links: List[ListingDocumentGuideLink] = Field(default_factory=list)
+    fields: List[ListingDocumentTemplateField] = Field(default_factory=list)
+    draft_notice: Optional[str] = None
+    document: ListingDocumentSummary
+
+
+class ListingDocumentTemplatesResponse(BaseModel):
+    listing_id: str
+    templates: List[ListingDocumentTemplate]
+
+
+class ListingDocumentSaveResponse(BaseModel):
+    document: ListingDocumentSummary
 
 
 class EquipmentRequestCreate(BaseModel):
@@ -357,6 +465,10 @@ class ListingDetailResponse(BaseModel):
     listing: Listing
     donor_institution: Institution
     related_requests: List[EquipmentRequest] = Field(default_factory=list)
+
+
+class InternalListingDetailResponse(ListingDetailResponse):
+    documents: List[ListingDocumentSummary] = Field(default_factory=list)
 
 
 class OnboardingCreate(BaseModel):

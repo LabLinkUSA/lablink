@@ -39,6 +39,10 @@ export function formatNotificationDay(value: string) {
 }
 
 export function titleCaseStatus(value: string) {
+  if (value === "listing_under_review") {
+    return "Listing Under Review";
+  }
+
   if (value === "approved_matched") {
     return "Matched";
   }
@@ -53,6 +57,10 @@ export function titleCaseStatus(value: string) {
 
   if (value === "pending_request") {
     return "Pending request";
+  }
+
+  if (value === "submitted") {
+    return "Pending";
   }
 
   if (value === "removed_by_admin") {

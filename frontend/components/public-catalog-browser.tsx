@@ -209,7 +209,11 @@ export function PublicCatalogBrowser({ listings }: { listings: Listing[] }) {
                     <span>Posted {formatDate(listing.created_at)}</span>
                   </div>
                   <div className="catalog-card-footer">
-                    <span>{listing.request_count} active request(s)</span>
+                    <span>
+                      {listing.status === "matched_reserved"
+                        ? "Recipient selected"
+                        : `${listing.request_count} active request(s)`}
+                    </span>
                     <Link href={`/listings/${listing.id}`} className="catalog-card-cta">
                       View Listing
                     </Link>

@@ -20,8 +20,11 @@ export function DonorListingActions({
   const [error, setError] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isDonating, setIsDonating] = useState(false);
+  const [isRemovalConfirmOpen, setIsRemovalConfirmOpen] = useState(false);
 
   const canManageListing = status !== "fulfilled" && status !== "removed_by_admin" && status !== "removed_by_donor";
+  const canMarkAsDonated = canManageListing && status !== "draft";
+  const removesDraftPermanently = status === "draft";
 
   async function handleMarkAsDonated() {
     const confirmed = window.confirm(
@@ -72,13 +75,6 @@ export function DonorListingActions({
   }
 
   async function handleRemove() {
-    const confirmed = window.confirm(
-      "Remove this listing? It will be taken out of donor and public availability.",
-    );
-    if (!confirmed) {
-      return;
-    }
-
     setError(null);
     setIsRemoving(true);
 
@@ -112,8 +108,10 @@ export function DonorListingActions({
       }
 
       router.refresh();
+      return true;
     } catch (removeError) {
       setError(removeError instanceof Error ? removeError.message : "Could not remove the equipment listing.");
+      return false;
     } finally {
       setIsRemoving(false);
     }
@@ -126,17 +124,70 @@ export function DonorListingActions({
           Edit
         </Link>
       ) : null}
-      {canManageListing ? (
+      {canMarkAsDonated ? (
         <button type="button" className="button button-primary" onClick={handleMarkAsDonated} disabled={isDonating}>
           {isDonating ? "Updating..." : "Mark as donated"}
         </button>
       ) : null}
       {canManageListing ? (
-        <button type="button" className="button button-outline" onClick={handleRemove} disabled={isRemoving}>
+        <button
+          type="button"
+          className="button button-danger"
+          onClick={() => setIsRemovalConfirmOpen(true)}
+          disabled={isRemoving}
+        >
           {isRemoving ? "Removing..." : "Remove"}
         </button>
       ) : null}
       {error ? <p className="auth-notice auth-notice-error list-row-action-error">{error}</p> : null}
+      {isRemovalConfirmOpen ? (
+        <div className="review-modal-overlay" role="presentation" onClick={() => setIsRemovalConfirmOpen(false)}>
+          <section
+            className="review-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`donor-remove-${listingId}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="review-modal-confirm">
+              <div>
+                <h3 id={`donor-remove-${listingId}`}>
+                  {removesDraftPermanently ? "Permanently delete this draft listing?" : "Are you sure you want to remove this listing?"}
+                </h3>
+              </div>
+              <p>
+                {removesDraftPermanently
+                  ? "This draft listing will be permanently deleted, including its uploaded image and compliance PDF records."
+                  : "This will remove the listing from donor and public availability. The listing record will still remain in the system."}
+              </p>
+              <div className="page-actions" style={{ marginTop: 0 }}>
+                <button
+                  type="button"
+                  className="button button-outline"
+                  onClick={() => setIsRemovalConfirmOpen(false)}
+                  disabled={isRemoving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button button-danger"
+                  onClick={() => {
+                    void handleRemove().then((didSucceed) => {
+                      if (didSucceed) {
+                        setIsRemovalConfirmOpen(false);
+                      }
+                    });
+                  }}
+                  disabled={isRemoving}
+                >
+                  {isRemoving ? "Removing..." : removesDraftPermanently ? "Yes, permanently delete draft" : "Yes, remove listing"}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

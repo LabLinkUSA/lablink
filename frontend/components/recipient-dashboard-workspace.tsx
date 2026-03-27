@@ -10,7 +10,31 @@ import {
 } from "@/components/operations-dashboard-ui";
 import { StatusPill } from "@/components/status-pill";
 import { titleCaseStatus } from "@/lib/format";
-import type { RecipientDashboardResponse } from "@/lib/types";
+import type { ListingStatus, RecipientDashboardResponse } from "@/lib/types";
+
+function isListingUnderReview(status?: ListingStatus | null) {
+  return status === "pending_admin_approval" || status === "under_review";
+}
+
+function isListingPubliclyViewable(status?: ListingStatus | null) {
+  return status === "live" || status === "matched_reserved";
+}
+
+function getRecipientRequestDisplayStatus(request: RecipientDashboardResponse["requests"][number]) {
+  if (isListingUnderReview(request.listing?.status)) {
+    return "listing_under_review";
+  }
+
+  return request.status === "submitted" ? "pending_request" : request.status;
+}
+
+function getSavedListingDisplayStatus(listing: RecipientDashboardResponse["saved_listings"][number]) {
+  if (isListingUnderReview(listing.status)) {
+    return "listing_under_review";
+  }
+
+  return listing.status;
+}
 
 export function RecipientDashboardWorkspace({
   dashboard,
@@ -26,14 +50,7 @@ export function RecipientDashboardWorkspace({
       brandSubtitle="Recipient workspace"
       header={
         <>
-          <OperationsHeader
-            title="Recipient Dashboard"
-            actions={
-              <button type="button" className="button button-primary" disabled>
-                Create new request
-              </button>
-            }
-          />
+          <OperationsHeader title="Recipient Dashboard" />
           <OperationsMetricGrid
             items={[
               { label: "Active Requests", value: activeRequests, tone: "tertiary", icon: "AR" },
@@ -46,7 +63,7 @@ export function RecipientDashboardWorkspace({
       sections={[
         {
           id: "recipient-requests",
-          title: "Recent Equipment Submissions",
+          title: "Requested Items",
           shortLabel: "Requests",
           count: dashboard.requests.length,
           icon: "requests",
@@ -56,7 +73,7 @@ export function RecipientDashboardWorkspace({
               title="Request Reviews"
               tone="primary"
               hideTitle
-              columns={["Request", "Needed By", "Status", ""]}
+              columns={["Request", "Status", ""]}
               footer={<span>Showing {dashboard.requests.length} recipient request(s)</span>}
             >
               {dashboard.requests.map((request) => (
@@ -77,15 +94,18 @@ export function RecipientDashboardWorkspace({
                       </div>
                     </div>
                   </td>
-                  <td>{request.needed_by}</td>
                   <td>
-                    <StatusPill status={request.status === "submitted" ? "pending_request" : request.status} />
+                    <StatusPill status={getRecipientRequestDisplayStatus(request)} />
                   </td>
                   <td className="ops-table-align-right">
-                    {request.listing ? (
+                    {request.listing && isListingPubliclyViewable(request.listing.status) ? (
                       <Link href={`/listings/${request.listing_id}`} className="button button-secondary">
                         View listing
                       </Link>
+                    ) : request.listing ? (
+                      <button type="button" className="button button-secondary" disabled aria-disabled="true">
+                        View listing
+                      </button>
                     ) : (
                       <span className="ops-table-fallback">{titleCaseStatus(request.status)}</span>
                     )}
@@ -107,7 +127,7 @@ export function RecipientDashboardWorkspace({
               title="Saved Listing Reviews"
               tone="secondary"
               hideTitle
-              columns={["Listing", "Availability", "Condition", ""]}
+              columns={["Listing", "Status", "Condition", ""]}
               footer={<span>Showing {dashboard.saved_listings.length} saved listing(s)</span>}
             >
               {dashboard.saved_listings.length === 0 ? (
@@ -120,50 +140,45 @@ export function RecipientDashboardWorkspace({
                 dashboard.saved_listings.map((listing) => (
                   <tr key={listing.id} className="ops-table-row">
                     <td>
-                      <div>
+                      <div className="ops-equipment-cell">
+                        <div className="ops-equipment-media">
+                          {listing.photo_urls[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={listing.photo_urls[0]} alt={listing.title} className="ops-equipment-image" />
+                          ) : (
+                            <div className="ops-equipment-empty">No image</div>
+                          )}
+                        </div>
+                        <div>
                         <p className="ops-equipment-title">{listing.title}</p>
                         <p className="ops-equipment-subtitle">{listing.location}</p>
+                        </div>
                       </div>
                     </td>
-                    <td>{listing.availability_window}</td>
+                    <td>
+                      <StatusPill status={getSavedListingDisplayStatus(listing)} />
+                    </td>
                     <td>
                       <span className="ops-condition-badge">{titleCaseStatus(listing.condition)}</span>
                     </td>
                     <td className="ops-table-align-right">
-                      <Link href={`/listings/${listing.id}`} className="button button-secondary">
-                        View listing
-                      </Link>
+                      {isListingPubliclyViewable(listing.status) ? (
+                        <Link href={`/listings/${listing.id}`} className="button button-secondary">
+                          View listing
+                        </Link>
+                      ) : (
+                        <button type="button" className="button button-secondary" disabled aria-disabled="true">
+                          View listing
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
               )}
-            </OperationsTableSection>
-          ),
-        },
-        {
-          id: "recipient-request-board",
-          title: "Equipment Request Board",
-          shortLabel: "Board",
-          count: 0,
-          icon: "board",
-          tone: "tertiary",
-          content: (
-            <OperationsTableSection
-              title="Equipment Request Board"
-              tone="tertiary"
-              hideTitle
-              columns={["Requests", "Status", "Updated", "Notes"]}
-              footer={<span>Showing 0 request board item(s)</span>}
-            >
-              <tr>
-                <td colSpan={4} className="ops-table-empty-cell">
-                  <div className="ops-empty-state">No requests yet.</div>
-                </td>
-              </tr>
-            </OperationsTableSection>
-          ),
-        },
-      ]}
+              </OperationsTableSection>
+            ),
+          },
+        ]}
     />
   );
 }

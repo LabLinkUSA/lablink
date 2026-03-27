@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { HeaderAuthActions } from "@/components/header-auth-actions";
 import { getCurrentProfile } from "@/lib/api";
-import type { Role } from "@/lib/types";
+import type { AuthenticatedUser, Role } from "@/lib/types";
 
 function getDashboardHref(role?: Role) {
   if (role === "donor_lab") {
@@ -20,24 +20,29 @@ function getDashboardHref(role?: Role) {
   return "/auth";
 }
 
-function getNavItems(role?: Role) {
+function getNavItems(profile?: AuthenticatedUser | null) {
+  const role = profile?.user.role;
   if (role === "admin") {
     return [];
   }
 
-  const primaryAction =
-    role === "donor_lab"
-      ? { href: "/donor/list-equipment", label: "Donate" }
-      : role === "recipient_institution"
-        ? { href: "/recipient", label: "Dashboard" }
-        : { href: "/auth", label: "Donate" };
+  const navItems = [{ href: "/", label: "Home" }, { href: "/listings", label: "Browse" }];
+  const isVerifiedDonor =
+    role === "donor_lab" &&
+    profile?.user.account_status === "verified" &&
+    profile?.institution.verification_status === "verified";
 
-  return [
-    { href: "/", label: "Home" },
-    { href: "/listings", label: "Browse" },
-    primaryAction,
-    { href: "/about", label: "About" },
-  ];
+  if (role === "donor_lab") {
+    navItems.push({ href: isVerifiedDonor ? "/donor/list-equipment" : "/donor", label: "Donate" });
+    navItems.push({ href: "/donor", label: "Dashboard" });
+  } else if (role === "recipient_institution") {
+    navItems.push({ href: "/recipient", label: "Dashboard" });
+  } else {
+    navItems.push({ href: "/auth", label: "Donate" });
+  }
+
+  navItems.push({ href: "/about", label: "About" });
+  return navItems;
 }
 
 function getProfileInitial(name: string | undefined) {
@@ -76,7 +81,7 @@ export async function SiteHeader() {
   }
 
   const dashboardHref = getDashboardHref(profile?.user.role);
-  const navItems = getNavItems(profile?.user.role);
+  const navItems = getNavItems(profile);
   const profileInitial = getProfileInitial(profile?.user.full_name);
   const profileRoleLabel = getRoleLabel(profile?.user.role);
   const brandHref = profile?.user.role === "admin" ? "/admin" : "/";
@@ -90,8 +95,8 @@ export async function SiteHeader() {
         </Link>
         {navItems.length > 0 ? (
           <nav className="site-nav" aria-label="Primary navigation">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
+            {navItems.map((item, index) => (
+              <Link key={`${item.label}-${item.href}-${index}`} href={item.href}>
                 {item.label}
               </Link>
             ))}

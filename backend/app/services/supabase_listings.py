@@ -9,6 +9,13 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import get_settings
+from app.core.listing_documents import (
+    build_blank_pdf_url,
+    default_listing_document_form_data,
+    get_listing_document_template,
+    get_listing_document_templates,
+    parse_uploaded_listing_document,
+)
 from app.schemas.domain import (
     AccountStatus,
     AdminAction,
@@ -16,6 +23,13 @@ from app.schemas.domain import (
     AuthenticatedUser,
     DonorDashboardResponse,
     EquipmentRequest,
+    InternalListingDetailResponse,
+    ListingDocumentFormType,
+    ListingDocumentSaveResponse,
+    ListingDocumentStatus,
+    ListingDocumentSummary,
+    ListingDocumentTemplate,
+    ListingDocumentTemplatesResponse,
     MarkNotificationsViewedResponse,
     Notification,
     NotificationEmailStatus,
@@ -24,12 +38,9 @@ from app.schemas.domain import (
     RecipientDashboardResponse,
     Institution,
     Listing,
-    ListingCreate,
     ListingDetailResponse,
-    ListingApprovalUpdate,
+    ListingDraftSave,
     ListingStatus,
-    ListingUpdate,
-    RequestStatusUpdate,
     RequestStatus,
     VerificationStatus,
 )
@@ -44,6 +55,7 @@ class SupabaseListingService:
         supabase_url: str,
         service_role_key: str,
         storage_bucket: str,
+        documents_bucket: str,
         *,
         frontend_origin: str,
         resend_api_key: str | None = None,
@@ -53,6 +65,7 @@ class SupabaseListingService:
         self.supabase_url = supabase_url.rstrip("/")
         self.service_role_key = service_role_key
         self.storage_bucket = storage_bucket
+        self.documents_bucket = documents_bucket
         self.frontend_origin = frontend_origin.rstrip("/")
         self.resend_api_key = resend_api_key
         self.email_from = email_from
@@ -64,7 +77,7 @@ class SupabaseListingService:
             "listings",
             params={
                 "select": self._listing_select(include_donor_institution=True),
-                "status": f"eq.{ListingStatus.LIVE.value}",
+                "status": f"in.({ListingStatus.LIVE.value},{ListingStatus.MATCHED_RESERVED.value})",
                 "order": "created_at.desc",
             },
         )
@@ -72,10 +85,12 @@ class SupabaseListingService:
         return [self._to_listing(row) for row in rows if self._is_verified_donor_listing_row(row)]
 
     def get_public_listing_detail(self, listing_id: str) -> ListingDetailResponse:
-        row = self._get_listing_detail_row(
-            listing_id,
-            extra_params={"status": f"eq.{ListingStatus.LIVE.value}"},
-        )
+        row = self._get_listing_detail_row(listing_id)
+        if row and self._normalize_listing_status(row["status"]) not in {
+            ListingStatus.LIVE.value,
+            ListingStatus.MATCHED_RESERVED.value,
+        }:
+            row = None
         if not row or not self._is_verified_donor_listing_row(row):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         return self._to_listing_detail(row)
@@ -99,7 +114,9 @@ class SupabaseListingService:
         active_requests = self._get_requests_for_listing_ids(
             [listing.id for listing in listings],
             only_verified_recipients=True,
-            exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+            exclude_statuses={RequestStatus.COMPLETED},
+            latest_per_recipient=True,
+            include_rejected_if_listing_has_match=True,
         )
         impact_summary = {
             "total_items_donated": sum(listing.quantity for listing in listings if listing.status == ListingStatus.FULFILLED),
@@ -231,7 +248,6 @@ class SupabaseListingService:
         if normalized_status not in {
             ListingStatus.LIVE.value,
             ListingStatus.UNDER_REVIEW.value,
-            ListingStatus.MATCHED_RESERVED.value,
         }:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This listing is not open for requests.")
 
@@ -484,15 +500,16 @@ class SupabaseListingService:
             },
         )
 
-    def get_donor_listing_detail(self, actor: AuthenticatedUser, listing_id: str) -> ListingDetailResponse:
+    def get_donor_listing_detail(self, actor: AuthenticatedUser, listing_id: str) -> InternalListingDetailResponse:
         row = self._get_listing_detail_row(listing_id)
         if not row:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         self._ensure_donor_controls_listing(actor, row)
-        return self._to_listing_detail(row)
+        return self._to_internal_listing_detail(row)
 
-    def create_listing(self, actor: AuthenticatedUser, payload: ListingCreate) -> Listing:
+    def create_draft_listing(self, actor: AuthenticatedUser) -> Listing:
         listing_id = f"listing_{uuid4().hex[:12]}"
+        timestamp = datetime.now(timezone.utc).isoformat()
         self._request(
             "POST",
             "listings",
@@ -500,60 +517,42 @@ class SupabaseListingService:
                 "id": listing_id,
                 "donor_institution_id": actor.institution.id,
                 "created_by_user_id": actor.user.id,
-                "title": payload.title,
-                "category": payload.category,
-                "item_condition": payload.condition,
-                "quantity": payload.quantity,
-                "location": payload.location,
-                "availability_window": payload.availability_window,
-                "description": payload.description,
-                "dimensions_weight": payload.dimensions_weight,
-                "handling_requirements": payload.handling_requirements,
-                "working_status": payload.working_status,
-                "documentation_included": payload.documentation_included,
-                "special_handling_flags": payload.special_handling_flags,
-                "delivery_mode": payload.delivery_mode,
-                "status": ListingStatus.PENDING_ADMIN_APPROVAL.value,
+                "title": "",
+                "category": "",
+                "item_condition": "",
+                "quantity": 1,
+                "location": "",
+                "availability_window": "",
+                "description": "",
+                "dimensions_weight": "",
+                "handling_requirements": "",
+                "working_status": "",
+                "documentation_included": "",
+                "special_handling_flags": "",
+                "delivery_mode": "pickup_only",
+                "status": ListingStatus.DRAFT.value,
+                "updated_at": timestamp,
             },
             headers={"Prefer": "return=minimal"},
-        )
-
-        for index, photo_url in enumerate(payload.photo_urls):
-            self._request(
-                "POST",
-                "listing_photos",
-                json={
-                    "listing_id": listing_id,
-                    "photo_url": photo_url,
-                    "display_order": index,
-                },
-                headers={"Prefer": "return=minimal"},
-            )
-
-        self._notify_role(
-            "admin",
-            notification_type=NotificationType.ADMIN_LISTING_SUBMITTED,
-            message=f"{actor.institution.name} submitted a new listing: {payload.title}.",
-            cta_href="/admin",
-            entity_type="listing",
-            entity_id=listing_id,
-            metadata={"listing_id": listing_id, "donor_institution_id": actor.institution.id},
         )
 
         row = self._get_listing_row(listing_id)
         if not row:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Listing was created but could not be loaded.",
+                detail="Draft listing was created but could not be loaded.",
             )
         return self._to_listing(row)
 
-    def update_donor_listing(self, actor: AuthenticatedUser, listing_id: str, payload: ListingUpdate) -> Listing:
+    def save_donor_listing(self, actor: AuthenticatedUser, listing_id: str, payload: ListingDraftSave) -> Listing:
         existing = self._get_listing_row(listing_id)
         if not existing:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         self._ensure_donor_controls_listing(actor, existing)
         self._ensure_listing_mutable(existing, action="edit")
+
+        normalized_status = self._normalize_listing_status(existing["status"])
+        next_status = ListingStatus.DRAFT.value if normalized_status == ListingStatus.DRAFT.value else existing["status"]
 
         self._request(
             "PATCH",
@@ -573,7 +572,7 @@ class SupabaseListingService:
                 "documentation_included": payload.documentation_included,
                 "special_handling_flags": payload.special_handling_flags,
                 "delivery_mode": payload.delivery_mode,
-                "status": existing["status"],
+                "status": next_status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
             headers={"Prefer": "return=minimal"},
@@ -600,12 +599,162 @@ class SupabaseListingService:
             )
         return self._to_listing(updated)
 
-    def remove_donor_listing(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
+    def submit_draft_listing(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
+        existing = self._get_listing_row(listing_id)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+        self._ensure_donor_controls_listing(actor, existing)
+        self._ensure_listing_mutable(existing, action="submit")
+        self._validate_listing_ready_for_submission(existing, listing_id)
+
+        self._request(
+            "PATCH",
+            "listings",
+            params={"id": f"eq.{listing_id}"},
+            json={
+                "status": ListingStatus.PENDING_ADMIN_APPROVAL.value,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+
+        updated = self._get_listing_row(listing_id)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Listing was submitted but could not be reloaded.",
+            )
+
+        self._notify_role(
+            "admin",
+            notification_type=NotificationType.ADMIN_LISTING_SUBMITTED,
+            message=f"{actor.institution.name} submitted a new listing: {updated['title']}.",
+            cta_href="/admin",
+            entity_type="listing",
+            entity_id=listing_id,
+            metadata={"listing_id": listing_id, "donor_institution_id": actor.institution.id},
+        )
+        return self._to_listing(updated)
+
+    def get_listing_document_templates(
+        self,
+        actor: AuthenticatedUser,
+        listing_id: str,
+    ) -> ListingDocumentTemplatesResponse:
+        row = self._get_listing_detail_row(listing_id)
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+        self._ensure_donor_controls_listing(actor, row)
+
+        documents_by_form_type = {
+            document.form_type.value: document for document in self._get_listing_documents(row, signer_name=actor.user.full_name)
+        }
+        templates: list[ListingDocumentTemplate] = []
+        for template in get_listing_document_templates():
+            default_form_data = default_listing_document_form_data(template, signer_name=actor.user.full_name)
+            document = documents_by_form_type.get(template["form_type"])
+            templates.append(
+                ListingDocumentTemplate.model_validate(
+                    {
+                        **template,
+                        "blank_pdf_url": build_blank_pdf_url(template, frontend_origin=self.frontend_origin),
+                        "document": {
+                            "form_type": template["form_type"],
+                            "template_version": template["template_version"],
+                            "title": template["title"],
+                            "status": document.status.value if document else ListingDocumentStatus.NOT_STARTED.value,
+                            "file_name": document.file_name if document else None,
+                            "preview_url": document.preview_url if document else None,
+                            "download_url": document.download_url if document else None,
+                            "completed_by_name": document.completed_by_name if document else None,
+                            "completed_at": document.completed_at if document else None,
+                            "form_data": document.form_data if document and document.form_data else default_form_data,
+                        },
+                    }
+                )
+            )
+        return ListingDocumentTemplatesResponse(listing_id=listing_id, templates=templates)
+
+    def save_listing_document(
+        self,
+        actor: AuthenticatedUser,
+        listing_id: str,
+        form_type: ListingDocumentFormType,
+        *,
+        template_version: str,
+        filename: str,
+        content: bytes,
+        content_type: str | None,
+    ) -> ListingDocumentSaveResponse:
+        row = self._get_listing_detail_row(listing_id)
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
+        self._ensure_donor_controls_listing(actor, row)
+        self._ensure_listing_mutable(row, action="update")
+
+        template = get_listing_document_template(form_type.value)
+        if content_type and content_type not in {"application/pdf", "application/x-pdf"}:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Uploaded file must be a PDF.")
+
+        sanitized_form_data = parse_uploaded_listing_document(
+            template,
+            template_version=template_version,
+            content=content,
+        )
+        completed_at = datetime.now(timezone.utc)
+        timestamp_slug = completed_at.strftime("%Y%m%dT%H%M%SZ")
+        object_path = f"listings/{listing_id}/documents/{form_type.value}-{timestamp_slug}.pdf"
+        file_name = (filename or f"{row['title'] or 'draft-listing'}-{form_type.value}.pdf").replace(" ", "-")
+        self._upload_private_storage_object(
+            bucket=self.documents_bucket,
+            object_path=object_path,
+            content=content,
+            content_type="application/pdf",
+        )
+        self._request(
+            "DELETE",
+            "listing_documents",
+            params={"listing_id": f"eq.{listing_id}", "form_type": f"eq.{form_type.value}"},
+        )
+        self._request(
+            "POST",
+            "listing_documents",
+            json={
+                "listing_id": listing_id,
+                "form_type": form_type.value,
+                "template_version": template["template_version"],
+                "form_data": sanitized_form_data,
+                "storage_object_path": object_path,
+                "file_name": file_name,
+                "completed_by_user_id": actor.user.id,
+                "completed_by_name": sanitized_form_data["signer_name"],
+                "completed_at": completed_at.isoformat(),
+                "updated_at": completed_at.isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+        documents_by_form_type = {
+            document.form_type.value: document for document in self._get_listing_documents(row, signer_name=actor.user.full_name)
+        }
+        document = documents_by_form_type[form_type.value]
+        return ListingDocumentSaveResponse(document=document)
+
+    def remove_donor_listing(self, actor: AuthenticatedUser, listing_id: str) -> None:
         existing = self._get_listing_row(listing_id)
         if not existing:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
         self._ensure_donor_controls_listing(actor, existing)
         self._ensure_listing_mutable(existing, action="remove")
+
+        listing_status = self._normalize_listing_status(existing["status"])
+        if listing_status == ListingStatus.DRAFT.value:
+            self._request(
+                "DELETE",
+                "listings",
+                params={"id": f"eq.{listing_id}"},
+                headers={"Prefer": "return=minimal"},
+            )
+            return None
 
         self._request(
             "PATCH",
@@ -617,14 +766,7 @@ class SupabaseListingService:
             },
             headers={"Prefer": "return=minimal"},
         )
-
-        updated = self._get_listing_row(listing_id)
-        if not updated:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Listing was removed but could not be reloaded.",
-            )
-        return self._to_listing(updated)
+        return None
 
     def mark_donor_listing_donated(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
         existing = self._get_listing_row(listing_id)
@@ -655,11 +797,21 @@ class SupabaseListingService:
     def upload_listing_image(self, actor: AuthenticatedUser, filename: str, content: bytes, content_type: str) -> str:
         extension = Path(filename).suffix.lower() or ".jpg"
         object_path = f"listings/{actor.institution.id}/{uuid4().hex}{extension}"
-        response = self._upload_storage_object(object_path, content, content_type)
+        response = self._upload_storage_object(
+            bucket=self.storage_bucket,
+            object_path=object_path,
+            content=content,
+            content_type=content_type,
+        )
 
         if response.status_code >= 400 and self._is_bucket_not_found(response):
-            self._ensure_storage_bucket()
-            response = self._upload_storage_object(object_path, content, content_type)
+            self._ensure_storage_bucket(bucket=self.storage_bucket, public=True)
+            response = self._upload_storage_object(
+                bucket=self.storage_bucket,
+                object_path=object_path,
+                content=content,
+                content_type=content_type,
+            )
 
         if response.status_code >= 400:
             detail = "Image upload failed."
@@ -677,31 +829,69 @@ class SupabaseListingService:
 
         return f"{self.supabase_url}/storage/v1/object/public/{self.storage_bucket}/{object_path}"
 
-    def _upload_storage_object(self, object_path: str, content: bytes, content_type: str) -> httpx.Response:
+    def _upload_private_storage_object(
+        self,
+        *,
+        bucket: str,
+        object_path: str,
+        content: bytes,
+        content_type: str,
+    ) -> None:
+        response = self._upload_storage_object(
+            bucket=bucket,
+            object_path=object_path,
+            content=content,
+            content_type=content_type,
+        )
+        if response.status_code >= 400 and self._is_bucket_not_found(response):
+            self._ensure_storage_bucket(bucket=bucket, public=False)
+            response = self._upload_storage_object(
+                bucket=bucket,
+                object_path=object_path,
+                content=content,
+                content_type=content_type,
+            )
+        if response.status_code >= 400:
+            detail = "Document upload failed."
+            try:
+                body = response.json()
+                detail = body.get("message") or body.get("error") or detail
+            except ValueError:
+                pass
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+    def _upload_storage_object(
+        self,
+        *,
+        bucket: str,
+        object_path: str,
+        content: bytes,
+        content_type: str,
+    ) -> httpx.Response:
         upload_headers = {
             "apikey": self.service_role_key,
             "Authorization": f"Bearer {self.service_role_key}",
             "Content-Type": content_type,
-            "x-upsert": "false",
+            "x-upsert": "true",
         }
 
         with httpx.Client(timeout=30.0) as client:
             return client.post(
-                f"{self.supabase_url}/storage/v1/object/{self.storage_bucket}/{object_path}",
+                f"{self.supabase_url}/storage/v1/object/{bucket}/{object_path}",
                 headers=upload_headers,
                 content=content,
             )
 
-    def _ensure_storage_bucket(self) -> None:
+    def _ensure_storage_bucket(self, *, bucket: str, public: bool) -> None:
         headers = {
             "apikey": self.service_role_key,
             "Authorization": f"Bearer {self.service_role_key}",
             "Content-Type": "application/json",
         }
         payload = {
-            "id": self.storage_bucket,
-            "name": self.storage_bucket,
-            "public": True,
+            "id": bucket,
+            "name": bucket,
+            "public": public,
         }
 
         with httpx.Client(timeout=20.0) as client:
@@ -721,6 +911,37 @@ class SupabaseListingService:
         except ValueError:
             pass
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+    def _create_signed_storage_url(self, *, bucket: str, object_path: str, expires_in: int) -> str:
+        headers = {
+            "apikey": self.service_role_key,
+            "Authorization": f"Bearer {self.service_role_key}",
+            "Content-Type": "application/json",
+        }
+        with httpx.Client(timeout=20.0) as client:
+            response = client.post(
+                f"{self.supabase_url}/storage/v1/object/sign/{bucket}/{object_path}",
+                headers=headers,
+                json={"expiresIn": expires_in},
+            )
+        if response.status_code >= 400:
+            detail = "Could not create a signed document URL."
+            try:
+                body = response.json()
+                detail = body.get("message") or body.get("error") or detail
+            except ValueError:
+                pass
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+        body = response.json()
+        signed_path = body.get("signedURL") or body.get("signedUrl") or body.get("url")
+        if not signed_path:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Supabase did not return a signed document URL.",
+            )
+        if signed_path.startswith("http://") or signed_path.startswith("https://"):
+            return signed_path
+        return f"{self.supabase_url}/storage/v1{signed_path}"
 
     def _is_bucket_not_found(self, response: httpx.Response) -> bool:
         try:
@@ -794,11 +1015,11 @@ class SupabaseListingService:
             ],
         )
 
-    def get_admin_listing_detail(self, listing_id: str) -> ListingDetailResponse:
+    def get_admin_listing_detail(self, listing_id: str) -> InternalListingDetailResponse:
         row = self._get_listing_detail_row(listing_id)
         if not row:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
-        return self._to_listing_detail(row)
+        return self._to_internal_listing_detail(row)
 
     def update_listing_status(
         self,
@@ -824,6 +1045,14 @@ class SupabaseListingService:
 
         affected_requests: list[EquipmentRequest] = []
         if status_value == ListingStatus.REMOVED_BY_ADMIN:
+            affected_requests = self._get_requests_for_listing_ids(
+                [listing_id],
+                latest_per_recipient=True,
+            )
+        elif status_value in {
+            ListingStatus.PENDING_ADMIN_APPROVAL,
+            ListingStatus.UNDER_REVIEW,
+        }:
             affected_requests = self._get_requests_for_listing_ids(
                 [listing_id],
                 exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
@@ -888,6 +1117,27 @@ class SupabaseListingService:
                     notification_type=NotificationType.LISTING_STATUS_CHANGED,
                     message=self._with_admin_note(
                         f"A listing you requested, {updated['title']}, was removed from the marketplace by LabLink admin.",
+                        admin_note,
+                    ),
+                    cta_href="/recipient",
+                    entity_type="listing",
+                    entity_id=listing_id,
+                    metadata={"listing_id": listing_id, "status": status_value.value, "request_id": request.id},
+                )
+        if current_status == ListingStatus.LIVE.value and status_value in {
+            ListingStatus.PENDING_ADMIN_APPROVAL,
+            ListingStatus.UNDER_REVIEW,
+        }:
+            notified_institutions: set[str] = set()
+            for request in affected_requests:
+                if request.recipient_institution_id in notified_institutions:
+                    continue
+                notified_institutions.add(request.recipient_institution_id)
+                self._notify_institution(
+                    request.recipient_institution_id,
+                    notification_type=NotificationType.LISTING_STATUS_CHANGED,
+                    message=self._with_admin_note(
+                        f"A listing you requested, {updated['title']}, is now under admin review and temporarily unavailable in the public catalog.",
                         admin_note,
                     ),
                     cta_href="/recipient",
@@ -973,7 +1223,7 @@ class SupabaseListingService:
             institution_id,
             notification_type=NotificationType.INSTITUTION_STATUS_CHANGED,
             message=self._with_admin_note(
-                f"Your institution verification status is now {self._friendly_status_label(verification_status.value)}.",
+                f"Your institution is now {self._friendly_status_label(verification_status.value)}.",
                 admin_note,
             ),
             cta_href=self._dashboard_href_for_role(updated["role_type"]),
@@ -1066,11 +1316,16 @@ class SupabaseListingService:
                 detail="Request was selected but could not be reloaded.",
             )
 
-        listing_title = (
-            listing["title"]
-            if isinstance(listing, dict) and listing.get("title")
-            else self._get_listing_row(listing_id)["title"]
-        )
+        listing_row = listing if isinstance(listing, dict) else None
+        if not listing_row or not listing_row.get("title") or not listing_row.get("donor_institution_id"):
+            listing_row = self._get_listing_row(listing_id)
+        if not listing_row:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Request was selected but the listing could not be reloaded.",
+            )
+
+        listing_title = listing_row["title"]
         latest_request_rows = self._latest_request_rows_by_recipient(other_request_rows)
         self._notify_institution(
             existing["recipient_institution_id"],
@@ -1083,6 +1338,23 @@ class SupabaseListingService:
             entity_type="request",
             entity_id=request_id,
             metadata={"request_id": request_id, "status": RequestStatus.APPROVED_MATCHED.value, "listing_id": listing_id},
+        )
+        self._notify_institution(
+            listing_row["donor_institution_id"],
+            notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+            message=self._with_admin_note(
+                f"LabLink admin selected a recipient for your listing {listing_title}.",
+                admin_note,
+            ),
+            cta_href="/donor",
+            entity_type="listing",
+            entity_id=listing_id,
+            metadata={
+                "listing_id": listing_id,
+                "request_id": request_id,
+                "status": RequestStatus.APPROVED_MATCHED.value,
+                "recipient_institution_id": existing["recipient_institution_id"],
+            },
         )
 
         for row in latest_request_rows:
@@ -1247,24 +1519,29 @@ class SupabaseListingService:
             headers={"Prefer": "return=minimal"},
         )
 
-        request_rows = self._request(
-            "GET",
-            "equipment_requests",
-            params={
-                "select": self._equipment_request_select(include_listing=True),
-                "listing_id": f"eq.{listing_id}",
-            },
+        request_rows = self._get_requests_for_listing_ids(
+            [listing_id],
+            latest_per_recipient=True,
         )
         listing_title = listing["title"]
+        self._notify_institution(
+            listing["donor_institution_id"],
+            notification_type=NotificationType.REQUEST_STATUS_CHANGED,
+            message=f"LabLink admin reopened recipient selection for your listing {listing_title}.",
+            cta_href="/donor",
+            entity_type="listing",
+            entity_id=listing_id,
+            metadata={"listing_id": listing_id, "status": RequestStatus.SUBMITTED.value},
+        )
         for row in request_rows:
             self._notify_institution(
-                row["recipient_institution_id"],
+                row.recipient_institution_id,
                 notification_type=NotificationType.REQUEST_STATUS_CHANGED,
                 message=f"Your request for {listing_title} is now {self._friendly_request_status_label(RequestStatus.SUBMITTED.value)}.",
                 cta_href="/recipient",
                 entity_type="request",
-                entity_id=row["id"],
-                metadata={"request_id": row["id"], "status": RequestStatus.SUBMITTED.value, "listing_id": listing_id},
+                entity_id=row.id,
+                metadata={"request_id": row.id, "status": RequestStatus.SUBMITTED.value, "listing_id": listing_id},
             )
 
         updated = self._get_listing_row(listing_id)
@@ -1617,10 +1894,19 @@ class SupabaseListingService:
             donor_institution=self._to_institution(donor_institution),
             related_requests=self._get_requests_for_listing_ids(
                 [row["id"]],
-                exclude_statuses={RequestStatus.REJECTED_CANCELLED},
+                exclude_statuses={RequestStatus.COMPLETED},
                 latest_per_recipient=True,
                 include_rejected_if_listing_has_match=True,
             ),
+        )
+
+    def _to_internal_listing_detail(self, row: dict[str, Any]) -> InternalListingDetailResponse:
+        detail = self._to_listing_detail(row)
+        return InternalListingDetailResponse(
+            listing=detail.listing,
+            donor_institution=detail.donor_institution,
+            related_requests=detail.related_requests,
+            documents=self._get_listing_documents(row, signer_name=None),
         )
 
     def _to_listing(self, row: dict[str, Any]) -> Listing:
@@ -1671,6 +1957,112 @@ class SupabaseListingService:
             normalized_row["request_count"] = request_counts.get(row["id"], 0)
             normalized_rows.append(normalized_row)
         return normalized_rows
+
+    def _validate_listing_ready_for_submission(self, row: dict[str, Any], listing_id: str) -> None:
+        required_fields = {
+            "title": "Equipment title",
+            "category": "Category",
+            "item_condition": "Condition",
+            "location": "Pickup location",
+            "availability_window": "Availability window",
+            "description": "Description",
+            "dimensions_weight": "Dimensions and weight",
+            "handling_requirements": "Handling requirements",
+            "working_status": "Working status",
+            "documentation_included": "Documentation included",
+            "special_handling_flags": "Special handling flags",
+            "delivery_mode": "Delivery mode",
+        }
+        for key, label in required_fields.items():
+            value = row.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"{label} must be completed before submitting the listing.",
+                )
+        if int(row.get("quantity", 0)) < 1:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Quantity must be a whole number greater than zero before submission.",
+            )
+        photos = row.get("listing_photos") or []
+        if not photos:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="A listing image is required before submission.",
+            )
+        documents = self._get_listing_documents(row, signer_name=None)
+        incomplete = [document.title for document in documents if document.status != ListingDocumentStatus.COMPLETED]
+        if incomplete:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Complete the required compliance PDFs before submission: {', '.join(incomplete)}.",
+            )
+        if not documents:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Complete both compliance PDFs before submitting the listing.",
+            )
+
+    def _get_listing_documents(
+        self,
+        row: dict[str, Any],
+        *,
+        signer_name: str | None,
+    ) -> list[ListingDocumentSummary]:
+        rows = self._request(
+            "GET",
+            "listing_documents",
+            params={
+                "select": (
+                    "listing_id,form_type,template_version,form_data,storage_object_path,file_name,"
+                    "completed_by_user_id,completed_by_name,completed_at"
+                ),
+                "listing_id": f"eq.{row['id']}",
+            },
+        )
+        row_map = {document["form_type"]: document for document in rows}
+        documents: list[ListingDocumentSummary] = []
+        for template in get_listing_document_templates():
+            existing = row_map.get(template["form_type"])
+            default_form_data = default_listing_document_form_data(template, signer_name=signer_name or "")
+            if not existing:
+                documents.append(
+                    ListingDocumentSummary.model_validate(
+                        {
+                            "form_type": template["form_type"],
+                            "template_version": template["template_version"],
+                            "title": template["title"],
+                            "status": ListingDocumentStatus.NOT_STARTED.value,
+                            "form_data": default_form_data,
+                        }
+                    )
+                )
+                continue
+
+            is_current = existing["template_version"] == template["template_version"]
+            preview_url = self._create_signed_storage_url(
+                bucket=self.documents_bucket,
+                object_path=existing["storage_object_path"],
+                expires_in=600,
+            )
+            documents.append(
+                ListingDocumentSummary.model_validate(
+                    {
+                        "form_type": template["form_type"],
+                        "template_version": template["template_version"],
+                        "title": template["title"],
+                        "status": ListingDocumentStatus.COMPLETED.value if is_current else ListingDocumentStatus.OUTDATED.value,
+                        "file_name": existing.get("file_name"),
+                        "preview_url": preview_url,
+                        "download_url": preview_url,
+                        "completed_by_name": existing.get("completed_by_name"),
+                        "completed_at": existing.get("completed_at"),
+                        "form_data": existing.get("form_data") or default_form_data,
+                    }
+                )
+            )
+        return documents
 
     def _to_equipment_request(self, row: dict[str, Any]) -> EquipmentRequest:
         return EquipmentRequest.model_validate(
@@ -1866,6 +2258,7 @@ def get_supabase_listing_service() -> SupabaseListingService:
         supabase_url=settings.supabase_url,
         service_role_key=settings.supabase_service_role_key,
         storage_bucket=settings.supabase_listing_images_bucket,
+        documents_bucket=settings.supabase_listing_documents_bucket,
         frontend_origin=settings.frontend_origin,
         resend_api_key=settings.resend_api_key,
         email_from=settings.email_from,

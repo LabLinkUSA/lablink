@@ -11,9 +11,11 @@ const supabase = createSupabaseBrowserClient();
 export function RecipientSaveListingButton({
   listingId,
   initialSaved,
+  variant = "icon",
 }: {
   listingId: string;
   initialSaved: boolean;
+  variant?: "icon" | "full";
 }) {
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(initialSaved);
@@ -78,15 +80,23 @@ export function RecipientSaveListingButton({
     <>
       <button
         type="button"
-        className={`save-listing-button${isSaved ? " save-listing-button-saved" : ""}`}
+        className={
+          variant === "full"
+            ? `button button-secondary listing-save-cta${isSaved ? " listing-save-cta-saved" : ""}`
+            : `save-listing-button${isSaved ? " save-listing-button-saved" : ""}`
+        }
         onClick={handleToggleSave}
         aria-label={isSaved ? "Remove listing from saved items" : "Save listing"}
+        aria-pressed={isSaved}
         title={isSaved ? "Saved" : "Save listing"}
         disabled={isPending}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M6 4.75A2.75 2.75 0 0 1 8.75 2h6.5A2.75 2.75 0 0 1 18 4.75v16.08c0 .9-1.02 1.42-1.76.9L12 18.55l-4.24 3.18A1.1 1.1 0 0 1 6 20.83z" />
         </svg>
+        {variant === "full" ? (
+          <span>{isSaved ? "Saved" : "Save to favorites"}</span>
+        ) : null}
       </button>
       {toast ? <div className="save-listing-toast">{toast}</div> : null}
     </>

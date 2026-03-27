@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.api.routes.dependencies import require_actor
 from app.schemas.domain import (
@@ -6,11 +6,13 @@ from app.schemas.domain import (
     AuthenticatedUser,
     DonorDashboardResponse,
     VerificationStatus,
+    InternalListingDetailResponse,
     Listing,
-    ListingCreate,
-    ListingDetailResponse,
+    ListingDocumentFormType,
+    ListingDocumentSaveResponse,
+    ListingDocumentTemplatesResponse,
+    ListingDraftSave,
     ListingImageUploadResponse,
-    ListingUpdate,
     RequestBoardPost,
     Role,
 )
@@ -43,17 +45,56 @@ def get_donor_request_board(actor: AuthenticatedUser = Depends(require_actor)) -
     return []
 
 
-@router.post("/listings", response_model=Listing, status_code=status.HTTP_201_CREATED)
-def create_listing(payload: ListingCreate, actor: AuthenticatedUser = Depends(require_actor)) -> Listing:
+@router.post("/listings/drafts", response_model=Listing, status_code=status.HTTP_201_CREATED)
+def create_draft_listing(actor: AuthenticatedUser = Depends(require_actor)) -> Listing:
     require_verified_donor(actor)
-    return get_supabase_listing_service().create_listing(actor, payload)
+    return get_supabase_listing_service().create_draft_listing(actor)
 
 
-@router.get("/listings/{listing_id}", response_model=ListingDetailResponse)
+@router.get("/listings/{listing_id}/form-templates", response_model=ListingDocumentTemplatesResponse)
+def get_listing_form_templates(
+    listing_id: str,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> ListingDocumentTemplatesResponse:
+    require_verified_donor(actor)
+    return get_supabase_listing_service().get_listing_document_templates(actor, listing_id)
+
+
+@router.put("/listings/{listing_id}/documents/{form_type}", response_model=ListingDocumentSaveResponse)
+async def save_listing_document(
+    listing_id: str,
+    form_type: ListingDocumentFormType,
+    template_version: str = Form(...),
+    file: UploadFile = File(...),
+    original_filename: str | None = Form(default=None),
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> ListingDocumentSaveResponse:
+    require_verified_donor(actor)
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded PDF is empty.")
+    return get_supabase_listing_service().save_listing_document(
+        actor,
+        listing_id,
+        form_type,
+        template_version=template_version,
+        filename=original_filename or file.filename or f"{form_type.value}.pdf",
+        content=content,
+        content_type=file.content_type,
+    )
+
+
+@router.post("/listings/{listing_id}/submit", response_model=Listing)
+def submit_listing_for_review(listing_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> Listing:
+    require_verified_donor(actor)
+    return get_supabase_listing_service().submit_draft_listing(actor, listing_id)
+
+
+@router.get("/listings/{listing_id}", response_model=InternalListingDetailResponse)
 def get_donor_listing_detail(
     listing_id: str,
     actor: AuthenticatedUser = Depends(require_actor),
-) -> ListingDetailResponse:
+) -> InternalListingDetailResponse:
     require_verified_donor(actor)
     return get_supabase_listing_service().get_donor_listing_detail(actor, listing_id)
 
@@ -61,17 +102,18 @@ def get_donor_listing_detail(
 @router.patch("/listings/{listing_id}", response_model=Listing)
 def update_listing(
     listing_id: str,
-    payload: ListingUpdate,
+    payload: ListingDraftSave,
     actor: AuthenticatedUser = Depends(require_actor),
 ) -> Listing:
     require_verified_donor(actor)
-    return get_supabase_listing_service().update_donor_listing(actor, listing_id, payload)
+    return get_supabase_listing_service().save_donor_listing(actor, listing_id, payload)
 
 
-@router.delete("/listings/{listing_id}", response_model=Listing)
-def remove_listing(listing_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> Listing:
+@router.delete("/listings/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_listing(listing_id: str, actor: AuthenticatedUser = Depends(require_actor)) -> None:
     require_verified_donor(actor)
-    return get_supabase_listing_service().remove_donor_listing(actor, listing_id)
+    get_supabase_listing_service().remove_donor_listing(actor, listing_id)
+    return None
 
 
 @router.post("/listings/{listing_id}/mark-donated", response_model=Listing)

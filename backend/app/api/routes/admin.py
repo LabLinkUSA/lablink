@@ -5,11 +5,11 @@ from app.schemas.domain import (
     AdminDashboardResponse,
     AuthenticatedUser,
     EquipmentRequest,
+    InternalListingDetailResponse,
     Institution,
     InstitutionVerificationUpdate,
     Listing,
     ListingApprovalUpdate,
-    ListingDetailResponse,
     RequestStatusUpdate,
     Role,
 )
@@ -25,11 +25,11 @@ def get_admin_dashboard(actor: AuthenticatedUser = Depends(require_actor)) -> Ad
     return get_supabase_listing_service().get_admin_dashboard()
 
 
-@router.get("/listings/{listing_id}", response_model=ListingDetailResponse)
+@router.get("/listings/{listing_id}", response_model=InternalListingDetailResponse)
 def get_admin_listing_detail(
     listing_id: str,
     actor: AuthenticatedUser = Depends(require_actor),
-) -> ListingDetailResponse:
+) -> InternalListingDetailResponse:
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
     return get_supabase_listing_service().get_admin_listing_detail(listing_id)

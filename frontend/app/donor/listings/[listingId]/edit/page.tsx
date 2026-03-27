@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { DonorListingForm } from "@/components/donor-listing-form";
-import { getCurrentProfile, getDonorDashboard, getDonorListingDetail } from "@/lib/api";
+import { getCurrentProfile, getDonorDashboard, getDonorListingDetail, getDonorListingFormTemplates } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
 export default async function EditDonorListingPage({ params }: { params: Promise<{ listingId: string }> }) {
@@ -69,15 +69,29 @@ export default async function EditDonorListingPage({ params }: { params: Promise
     );
   }
 
+  const documentTemplates = await getDonorListingFormTemplates(listingId);
+
+  if (!documentTemplates || documentTemplates.templates.length < 2) {
+    return (
+      <section className="page-section">
+        <div className="shell empty-state">
+          <span className="eyebrow">PDF templates unavailable</span>
+          <h1>We couldn&apos;t load the donor compliance PDFs.</h1>
+          <p>The listing cannot be edited until the required PDF templates are available.</p>
+          <div className="page-actions">
+            <Link href="/donor" className="button button-primary">
+              Back to donor dashboard
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="page-section">
       <div className="shell donor-form-page">
-        <div className="page-actions donor-form-page-actions">
-          <Link href="/donor" className="button button-secondary">
-            Back to donor dashboard
-          </Link>
-        </div>
-          <DonorListingForm listing={listing} mode="edit" />
+        <DonorListingForm listing={listing} mode="edit" documentTemplates={documentTemplates.templates} />
       </div>
     </section>
   );

@@ -94,9 +94,13 @@ Required listing fields:
 - Warranty or supporting documentation included
 - Hazardous or special handling flags
 - Pickup-only or shipment-possible indicator
+- Donor decontamination PDF completed in the LabLink modal editor
+- Donor liability release PDF completed in the LabLink modal editor
 
 Listing rules:
 - New listings enter `Pending Admin Approval`.
+- Listing submission requires the donor to complete and save the active decontamination and liability PDFs before admin review.
+- Completed compliance PDFs are visible to admins during listing verification and are not exposed in the public catalog.
 - Material edits to a live listing after requests exist should return the listing to review before remaining available.
 - Listings can be removed or expired by admins.
 - If a donor removes a listing with existing requests, open requests must be closed with a clear status.

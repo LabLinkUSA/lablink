@@ -1,0 +1,107 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /AcroForm 15 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R /Annots [7 0 R 8 0 R 9 0 R 10 0 R 11 0 R 12 0 R 13 0 R 14 0 R] >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+6 0 obj
+<< /Length 1501 >>
+stream
+0.1 w
+BT /F2 24 Tf 1 0 0 1 48 742 Tm (LabLink Liability Release) Tj ET
+BT /F1 10 Tf 1 0 0 1 48 718 Tm (Template version: 2026-03-27) Tj ET
+BT /F1 12 Tf 1 0 0 1 48 684 Tm (LabLink facilitates matching between verified donor and recipient institutions.) Tj ET
+BT /F1 12 Tf 1 0 0 1 48 660 Tm (LabLink does not inspect, certify, transport, install, or guarantee donated equipment and is not) Tj ET
+BT /F1 12 Tf 1 0 0 1 48 642 Tm (responsible for condition, transport damage, installation, compliance, or downstream use.) Tj ET
+BT /F1 12 Tf 1 0 0 1 48 618 Tm (The donor remains responsible for accurate safety disclosures, lawful transfer, and institutional compliance.) Tj ET
+BT /F2 11 Tf 1 0 0 1 430 762 Tm (Form type) Tj ET
+BT /F2 11 Tf 1 0 0 1 430 734 Tm (Template version) Tj ET
+BT /F2 11 Tf 1 0 0 1 48 578 Tm (I acknowledge that LabLink is a managed donation platform only.) Tj ET
+BT /F2 11 Tf 1 0 0 1 48 518 Tm (I acknowledge LabLink is not responsible for transport, installation, or equipment condition.) Tj ET
+BT /F2 11 Tf 1 0 0 1 48 458 Tm (I acknowledge my institution remains responsible for regulatory compliance and safety disclosure.) Tj ET
+BT /F2 11 Tf 1 0 0 1 48 398 Tm (Additional notes) Tj ET
+BT /F2 11 Tf 1 0 0 1 48 214 Tm (Electronic signature \(full name\)) Tj ET
+BT /F2 11 Tf 1 0 0 1 324 214 Tm (Date signed) Tj ET
+430 736 m 560 736 l S
+430 708 m 560 708 l S
+48 552 m 66 552 l S
+48 492 m 66 492 l S
+48 432 m 66 432 l S
+48 248 m 564 248 l S
+48 178 m 280 178 l S
+324 178 m 564 178 l S
+endstream
+endobj
+7 0 obj
+<< /FT /Tx /T (lablink_form_type) /Rect [430 736 560 754] /DA (/Helv 10 Tf 0 g) /V (liability_release) /F 4 /Ff 1 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+8 0 obj
+<< /FT /Tx /T (lablink_template_version) /Rect [430 708 560 726] /DA (/Helv 10 Tf 0 g) /V (2026-03-27) /F 4 /Ff 1 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+9 0 obj
+<< /FT /Btn /T (liability_acknowledged) /Rect [48 552 66 570] /Subtype /Widget /Type /Annot /F 4 /V /Off /AS /Off /MK << /CA (4) >> /AP << /N << /Yes << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 35 >> stream
+0 0 0 rg 0 0 18 18 re S 4 9 m 7 4 l 14 14 l S
+endstream >> /Off << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 18 >> stream
+0 0 18 18 re S
+endstream >> >> >> /P 3 0 R >>
+endobj
+10 0 obj
+<< /FT /Btn /T (transport_acknowledged) /Rect [48 492 66 510] /Subtype /Widget /Type /Annot /F 4 /V /Off /AS /Off /MK << /CA (4) >> /AP << /N << /Yes << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 35 >> stream
+0 0 0 rg 0 0 18 18 re S 4 9 m 7 4 l 14 14 l S
+endstream >> /Off << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 18 >> stream
+0 0 18 18 re S
+endstream >> >> >> /P 3 0 R >>
+endobj
+11 0 obj
+<< /FT /Btn /T (regulatory_acknowledged) /Rect [48 432 66 450] /Subtype /Widget /Type /Annot /F 4 /V /Off /AS /Off /MK << /CA (4) >> /AP << /N << /Yes << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 35 >> stream
+0 0 0 rg 0 0 18 18 re S 4 9 m 7 4 l 14 14 l S
+endstream >> /Off << /Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >> /Length 18 >> stream
+0 0 18 18 re S
+endstream >> >> >> /P 3 0 R >>
+endobj
+12 0 obj
+<< /FT /Tx /T (additional_notes) /Rect [48 248 564 390] /DA (/Helv 10 Tf 0 g) /V () /F 4 /Ff 4096 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+13 0 obj
+<< /FT /Tx /T (signer_name) /Rect [48 178 280 206] /DA (/Helv 10 Tf 0 g) /V () /F 4 /Ff 0 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+14 0 obj
+<< /FT /Tx /T (signed_on) /Rect [324 178 564 206] /DA (/Helv 10 Tf 0 g) /V () /F 4 /Ff 0 /Subtype /Widget /Type /Annot /MK << /BC [0.75 0.78 0.79] /BG [1 1 1] >> /P 3 0 R >>
+endobj
+15 0 obj
+<< /Fields [7 0 R 8 0 R 9 0 R 10 0 R 11 0 R 12 0 R 13 0 R 14 0 R] /NeedAppearances true /DR << /Font << /Helv 4 0 R >> >> /DA (/Helv 10 Tf 0 g) >>
+endobj
+xref
+0 16
+0000000000 65535 f 
+0000000015 00000 n 
+0000000081 00000 n 
+0000000138 00000 n 
+0000000337 00000 n 
+0000000407 00000 n 
+0000000482 00000 n 
+0000002035 00000 n 
+0000002249 00000 n 
+0000002463 00000 n 
+0000002916 00000 n 
+0000003370 00000 n 
+0000003825 00000 n 
+0000004024 00000 n 
+0000004215 00000 n 
+0000004405 00000 n 
+trailer
+<< /Size 16 /Root 1 0 R >>
+startxref
+4568
+%%EOF

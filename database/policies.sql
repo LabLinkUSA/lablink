@@ -2,6 +2,7 @@ alter table public.institutions enable row level security;
 alter table public.app_users enable row level security;
 alter table public.listings enable row level security;
 alter table public.listing_photos enable row level security;
+alter table public.listing_documents enable row level security;
 alter table public.equipment_requests enable row level security;
 alter table public.request_message_threads enable row level security;
 alter table public.request_messages enable row level security;

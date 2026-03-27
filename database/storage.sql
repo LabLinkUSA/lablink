@@ -3,6 +3,11 @@ values ('listing-images', 'listing-images', true)
 on conflict (id) do update
 set public = excluded.public;
 
+insert into storage.buckets (id, name, public)
+values ('listing-documents', 'listing-documents', false)
+on conflict (id) do update
+set public = excluded.public;
+
 create policy "public can read listing images"
 on storage.objects
 for select
@@ -15,3 +20,10 @@ for all
 to service_role
 using (bucket_id = 'listing-images')
 with check (bucket_id = 'listing-images');
+
+create policy "service role manages listing documents"
+on storage.objects
+for all
+to service_role
+using (bucket_id = 'listing-documents')
+with check (bucket_id = 'listing-documents');

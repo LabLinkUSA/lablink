@@ -28,6 +28,9 @@ export type NotificationType =
   | "request_status_changed"
   | "recipient_catalog_updated";
 export type NotificationEmailStatus = "pending" | "sent" | "failed";
+export type ListingDocumentFormType = "decontamination" | "liability_release";
+export type ListingDocumentStatus = "not_started" | "completed" | "outdated";
+export type ListingDocumentFieldType = "text" | "textarea" | "checkbox" | "date";
 
 export interface Institution {
   id: string;
@@ -87,7 +90,7 @@ export interface ListingCreateInput {
   photo_urls: string[];
 }
 
-export interface ListingUpdateInput {
+export interface ListingDraftSaveInput {
   title: string;
   category: string;
   condition: string;
@@ -111,6 +114,54 @@ export interface ListingApprovalUpdate {
 
 export interface ListingImageUploadResponse {
   photo_url: string;
+}
+
+export interface ListingDocumentGuideLink {
+  label: string;
+  url: string;
+}
+
+export interface ListingDocumentTemplateField {
+  key: string;
+  label: string;
+  type: ListingDocumentFieldType;
+  required: boolean;
+  placeholder?: string | null;
+}
+
+export interface ListingDocumentSummary {
+  form_type: ListingDocumentFormType;
+  template_version: string;
+  title: string;
+  status: ListingDocumentStatus;
+  file_name?: string | null;
+  preview_url?: string | null;
+  download_url?: string | null;
+  completed_by_name?: string | null;
+  completed_at?: string | null;
+  form_data: Record<string, unknown>;
+}
+
+export interface ListingDocumentTemplate {
+  form_type: ListingDocumentFormType;
+  template_version: string;
+  blank_pdf_url: string;
+  title: string;
+  summary: string;
+  body_sections: string[];
+  guide_links: ListingDocumentGuideLink[];
+  fields: ListingDocumentTemplateField[];
+  draft_notice?: string | null;
+  document: ListingDocumentSummary;
+}
+
+export interface ListingDocumentTemplatesResponse {
+  listing_id: string;
+  templates: ListingDocumentTemplate[];
+}
+
+export interface ListingDocumentSaveResponse {
+  document: ListingDocumentSummary;
 }
 
 export interface EquipmentRequest {
@@ -199,6 +250,10 @@ export interface ListingDetailResponse {
   listing: Listing;
   donor_institution: Institution;
   related_requests: EquipmentRequest[];
+}
+
+export interface InternalListingDetailResponse extends ListingDetailResponse {
+  documents: ListingDocumentSummary[];
 }
 
 export interface DonorDashboardResponse {

@@ -22,4 +22,3 @@ This repository includes application scaffolding only. Production infrastructure
 - `AWS_REGION`
 - `AWS_S3_BUCKET`
 - `STRIPE_SECRET_KEY`
-

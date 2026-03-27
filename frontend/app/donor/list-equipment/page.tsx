@@ -1,12 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { DonorListingForm } from "@/components/donor-listing-form";
-import { getCurrentProfile } from "@/lib/api";
+import { createDonorListingDraft, getCurrentProfile, getDonorListingDetail, getDonorListingFormTemplates } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
-export default async function DonorListEquipmentPage() {
+export default async function DonorListEquipmentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ draft?: string }>;
+}) {
   const profile = await getCurrentProfile();
   redirectAdminToDashboard(profile);
+  const { draft } = await searchParams;
 
   if (!profile) {
     return (
@@ -72,10 +78,56 @@ export default async function DonorListEquipmentPage() {
     );
   }
 
+  if (!draft) {
+    const draftListing = await createDonorListingDraft();
+    if (draftListing) {
+      redirect(`/donor/list-equipment?draft=${draftListing.id}`);
+    }
+  }
+
+  if (!draft) {
+    return (
+      <section className="page-section">
+        <div className="shell empty-state">
+          <span className="eyebrow">Draft unavailable</span>
+          <h1>We couldn&apos;t start a draft equipment listing.</h1>
+          <p>Try again in a moment. LabLink could not provision the draft listing needed for this workflow.</p>
+          <div className="page-actions">
+            <Link href="/donor" className="button button-secondary">
+              Back to donor dashboard
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const [detail, documentTemplates] = await Promise.all([
+    getDonorListingDetail(draft),
+    getDonorListingFormTemplates(draft),
+  ]);
+
+  if (!detail || !documentTemplates || detail.listing.status !== "draft" || documentTemplates.templates.length < 2) {
+    return (
+      <section className="page-section">
+        <div className="shell empty-state">
+          <span className="eyebrow">Draft unavailable</span>
+          <h1>We couldn&apos;t load the draft listing workflow.</h1>
+          <p>The draft listing or required PDF templates could not be loaded.</p>
+          <div className="page-actions">
+            <Link href="/donor" className="button button-secondary">
+              Back to donor dashboard
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="page-section">
       <div className="shell donor-form-page">
-          <DonorListingForm mode="create" />
+        <DonorListingForm mode="create" listing={detail.listing} documentTemplates={documentTemplates.templates} />
       </div>
     </section>
   );

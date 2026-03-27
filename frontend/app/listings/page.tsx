@@ -1,10 +1,8 @@
 import { PublicCatalogBrowser } from "@/components/public-catalog-browser";
 import { getCurrentProfile, getPublicListings } from "@/lib/api";
-import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
 export default async function ListingsPage() {
   const [profile, listings] = await Promise.all([getCurrentProfile(), getPublicListings()]);
-  redirectAdminToDashboard(profile);
 
   return (
     <section className="page-section">

@@ -2,23 +2,24 @@ import Link from "next/link";
 
 import { RecipientDashboardWorkspace } from "@/components/recipient-dashboard-workspace";
 import { getCurrentProfile, getRecipientDashboard } from "@/lib/api";
+import { isApprovedRecipient } from "@/lib/access";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
 function getInstitutionAccessStateMessage(status: string) {
   if (status === "suspended") {
     return {
       eyebrow: "Institution suspended",
-      title: "Your recipient dashboard is temporarily unavailable.",
+      title: "Your recipient access is temporarily unavailable.",
       description:
-        "Your institution is currently suspended, so recipient request activity is paused until an admin restores access.",
+        "Your institution is currently suspended, so recipient actions stay blocked until an admin restores access.",
     };
   }
 
   return {
     eyebrow: "Verification pending",
-    title: "Your recipient dashboard is waiting on admin verification.",
+    title: "Your recipient access is waiting on admin verification.",
     description:
-      "Your institution is currently pending verification, so recipient request activity stays blocked until approval is complete.",
+      "Your institution is currently pending verification, so dashboard access and item requests stay blocked until approval is complete.",
   };
 }
 
@@ -39,8 +40,7 @@ export default async function RecipientPage() {
   }
 
   if (profile?.user.role === "recipient_institution") {
-    const isVerifiedRecipient =
-      profile.user.account_status === "verified" && profile.institution.verification_status === "verified";
+    const isVerifiedRecipient = isApprovedRecipient(profile);
 
     if (!isVerifiedRecipient) {
       const accessState = getInstitutionAccessStateMessage(profile.institution.verification_status);
@@ -56,14 +56,14 @@ export default async function RecipientPage() {
             </p>
             <div className="auth-state-card">
               <h2>Your LabLink information is still saved</h2>
-              <p>Requests, saved listings, and institution details stay in place so access can resume after re-verification.</p>
+              <p>
+                Requests, saved listings, and institution details stay in place so access can resume once your
+                institution is verified.
+              </p>
             </div>
             <div className="page-actions">
               <Link href="/listings" className="button button-secondary">
                 Browse equipment
-              </Link>
-              <Link href="/auth" className="button button-primary">
-                Check account status
               </Link>
             </div>
           </div>

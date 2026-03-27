@@ -60,7 +60,7 @@ export default async function DonorPage() {
             </div>
             <div className="page-actions">
               <Link href="/listings" className="button button-secondary">
-                Browse equipment
+                Browse public catalog
               </Link>
               <Link href="/auth" className="button button-primary">
                 Check account status

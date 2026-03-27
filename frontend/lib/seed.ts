@@ -67,23 +67,29 @@ export function getDonorDashboardFromSeed(userId = "user_donor_alex"): DonorDash
 export function getRecipientDashboardFromSeed(userId = "user_recipient_maya"): RecipientDashboardResponse {
   const user = seed.users.find((entry) => entry.id === userId)!;
   const institution = seed.institutions.find((entry) => entry.id === user.institution_id)!;
-  const requests = seed.equipment_requests
-    .filter((request) => {
-      if (request.recipient_institution_id !== institution.id) {
-        return false;
+  const latestRequestsByListing = new Map<string, (typeof seed.equipment_requests)[number]>();
+  seed.equipment_requests
+    .filter((request) => request.recipient_institution_id === institution.id)
+    .sort((a, b) => (a.submitted_at < b.submitted_at ? 1 : -1))
+    .forEach((request) => {
+      const listing = seed.listings.find((entry) => entry.id === request.listing_id);
+      if (listing && ["removed_by_admin", "removed_by_donor"].includes(listing.status)) {
+        return;
       }
 
-      const listing = seed.listings.find((entry) => entry.id === request.listing_id);
-      return listing ? !["removed_by_admin", "removed_by_donor"].includes(listing.status) : true;
-    })
-    .sort((a, b) => (a.submitted_at < b.submitted_at ? 1 : -1));
+      if (!latestRequestsByListing.has(request.listing_id)) {
+        latestRequestsByListing.set(request.listing_id, request);
+      }
+    });
+  const requests = Array.from(latestRequestsByListing.values());
   const requestIds = new Set(requests.map((request) => request.id));
 
   return {
     institution,
     requests,
-    saved_listings: getPublicListingsFromSeed()
+    saved_listings: seed.listings
       .filter((listing) => !["removed_by_admin", "removed_by_donor"].includes(listing.status))
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
       .slice(0, 3),
     threads: seed.message_threads.filter((thread) => thread.request_id && requestIds.has(thread.request_id)),
     request_board_posts: seed.request_board_posts.filter((post) => post.institution_id === institution.id),

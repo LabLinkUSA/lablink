@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         default="listing-images",
         validation_alias=AliasChoices("LABLINK_SUPABASE_LISTING_IMAGES_BUCKET", "SUPABASE_LISTING_IMAGES_BUCKET"),
     )
+    supabase_listing_documents_bucket: str = Field(
+        default="listing-documents",
+        validation_alias=AliasChoices("LABLINK_SUPABASE_LISTING_DOCUMENTS_BUCKET", "SUPABASE_LISTING_DOCUMENTS_BUCKET"),
+    )
     resend_api_key: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("LABLINK_RESEND_API_KEY", "RESEND_API_KEY"),
