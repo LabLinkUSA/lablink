@@ -12,6 +12,14 @@ This repository includes application scaffolding only. Production infrastructure
 
 ### Frontend
 - `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Recommended production values for LabLink:
+
+- `NEXT_PUBLIC_API_BASE_URL=https://api.lablinkusa.org/api/v1`
+- `NEXT_PUBLIC_SITE_URL=https://lablinkusa.org`
 
 ### Backend
 - `LABLINK_FRONTEND_ORIGIN`
@@ -28,3 +36,7 @@ This repository includes application scaffolding only. Production infrastructure
 - `AWS_REGION`
 - `AWS_S3_BUCKET`
 - `STRIPE_SECRET_KEY`
+
+Recommended production value for LabLink:
+
+- `LABLINK_FRONTEND_ORIGIN=https://lablinkusa.org`
