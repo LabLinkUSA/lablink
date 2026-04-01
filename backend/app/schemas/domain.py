@@ -207,17 +207,6 @@ class Notification(BaseModel):
     email_error: Optional[str] = None
 
 
-class LabLinkSeed(BaseModel):
-    institutions: List[Institution]
-    users: List[User]
-    listings: List[Listing]
-    equipment_requests: List[EquipmentRequest]
-    message_threads: List[MessageThread]
-    messages: List[Message]
-    request_board_posts: List[RequestBoardPost]
-    admin_actions: List[AdminAction]
-
-
 class ListingDraftSave(BaseModel):
     title: str = ""
     category: str = ""

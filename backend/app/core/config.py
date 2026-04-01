@@ -1,5 +1,4 @@
 from functools import lru_cache
-from pathlib import Path
 from typing import Optional
 
 from pydantic import AliasChoices, Field
@@ -11,7 +10,6 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     environment: str = "development"
     frontend_origin: str = "http://localhost:3000"
-    demo_seed_path: Path = Path(__file__).resolve().parents[3] / "shared" / "seed" / "lablink.seed.json"
     supabase_url: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("LABLINK_SUPABASE_URL", "SUPABASE_URL"),

@@ -5,10 +5,9 @@
 LabLink is a managed donation marketplace for surplus scientific and clinical equipment. This repository now includes a greenfield implementation scaffold aligned to `docs/PRD.md`:
 
 - `frontend/`: Next.js App Router application with public browse flows plus donor, recipient, and admin dashboards
-- `backend/`: FastAPI service with Pydantic schemas, seeded demo data, and REST endpoints
+- `backend/`: FastAPI service with Pydantic schemas and REST endpoints
 - `database/`: PostgreSQL schema and Supabase policy scaffolding
 - `infrastructure/`: deployment notes and environment template placeholders
-- `shared/`: cross-project demo seed data
 
 ## Local Development/Onboarding
 

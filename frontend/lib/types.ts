@@ -236,17 +236,6 @@ export interface Notification {
   email_error?: string | null;
 }
 
-export interface LabLinkSeed {
-  institutions: Institution[];
-  users: User[];
-  listings: Listing[];
-  equipment_requests: EquipmentRequest[];
-  message_threads: MessageThread[];
-  messages: Message[];
-  request_board_posts: RequestBoardPost[];
-  admin_actions: AdminAction[];
-}
-
 export interface ListingDetailResponse {
   listing: Listing;
   donor_institution: Institution;
