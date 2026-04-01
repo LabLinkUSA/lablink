@@ -21,7 +21,20 @@ export function HomePageFrame() {
       override.id = "home-redesign-host-overrides";
       override.textContent = `
         :root {
-          --host-right-gutter: 18px;
+          --host-right-gutter: 1.125rem;
+          --host-nav-top: 6rem;
+          --host-nav-left: 1.5rem;
+          --host-nav-pad-block: 1rem;
+          --host-nav-pad-inline: 1.1rem;
+          --host-nav-radius: 0.35rem;
+          --host-nav-gap: 0.7rem;
+          --host-nav-top-mobile: 5.65rem;
+          --host-nav-left-mobile: 1rem;
+          --host-nav-pad-block-mobile: 0.85rem;
+          --host-nav-pad-inline-mobile: 0.95rem;
+          --host-nav-gap-mobile: 0.55rem;
+          --host-logo-width: 9rem;
+          --host-logo-height: 1.85rem;
         }
 
         html, body {
@@ -42,14 +55,14 @@ export function HomePageFrame() {
 
         nav {
           position: fixed !important;
-          top: 6rem !important;
-          left: 1.5rem !important;
+          top: var(--host-nav-top) !important;
+          left: var(--host-nav-left) !important;
           right: auto !important;
           width: auto !important;
           display: block !important;
-          padding: 1rem 1.1rem !important;
+          padding: var(--host-nav-pad-block) var(--host-nav-pad-inline) !important;
           border: 1px solid rgba(255, 255, 255, 0.12) !important;
-          border-radius: 0.35rem !important;
+          border-radius: var(--host-nav-radius) !important;
           background: rgba(26, 58, 42, 0.72) !important;
           backdrop-filter: blur(14px) !important;
           box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18) !important;
@@ -62,7 +75,7 @@ export function HomePageFrame() {
         nav ul {
           display: flex !important;
           flex-direction: column !important;
-          gap: 0.7rem !important;
+          gap: var(--host-nav-gap) !important;
           margin: 0 !important;
           padding: 0 !important;
         }
@@ -86,8 +99,8 @@ export function HomePageFrame() {
         footer .footer-brand::before {
           content: "" !important;
           display: inline-block !important;
-          width: 9rem !important;
-          height: 1.85rem !important;
+          width: var(--host-logo-width) !important;
+          height: var(--host-logo-height) !important;
           background-image: url("/lablink-header-logo.png") !important;
           background-repeat: no-repeat !important;
           background-position: left center !important;
@@ -105,13 +118,13 @@ export function HomePageFrame() {
 
         @media (max-width: 900px) {
           nav {
-            top: 5.65rem !important;
-            left: 1rem !important;
-            padding: 0.85rem 0.95rem !important;
+            top: var(--host-nav-top-mobile) !important;
+            left: var(--host-nav-left-mobile) !important;
+            padding: var(--host-nav-pad-block-mobile) var(--host-nav-pad-inline-mobile) !important;
           }
 
           nav ul {
-            gap: 0.55rem !important;
+            gap: var(--host-nav-gap-mobile) !important;
           }
         }
       `;

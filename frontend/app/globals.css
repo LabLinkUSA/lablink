@@ -3,6 +3,16 @@
 :root {
   --font-body: "DM Sans", "Avenir Next", "Segoe UI", sans-serif;
   --font-display: "DM Serif Display", Georgia, serif;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-9: 2.5rem;
+  --space-10: 3rem;
   --forest: #1a3a2a;
   --mid: #2c5f2d;
   --mint: #02c39a;
@@ -33,6 +43,34 @@
   --radius-md: 0.75rem;
   --radius-lg: 1.15rem;
   --radius-xl: 1.65rem;
+  --shell-max-width: 77.5rem;
+  --shell-gutter: 3rem;
+  --shell-gutter-mobile: 1.25rem;
+  --header-height: 5.75rem;
+  --header-height-mobile: 4.75rem;
+  --header-brand-width: 17rem;
+  --header-brand-height: 2.6rem;
+  --header-frame-inset: 0.5rem;
+  --header-frame-inset-desktop: 3.25rem;
+  --header-padding-inline-start: 0.25rem;
+  --header-padding-inline-end: 0.9rem;
+  --header-padding-inline-desktop: 1.35rem;
+  --header-nav-gap-row: 0.9rem;
+  --header-nav-gap-column: 3.4rem;
+  --header-nav-gap-row-mobile: 0.4rem;
+  --header-nav-gap-column-mobile: 0.85rem;
+  --header-nav-gap-row-desktop: 1rem;
+  --header-nav-gap-column-desktop: 3.8rem;
+  --header-nav-font-size: 1.08rem;
+  --header-nav-font-size-desktop: 1.12rem;
+  --header-actions-gap: 0.95rem;
+  --header-actions-gap-desktop: 1rem;
+  --header-action-height: 2.65rem;
+  --header-action-padding-inline: 0.95rem;
+  --header-action-radius: 0.75rem;
+  --header-action-font-size: 0.72rem;
+  --footer-padding-top: var(--space-8);
+  --footer-padding-bottom: var(--space-2);
   --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -120,7 +158,7 @@ h4 {
 .site-main {
   position: relative;
   flex: 1 0 auto;
-  padding-top: 5.75rem;
+  padding-top: var(--header-height);
 }
 
 body.app-body:has(.auth-screen-root) .site-header,
@@ -203,13 +241,13 @@ body.app-body:has(.home-redesign-page) .site-header {
 }
 
 .shell {
-  width: min(1200px, calc(100vw - 2rem));
+  width: min(var(--shell-max-width), calc(100vw - var(--shell-gutter)));
   margin: 0 auto;
 }
 
 .page-stack {
   display: grid;
-  gap: 1.75rem;
+  gap: var(--space-7);
 }
 
 .sr-only {
@@ -235,22 +273,22 @@ body.app-body:has(.home-redesign-page) .site-header {
 
 .site-header-inner {
   display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr) max-content;
+  grid-template-columns: var(--header-brand-width) minmax(0, 1fr) max-content;
   align-items: center;
-  gap: 1rem;
-  min-height: 5.5rem;
-  width: calc(100vw - 0.5rem);
+  gap: var(--space-4);
+  min-height: calc(var(--header-height) - var(--space-1));
+  width: calc(100vw - var(--header-frame-inset));
   max-width: none;
   margin: 0;
-  padding: 0 0.9rem 0 0.25rem;
+  padding: 0 var(--header-padding-inline-end) 0 var(--header-padding-inline-start);
 }
 
 .brand-mark {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  width: 17rem;
-  height: 2.6rem;
+  width: var(--header-brand-width);
+  height: var(--header-brand-height);
   flex-shrink: 0;
   min-width: 0;
   color: #ffffff;
@@ -278,9 +316,9 @@ body.app-body:has(.home-redesign-page) .site-header {
   justify-content: center;
   justify-self: center;
   width: 100%;
-  gap: 0.9rem 3.4rem;
+  gap: var(--header-nav-gap-row) var(--header-nav-gap-column);
   font-family: var(--font-body);
-  font-size: 1.08rem;
+  font-size: var(--header-nav-font-size);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -324,16 +362,16 @@ body.app-body:has(.home-redesign-page) .site-header {
   flex-wrap: wrap;
   justify-self: end;
   margin-left: auto;
-  gap: 0.95rem;
+  gap: var(--header-actions-gap);
   padding-right: 0.1rem;
 }
 
 .site-header .button-outline,
 .site-header .button-secondary {
-  min-height: 2.65rem;
-  padding: 0 0.95rem;
-  border-radius: 0.75rem;
-  font-size: 0.72rem;
+  min-height: var(--header-action-height);
+  padding: 0 var(--header-action-padding-inline);
+  border-radius: var(--header-action-radius);
+  font-size: var(--header-action-font-size);
   letter-spacing: 0.1em;
 }
 
@@ -4902,7 +4940,7 @@ a .message-row {
 
 @media (max-width: 760px) {
   .shell {
-    width: min(1200px, calc(100vw - 1.25rem));
+    width: min(var(--shell-max-width), calc(100vw - var(--shell-gutter-mobile)));
   }
 
   .hero {
@@ -4970,13 +5008,13 @@ a .message-row {
   }
 
   .site-nav {
-    gap: 0.4rem 0.85rem;
+    gap: var(--header-nav-gap-row-mobile) var(--header-nav-gap-column-mobile);
   }
 
   .site-header-inner {
     flex-wrap: wrap;
-    min-height: 4.75rem;
-    padding: 0.8rem 0;
+    min-height: var(--header-height-mobile);
+    padding: var(--space-3) 0;
   }
 
   .site-nav {
@@ -5143,11 +5181,11 @@ a .message-row {
 @media (min-width: 1101px) {
   .site-header-inner {
     display: grid !important;
-    grid-template-columns: 17rem minmax(0, 1fr) max-content !important;
+    grid-template-columns: var(--header-brand-width) minmax(0, 1fr) max-content !important;
     align-items: center !important;
-    width: calc(100vw - 3.25rem) !important;
+    width: calc(100vw - var(--header-frame-inset-desktop)) !important;
     margin: 0 !important;
-    padding: 0 1.35rem !important;
+    padding: 0 var(--header-padding-inline-desktop) !important;
   }
 
   .site-nav {
@@ -5155,8 +5193,8 @@ a .message-row {
     justify-content: center !important;
     width: max-content !important;
     min-width: 36rem;
-    gap: 1rem 3.8rem !important;
-    font-size: 1.12rem !important;
+    gap: var(--header-nav-gap-row-desktop) var(--header-nav-gap-column-desktop) !important;
+    font-size: var(--header-nav-font-size-desktop) !important;
     font-weight: 700 !important;
     letter-spacing: 0.16em !important;
   }
@@ -5171,13 +5209,13 @@ a .message-row {
     justify-content: flex-end !important;
     margin-left: 0 !important;
     padding-right: 0 !important;
-    gap: 1rem !important;
+    gap: var(--header-actions-gap-desktop) !important;
   }
 }
 
 /* Homepage theme applied across the app without changing layout structure. */
 .shell {
-  width: min(1240px, calc(100vw - 3rem));
+  width: min(var(--shell-max-width), calc(100vw - var(--shell-gutter)));
 }
 
 .site-main {
@@ -5494,7 +5532,7 @@ input[type="radio"] {
 }
 
 .footer .shell {
-  padding-top: 2rem;
-  padding-bottom: 0.5rem;
+  padding-top: var(--footer-padding-top);
+  padding-bottom: var(--footer-padding-bottom);
   border-top: 1px solid rgba(192, 224, 206, 0.24);
 }
