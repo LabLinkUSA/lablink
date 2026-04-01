@@ -73,7 +73,6 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [role, setRole] = useState<Role>("recipient_institution");
   const [institutionName, setInstitutionName] = useState("");
   const [institutionLocation, setInstitutionLocation] = useState("");
@@ -374,11 +373,6 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
       return;
     }
 
-    if (!acceptedTerms) {
-      setError("You must accept the terms and conditions to continue.");
-      return;
-    }
-
     setIsPending(true);
 
     startTransition(() => {
@@ -448,9 +442,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
   const isSignIn = mode === "sign_in";
   const shouldHideSignedInState = isSignIn && sessionUser !== null;
   const title = isSignIn ? "Welcome Back" : "Create your account";
-  const subtitle = isSignIn
-    ? "Access your clinical dashboard and equipment inventory."
-    : "Start managing your lab's lifecycle today.";
+  const subtitle = isSignIn ? "Access your clinical dashboard and equipment inventory." : "";
 
   return (
     <section className="auth-screen auth-screen-root">
@@ -684,17 +676,6 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
                     required
                   />
                 </div>
-
-                <label className="auth-screen-checkbox auth-screen-checkbox-top">
-                  <input
-                    type="checkbox"
-                    checked={acceptedTerms}
-                    onChange={(event) => setAcceptedTerms(event.target.checked)}
-                  />
-                  <span>
-                    I agree to the <a href="#">Terms and Conditions</a> and the clinical data usage policy.
-                  </span>
-                </label>
 
                 <button type="submit" className="auth-screen-primary-button" disabled={isPending}>
                   {isPending ? "Creating account..." : "Create Account"}

@@ -1,4 +1,4 @@
-import { HomePageFrame } from "@/components/home-page-frame";
+import { HomePageRedesign } from "@/components/home-page-redesign";
 import { getCurrentProfile } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
 
@@ -8,7 +8,7 @@ export default async function HomePage() {
 
   return (
     <div className="home-redesign-page">
-      <HomePageFrame />
+      <HomePageRedesign />
     </div>
   );
 }
