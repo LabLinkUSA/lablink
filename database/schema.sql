@@ -8,7 +8,6 @@ create type public.listing_status as enum (
   'pending_admin_approval',
   'rejected',
   'live',
-  'under_review',
   'matched_reserved',
   'fulfilled',
   'removed_by_admin',
@@ -17,9 +16,7 @@ create type public.listing_status as enum (
 create type public.request_status as enum (
   'submitted',
   'admin_review',
-  'awaiting_donor_confirmation',
   'approved_matched',
-  'pickup_transfer_coordination',
   'completed',
   'rejected_cancelled'
 );

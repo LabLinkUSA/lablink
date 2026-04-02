@@ -83,8 +83,8 @@ export default async function DonorPage() {
       </section>
     );
   }
-  const pendingApprovalCount = dashboard.listings.filter((listing) =>
-    ["pending_admin_approval", "under_review"].includes(listing.status),
+  const pendingApprovalCount = dashboard.listings.filter(
+    (listing) => listing.status === "pending_admin_approval",
   ).length;
   const successfulDeliveries = dashboard.listings.filter((listing) => listing.status === "fulfilled").length;
 

@@ -389,8 +389,7 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                   const matchedRequest = group.requests.find((request) => request.status === "approved_matched");
                   const primaryStatus = matchedRequest?.status ?? group.requests[0]?.status ?? "submitted";
                   const urgencyLabel = matchedRequest?.program_or_department ?? group.requests[0]?.program_or_department;
-                  const isCompetitionListingInactive =
-                    group.listing?.status === "pending_admin_approval" || group.listing?.status === "under_review";
+                  const isCompetitionListingInactive = group.listing?.status === "pending_admin_approval";
 
                   return (
                     <tr
@@ -1076,7 +1075,7 @@ function ListingReviewModal({
                   {reviewListing.status !== "matched_reserved" && reviewListing.status !== "rejected" ? (
                     <option value="pending_admin_approval">Pending</option>
                   ) : null}
-                  {["pending_admin_approval", "under_review"].includes(reviewListing.status) ? (
+                  {reviewListing.status === "pending_admin_approval" ? (
                     <option value="rejected">Rejected</option>
                   ) : null}
                   {reviewListing.status !== "matched_reserved" && reviewListing.status !== "rejected" ? (

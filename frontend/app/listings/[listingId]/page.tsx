@@ -25,7 +25,7 @@ function getInitials(name: string) {
     .join("");
 }
 
-const MATCHED_RECIPIENT_STATUSES = new Set(["approved_matched", "pickup_transfer_coordination", "completed"]);
+const MATCHED_RECIPIENT_STATUSES = new Set(["approved_matched", "completed"]);
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = await params;
@@ -35,7 +35,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const isListingRequestable = detail.listing.status === "live" || detail.listing.status === "under_review";
+  const isListingRequestable = detail.listing.status === "live";
   const isMatchedReserved = detail.listing.status === "matched_reserved";
   const isVerifiedRecipient = isApprovedRecipient(profile);
   const isNonApprovedRecipient = profile?.user.role === "recipient_institution" && !isVerifiedRecipient;

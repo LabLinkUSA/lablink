@@ -57,7 +57,7 @@ $$;
 create policy "public can browse approved listings"
 on public.listings
 for select
-using (status in ('live', 'under_review', 'matched_reserved', 'fulfilled'));
+using (status in ('live', 'matched_reserved', 'fulfilled'));
 
 create policy "public can browse listing photos"
 on public.listing_photos
@@ -66,7 +66,7 @@ using (
   exists (
     select 1 from public.listings l
     where l.id = listing_photos.listing_id
-      and l.status in ('live', 'under_review', 'matched_reserved', 'fulfilled')
+      and l.status in ('live', 'matched_reserved', 'fulfilled')
   )
 );
 
@@ -101,7 +101,7 @@ for select
 using (
   donor_institution_id = public.current_user_institution_id()
   or public.current_user_role() = 'admin'
-  or status in ('live', 'under_review', 'matched_reserved', 'fulfilled')
+  or status in ('live', 'matched_reserved', 'fulfilled')
 );
 
 create policy "verified recipients can submit requests"

@@ -2115,15 +2115,12 @@ body.app-body:has(.home-redesign-page) .site-header {
   color: var(--secondary-text);
 }
 
-.status-under_review,
 .status-admin_review,
 .status-submitted,
 .status-pending_request,
 .status-listing_under_review,
 .status-pending_admin_approval,
 .status-pending_verification,
-.status-awaiting_donor_confirmation,
-.status-pickup_transfer_coordination,
 .status-match_in_progress {
   background: rgba(255, 203, 114, 0.24);
   color: #7b4f00;

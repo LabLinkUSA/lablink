@@ -112,56 +112,69 @@ def _template_copy(
     if template_key == "institution_verified":
         return (
             "LabLink: your institution has been verified",
-            "Your institution is verified",
-            f"{institution_name} can now use LabLink as a verified {audience_label}.",
+            "Your institution has been verified",
+            "Your institution has been verified.",
             [f"Institution: {institution_name}"],
             "Open your dashboard",
         )
     if template_key == "institution_rejected":
         return (
-            "LabLink: your institution review was not approved",
-            "Institution review update",
-            f"LabLink reviewed {institution_name} and it is not approved yet.",
+            "LabLink: your institution has been rejected",
+            "Your institution has been rejected",
+            "Your institution has been rejected.",
             [f"Institution: {institution_name}"],
             "Review your dashboard",
         )
     if template_key == "institution_suspended":
         return (
-            "LabLink: your institution access is suspended",
-            "Institution access update",
-            f"LabLink suspended {institution_name} from verified activity.",
+            "LabLink: your institution has been suspended",
+            "Your institution has been suspended",
+            "Your institution has been suspended.",
             [f"Institution: {institution_name}"],
             "Open your dashboard",
         )
     if template_key == "institution_pending_verification":
         return (
-            "LabLink: your institution review status changed",
-            "Institution review update",
-            f"{institution_name} is currently pending verification.",
+            "LabLink: your institution is pending verification",
+            "Your institution is pending verification",
+            "Your institution is pending verification.",
             [f"Institution: {institution_name}"],
             "Open your dashboard",
         )
     if template_key == "listing_submitted_for_review":
+        is_resubmission = bool(metadata.get("resubmitted"))
         return (
             "LabLink: new listing submitted for review",
             "A listing is ready for admin review",
-            f"{actor_institution_name} submitted {entity_title} for LabLink review.",
+            (
+                f"{actor_institution_name} resubmitted a listing for review: {entity_title}."
+                if is_resubmission
+                else f"{actor_institution_name} submitted a new listing: {entity_title}."
+            ),
             [f"Listing: {entity_title}"],
             "Open admin dashboard",
+        )
+    if template_key == "listing_pending_admin_approval":
+        return (
+            "LabLink: your listing is pending admin approval",
+            "Your listing is pending admin approval",
+            f"Your {entity_title} is pending admin approval.",
+            [f"Listing: {entity_title}", f"Status: {status or 'pending_admin_approval'}"],
+            "Open donor dashboard",
         )
     if template_key == "listing_approved":
         return (
             "LabLink: your listing is approved",
             "Your listing is live",
-            f"{entity_title} is approved and now visible on LabLink.",
+            f"Your {entity_title} is now live.",
             [f"Listing: {entity_title}", f"Status: {status or 'live'}"],
             "Open donor dashboard",
         )
     if template_key == "listing_rejected":
         return (
             "LabLink: your listing needs changes",
-            "Your listing was not approved",
-            f"{entity_title} was reviewed and is not approved in its current form.",
+            "Your listing has been rejected",
+            f"Your {entity_title} has been rejected.",
             [f"Listing: {entity_title}", f"Status: {status or 'rejected'}"],
             "Review your listing",
         )
@@ -174,14 +187,46 @@ def _template_copy(
             "Open LabLink",
         )
     if template_key == "listing_removed":
+        if audience == "admin":
+            return (
+                "LabLink: listing removed from the marketplace",
+                "Listing removed from the marketplace",
+                f"{actor_institution_name} removed {entity_title} from the marketplace.",
+                [f"Listing: {entity_title}", f"Status: {status or 'removed_by_donor'}"],
+                "Open admin dashboard",
+            )
+        if audience == "donor_lab":
+            return (
+                "LabLink: your listing was removed by admin",
+                "Your listing has been removed by admin",
+                f"Your {entity_title} has been removed by admin.",
+                [f"Listing: {entity_title}", f"Status: {status or 'removed_by_admin'}"],
+                "Open donor dashboard",
+            )
+        if status == "removed by admin":
+            intro = f"A listing you requested, {entity_title}, was removed from the marketplace by LabLink admin."
+        elif status == "removed by donor":
+            intro = f"A listing you requested, {entity_title}, was removed from the marketplace by the donor."
+        elif status == "fulfilled":
+            intro = f"{entity_title} was marked as donated and is no longer available for your request."
+        else:
+            intro = f"{entity_title} is no longer available through LabLink."
         return (
             "LabLink: listing availability changed",
             "Listing removed from active circulation",
-            f"{entity_title} is no longer available through LabLink.",
+            intro,
             [f"Listing: {entity_title}", f"Status: {status or 'removed'}"],
             "Open LabLink",
         )
     if template_key == "listing_marked_donated":
+        if audience == "donor_lab":
+            return (
+                "LabLink: your listing was marked as donated",
+                "Your listing has been marked as donated",
+                f"Your {entity_title} has been marked as donated.",
+                [f"Listing: {entity_title}", f"Status: {status or 'fulfilled'}"],
+                "Open donor dashboard",
+            )
         return (
             "LabLink: listing marked as donated",
             "Listing fulfillment update",
@@ -194,7 +239,7 @@ def _template_copy(
             return (
                 "LabLink: new equipment request submitted",
                 "A new request needs review",
-                f"{actor_institution_name} submitted a request tied to {entity_title}.",
+                f"{actor_institution_name} submitted a request for {entity_title}.",
                 [f"Listing: {entity_title}"],
                 "Open admin dashboard",
             )
@@ -202,7 +247,7 @@ def _template_copy(
             return (
                 "LabLink: a recipient requested your listing",
                 "A recipient requested your listing",
-                f"A recipient institution requested {entity_title}.",
+                f"A recipient institution requested your listing {entity_title}.",
                 [f"Listing: {entity_title}", f"Recipient institution: {actor_institution_name}"],
                 "Open donor dashboard",
             )
@@ -219,14 +264,14 @@ def _template_copy(
             return (
                 "LabLink: a recipient was selected for your listing",
                 "Recipient selected",
-                f"LabLink selected a recipient for {entity_title}.",
+                f"A recipient for your {entity_title} has been selected.",
                 [f"Listing: {entity_title}"],
                 "Open donor dashboard",
             )
         return (
             "LabLink: your request was selected",
             "Your request was approved",
-            f"Your institution was selected to receive {entity_title}.",
+            f"Your request for {entity_title} is now approved.",
             [f"Listing: {entity_title}", f"Status: {status or 'approved'}"],
             "Open recipient dashboard",
         )
@@ -234,7 +279,7 @@ def _template_copy(
         return (
             "LabLink: your request was not selected",
             "Recipient selection update",
-            f"Another institution was selected for {entity_title}.",
+            f"Your request for {entity_title} was not selected.",
             [f"Listing: {entity_title}"],
             "Open recipient dashboard",
         )
@@ -243,47 +288,15 @@ def _template_copy(
             return (
                 "LabLink: recipient selection reopened",
                 "Recipient selection was reopened",
-                f"LabLink reopened recipient selection for {entity_title}.",
+                f"LabLink admin reopened recipient selection for your listing {entity_title}.",
                 [f"Listing: {entity_title}"],
                 "Open donor dashboard",
             )
         return (
             "LabLink: your request is back under review",
             "Recipient selection was reopened",
-            f"LabLink reopened recipient selection for {entity_title}.",
-            [f"Listing: {entity_title}", "Status: pending request"],
-            "Open recipient dashboard",
-        )
-    if template_key == "request_awaiting_donor_confirmation":
-        if audience == "donor_lab":
-            return (
-                "LabLink: donor confirmation needed",
-                "Please confirm the donation handoff",
-                f"A matched request for {entity_title} now needs donor confirmation.",
-                [f"Listing: {entity_title}", f"Status: {status or 'awaiting donor confirmation'}"],
-                "Open donor dashboard",
-            )
-        return (
-            "LabLink: your request is awaiting donor confirmation",
-            "Your request is awaiting donor confirmation",
-            f"The matched donation for {entity_title} is waiting on donor confirmation.",
-            [f"Listing: {entity_title}", f"Status: {status or 'awaiting donor confirmation'}"],
-            "Open recipient dashboard",
-        )
-    if template_key == "request_pickup_transfer_coordination":
-        if audience == "donor_lab":
-            return (
-                "LabLink: coordinate pickup or transfer",
-                "Pickup and transfer coordination is ready",
-                f"The matched donation for {entity_title} is ready for logistics coordination.",
-                [f"Listing: {entity_title}", f"Status: {status or 'pickup transfer coordination'}"],
-                "Open donor dashboard",
-            )
-        return (
-            "LabLink: coordinate pickup or transfer",
-            "Pickup and transfer coordination is ready",
-            f"The matched donation for {entity_title} is ready for logistics coordination.",
-            [f"Listing: {entity_title}", f"Status: {status or 'pickup transfer coordination'}"],
+            f"Your request for {entity_title} is now pending.",
+            [f"Listing: {entity_title}", "Status: pending"],
             "Open recipient dashboard",
         )
     if template_key == "request_completed":
@@ -299,7 +312,7 @@ def _template_copy(
             return (
                 "LabLink: donation marked complete",
                 "Donation completed",
-                f"{entity_title} was marked complete in LabLink.",
+                f"{actor_institution_name} marked the {entity_title} as donated.",
                 [f"Listing: {entity_title}", f"Updated by: {actor_institution_name}"],
                 "Open admin dashboard",
             )

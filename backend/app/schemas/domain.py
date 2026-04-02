@@ -32,7 +32,6 @@ class ListingStatus(StrEnum):
     PENDING_ADMIN_APPROVAL = "pending_admin_approval"
     REJECTED = "rejected"
     LIVE = "live"
-    UNDER_REVIEW = "under_review"
     MATCHED_RESERVED = "matched_reserved"
     FULFILLED = "fulfilled"
     REMOVED_BY_ADMIN = "removed_by_admin"
@@ -42,9 +41,7 @@ class ListingStatus(StrEnum):
 class RequestStatus(StrEnum):
     SUBMITTED = "submitted"
     ADMIN_REVIEW = "admin_review"
-    AWAITING_DONOR_CONFIRMATION = "awaiting_donor_confirmation"
     APPROVED_MATCHED = "approved_matched"
-    PICKUP_TRANSFER_COORDINATION = "pickup_transfer_coordination"
     COMPLETED = "completed"
     REJECTED_CANCELLED = "rejected_cancelled"
 

@@ -88,7 +88,7 @@ export default async function RecipientPage() {
     !["completed", "rejected_cancelled"].includes(request.status),
   ).length;
   const totalImpact = dashboard.requests.filter((request) =>
-    ["approved_matched", "pickup_transfer_coordination", "completed"].includes(request.status),
+    ["approved_matched", "completed"].includes(request.status),
   ).length;
 
   return (

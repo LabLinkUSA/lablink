@@ -55,7 +55,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LABLINK_SUPABASE_JWT_AUDIENCE", "SUPABASE_JWT_AUDIENCE"),
     )
 
-    model_config = SettingsConfigDict(env_prefix="LABLINK_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="LABLINK_",
+        env_file=(".env", ".env.local"),
+        extra="ignore",
+    )
 
 
 @lru_cache

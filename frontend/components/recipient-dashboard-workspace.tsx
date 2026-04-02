@@ -13,7 +13,7 @@ import { titleCaseStatus } from "@/lib/format";
 import type { ListingStatus, RecipientDashboardResponse } from "@/lib/types";
 
 function isListingUnderReview(status?: ListingStatus | null) {
-  return status === "pending_admin_approval" || status === "under_review";
+  return status === "pending_admin_approval";
 }
 
 function isListingPubliclyViewable(status?: ListingStatus | null) {

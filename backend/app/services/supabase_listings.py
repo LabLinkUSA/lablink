@@ -127,9 +127,7 @@ class SupabaseListingService:
         impact_summary = {
             "total_items_donated": sum(listing.quantity for listing in listings if listing.status == ListingStatus.FULFILLED),
             "institutions_served": 0,
-            "active_listings": sum(
-                1 for listing in listings if listing.status in {ListingStatus.LIVE, ListingStatus.UNDER_REVIEW}
-            ),
+            "active_listings": sum(1 for listing in listings if listing.status == ListingStatus.LIVE),
         }
         return DonorDashboardResponse(
             institution=actor.institution,
@@ -251,10 +249,7 @@ class SupabaseListingService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
 
         normalized_status = self._normalize_listing_status(listing["status"])
-        if normalized_status not in {
-            ListingStatus.LIVE.value,
-            ListingStatus.UNDER_REVIEW.value,
-        }:
+        if normalized_status != ListingStatus.LIVE.value:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This listing is not open for requests.")
 
         existing_requests = self._request(
@@ -326,6 +321,7 @@ class SupabaseListingService:
                 "institution_id": actor.institution.id,
                 "actor_institution_name": actor.institution.name,
             },
+            account_statuses={AccountStatus.VERIFIED.value},
         )
         self._notify_institution(
             listing["donor_institution_id"],
@@ -342,6 +338,8 @@ class SupabaseListingService:
                 "institution_id": actor.institution.id,
                 "actor_institution_name": actor.institution.name,
             },
+            role_value="donor_lab",
+            account_statuses={AccountStatus.VERIFIED.value},
         )
 
         row = self._get_equipment_request_row(request_id)
@@ -418,9 +416,6 @@ class SupabaseListingService:
                 "request_count": next_request_count,
                 "updated_at": timestamp,
             }
-            normalized_listing_status = self._normalize_listing_status(listing.get("status", ""))
-            if normalized_listing_status == ListingStatus.UNDER_REVIEW.value and next_request_count == 0:
-                listing_patch["status"] = ListingStatus.LIVE.value
 
             self._request(
                 "PATCH",
@@ -462,6 +457,7 @@ class SupabaseListingService:
                 entity_type="request",
                 entity_id=request_row["id"],
                 metadata=metadata,
+                account_statuses={AccountStatus.VERIFIED.value},
             )
             self._notify_institution(
                 listing["donor_institution_id"],
@@ -471,6 +467,8 @@ class SupabaseListingService:
                 entity_type="request",
                 entity_id=request_row["id"],
                 metadata=metadata,
+                role_value="donor_lab",
+                account_statuses={AccountStatus.VERIFIED.value},
             )
 
     def get_saved_listing_state(self, actor: AuthenticatedUser, listing_id: str) -> bool:
@@ -661,6 +659,7 @@ class SupabaseListingService:
                 "actor_institution_name": actor.institution.name,
                 "resubmitted": is_resubmission,
             },
+            account_statuses={AccountStatus.VERIFIED.value},
         )
         return self._to_listing(updated)
 
@@ -814,6 +813,7 @@ class SupabaseListingService:
                 "institution_id": actor.institution.id,
                 "actor_institution_name": actor.institution.name,
             },
+            account_statuses={AccountStatus.VERIFIED.value},
         )
         notified_institutions: set[str] = set()
         for request in affected_requests:
@@ -835,6 +835,8 @@ class SupabaseListingService:
                     "request_id": request.id,
                     "actor_institution_name": actor.institution.name,
                 },
+                role_value="recipient_institution",
+                account_statuses={AccountStatus.VERIFIED.value},
             )
         return None
 
@@ -881,8 +883,6 @@ class SupabaseListingService:
                 if request.status
                 in {
                     RequestStatus.APPROVED_MATCHED,
-                    RequestStatus.AWAITING_DONOR_CONFIRMATION,
-                    RequestStatus.PICKUP_TRANSFER_COORDINATION,
                     RequestStatus.COMPLETED,
                 }
             ),
@@ -891,7 +891,7 @@ class SupabaseListingService:
         self._notify_role(
             "admin",
             notification_type=NotificationType.REQUEST_STATUS_CHANGED,
-            message=f"{actor.institution.name} marked listing {updated['title']} as donated.",
+            message=f"{actor.institution.name} marked the {updated['title']} as donated.",
             cta_href="/admin",
             entity_type="listing",
             entity_id=listing_id,
@@ -904,6 +904,7 @@ class SupabaseListingService:
                 "actor_institution_name": actor.institution.name,
                 "request_id": matched_request.id if matched_request else "",
             },
+            account_statuses={AccountStatus.VERIFIED.value},
         )
         notified_institutions: set[str] = set()
         for request in relevant_requests:
@@ -933,6 +934,8 @@ class SupabaseListingService:
                     "status": status_value,
                     "actor_institution_name": actor.institution.name,
                 },
+                role_value="recipient_institution",
+                account_statuses={AccountStatus.VERIFIED.value},
             )
         return self._to_listing(updated)
 
@@ -1131,7 +1134,6 @@ class SupabaseListingService:
                 in {
                     ListingStatus.PENDING_ADMIN_APPROVAL.value,
                     ListingStatus.REJECTED.value,
-                    ListingStatus.UNDER_REVIEW.value,
                     ListingStatus.LIVE.value,
                     ListingStatus.MATCHED_RESERVED.value,
                 }
@@ -1177,10 +1179,7 @@ class SupabaseListingService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Listing {listing_id} not found.")
 
         current_status = self._normalize_listing_status(existing["status"])
-        if status_value == ListingStatus.REJECTED and current_status not in {
-            ListingStatus.PENDING_ADMIN_APPROVAL.value,
-            ListingStatus.UNDER_REVIEW.value,
-        }:
+        if status_value == ListingStatus.REJECTED and current_status != ListingStatus.PENDING_ADMIN_APPROVAL.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only listings under admin review can be rejected.",
@@ -1208,10 +1207,7 @@ class SupabaseListingService:
                 [listing_id],
                 latest_per_recipient=True,
             )
-        elif status_value in {
-            ListingStatus.PENDING_ADMIN_APPROVAL,
-            ListingStatus.UNDER_REVIEW,
-        }:
+        elif status_value == ListingStatus.PENDING_ADMIN_APPROVAL:
             affected_requests = self._get_requests_for_listing_ids(
                 [listing_id],
                 exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
@@ -1253,27 +1249,29 @@ class SupabaseListingService:
                 detail="Listing status was updated but the listing could not be reloaded.",
             )
 
-        self._notify_institution(
-            updated["donor_institution_id"],
-            notification_type=NotificationType.LISTING_STATUS_CHANGED,
-            message=self._with_admin_note(
-                f"Your listing {updated['title']} is now {self._friendly_status_label(status_value.value)}.",
-                admin_note,
-            ),
-            cta_href="/donor",
-            entity_type="listing",
-            entity_id=listing_id,
-            metadata={
-                "email_template_key": self._default_email_template_key(
-                    NotificationType.LISTING_STATUS_CHANGED,
-                    {"status": status_value.value},
-                ),
-                "entity_title": updated["title"],
-                "listing_id": listing_id,
-                "status": status_value.value,
-                "admin_note": admin_note,
-            },
+        donor_template_key = self._default_email_template_key(
+            NotificationType.LISTING_STATUS_CHANGED,
+            {"status": status_value.value},
         )
+        donor_message = self._donor_listing_status_message(updated["title"], status_value.value)
+        if donor_template_key and donor_message:
+            self._notify_institution(
+                updated["donor_institution_id"],
+                notification_type=NotificationType.LISTING_STATUS_CHANGED,
+                message=self._with_admin_note(donor_message, admin_note),
+                cta_href="/donor",
+                entity_type="listing",
+                entity_id=listing_id,
+                metadata={
+                    "email_template_key": donor_template_key,
+                    "entity_title": updated["title"],
+                    "listing_id": listing_id,
+                    "status": status_value.value,
+                    "admin_note": admin_note,
+                },
+                role_value="donor_lab",
+                account_statuses={AccountStatus.VERIFIED.value},
+            )
         if status_value == ListingStatus.REMOVED_BY_ADMIN:
             notified_institutions: set[str] = set()
             for request in affected_requests:
@@ -1298,11 +1296,10 @@ class SupabaseListingService:
                         "request_id": request.id,
                         "admin_note": admin_note,
                     },
+                    role_value="recipient_institution",
+                    account_statuses={AccountStatus.VERIFIED.value},
                 )
-        if current_status == ListingStatus.LIVE.value and status_value in {
-            ListingStatus.PENDING_ADMIN_APPROVAL,
-            ListingStatus.UNDER_REVIEW,
-        }:
+        if current_status == ListingStatus.LIVE.value and status_value == ListingStatus.PENDING_ADMIN_APPROVAL:
             notified_institutions: set[str] = set()
             for request in affected_requests:
                 if request.recipient_institution_id in notified_institutions:
@@ -1326,6 +1323,8 @@ class SupabaseListingService:
                         "request_id": request.id,
                         "admin_note": admin_note,
                     },
+                    role_value="recipient_institution",
+                    account_statuses={AccountStatus.VERIFIED.value},
                 )
         if status_value == ListingStatus.LIVE:
             self._notify_role(
@@ -1341,6 +1340,7 @@ class SupabaseListingService:
                     "listing_id": listing_id,
                     "status": status_value.value,
                 },
+                account_statuses={AccountStatus.VERIFIED.value},
             )
         return self._to_listing(updated)
 
@@ -1409,10 +1409,7 @@ class SupabaseListingService:
         self._notify_institution(
             institution_id,
             notification_type=NotificationType.INSTITUTION_STATUS_CHANGED,
-            message=self._with_admin_note(
-                f"Your institution is now {self._friendly_status_label(verification_status.value)}.",
-                admin_note,
-            ),
+            message=self._with_admin_note(self._institution_status_message(verification_status.value), admin_note),
             cta_href=self._dashboard_href_for_role(updated["role_type"]),
             entity_type="institution",
             entity_id=institution_id,
@@ -1426,6 +1423,7 @@ class SupabaseListingService:
                 "verification_status": verification_status.value,
                 "admin_note": admin_note,
             },
+            role_value=updated["role_type"],
         )
         return self._to_institution(updated)
 
@@ -1541,12 +1539,14 @@ class SupabaseListingService:
                 "listing_id": listing_id,
                 "admin_note": admin_note,
             },
+            role_value="recipient_institution",
+            account_statuses={AccountStatus.VERIFIED.value},
         )
         self._notify_institution(
             listing_row["donor_institution_id"],
             notification_type=NotificationType.REQUEST_STATUS_CHANGED,
             message=self._with_admin_note(
-                f"LabLink admin selected a recipient for your listing {listing_title}.",
+                f"A recipient for your {listing_title} has been selected.",
                 admin_note,
             ),
             cta_href="/donor",
@@ -1561,6 +1561,8 @@ class SupabaseListingService:
                 "recipient_institution_id": existing["recipient_institution_id"],
                 "admin_note": admin_note,
             },
+            role_value="donor_lab",
+            account_statuses={AccountStatus.VERIFIED.value},
         )
 
         for row in latest_request_rows:
@@ -1584,6 +1586,8 @@ class SupabaseListingService:
                     "listing_id": listing_id,
                     "admin_note": admin_note,
                 },
+                role_value="recipient_institution",
+                account_statuses={AccountStatus.VERIFIED.value},
             )
         return self._to_equipment_request(updated)
 
@@ -1606,7 +1610,6 @@ class SupabaseListingService:
         if current_status == RequestStatus.APPROVED_MATCHED and status_value in {
             RequestStatus.SUBMITTED,
             RequestStatus.ADMIN_REVIEW,
-            RequestStatus.AWAITING_DONOR_CONFIRMATION,
             RequestStatus.REJECTED_CANCELLED,
         }:
             raise HTTPException(
@@ -1687,40 +1690,9 @@ class SupabaseListingService:
                 "listing_id": updated["listing_id"],
                 "admin_note": admin_note,
             },
+            role_value="recipient_institution",
+            account_statuses={AccountStatus.VERIFIED.value},
         )
-        if status_value in {
-            RequestStatus.AWAITING_DONOR_CONFIRMATION,
-            RequestStatus.PICKUP_TRANSFER_COORDINATION,
-            RequestStatus.COMPLETED,
-        }:
-            listing_row = updated.get("listing") if isinstance(updated.get("listing"), dict) else None
-            donor_institution_id = listing_row.get("donor_institution_id") if listing_row else None
-            if donor_institution_id:
-                if status_value == RequestStatus.AWAITING_DONOR_CONFIRMATION:
-                    donor_message = f"Please confirm the matched request for {listing_title}."
-                elif status_value == RequestStatus.PICKUP_TRANSFER_COORDINATION:
-                    donor_message = f"Pickup and transfer coordination can begin for {listing_title}."
-                else:
-                    donor_message = f"The donation workflow for {listing_title} is complete."
-                self._notify_institution(
-                    donor_institution_id,
-                    notification_type=NotificationType.REQUEST_STATUS_CHANGED,
-                    message=self._with_admin_note(donor_message, admin_note),
-                    cta_href="/donor",
-                    entity_type="request",
-                    entity_id=request_id,
-                    metadata={
-                        "email_template_key": self._default_email_template_key(
-                            NotificationType.REQUEST_STATUS_CHANGED,
-                            {"status": status_value.value},
-                        ),
-                        "entity_title": listing_title,
-                        "request_id": request_id,
-                        "status": status_value.value,
-                        "listing_id": updated["listing_id"],
-                        "admin_note": admin_note,
-                    },
-                )
         return self._to_equipment_request(updated)
 
     def cancel_listing_match(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
@@ -1793,12 +1765,14 @@ class SupabaseListingService:
                 "listing_id": listing_id,
                 "status": RequestStatus.SUBMITTED.value,
             },
+            role_value="donor_lab",
+            account_statuses={AccountStatus.VERIFIED.value},
         )
         for row in request_rows:
             self._notify_institution(
                 row.recipient_institution_id,
                 notification_type=NotificationType.REQUEST_STATUS_CHANGED,
-                message=f"Your request for {listing_title} is now {self._friendly_request_status_label(RequestStatus.SUBMITTED.value)}.",
+                message=f"Your request for {listing_title} is now pending.",
                 cta_href="/recipient",
                 entity_type="request",
                 entity_id=row.id,
@@ -1809,6 +1783,8 @@ class SupabaseListingService:
                     "status": RequestStatus.SUBMITTED.value,
                     "listing_id": listing_id,
                 },
+                role_value="recipient_institution",
+                account_statuses={AccountStatus.VERIFIED.value},
             )
 
         updated = self._get_listing_row(listing_id)
@@ -1829,14 +1805,18 @@ class SupabaseListingService:
         entity_type: str,
         entity_id: str,
         metadata: dict[str, Any] | None = None,
+        account_statuses: set[str] | None = None,
     ) -> None:
+        params = {
+            "select": "id,email,full_name,role,institution_id,account_status",
+            "role": f"eq.{role_value}",
+        }
+        if account_statuses:
+            params["account_status"] = f"in.({','.join(sorted(account_statuses))})"
         users = self._request(
             "GET",
             "app_users",
-            params={
-                "select": "id,email,full_name,role,institution_id,account_status",
-                "role": f"eq.{role_value}",
-            },
+            params=params,
         )
         self._create_notifications_for_users(
             users,
@@ -1895,14 +1875,21 @@ class SupabaseListingService:
         entity_type: str,
         entity_id: str,
         metadata: dict[str, Any] | None = None,
+        role_value: str | None = None,
+        account_statuses: set[str] | None = None,
     ) -> None:
+        params = {
+            "select": "id,email,full_name,role,institution_id,account_status",
+            "institution_id": f"eq.{institution_id}",
+        }
+        if role_value:
+            params["role"] = f"eq.{role_value}"
+        if account_statuses:
+            params["account_status"] = f"in.({','.join(sorted(account_statuses))})"
         users = self._request(
             "GET",
             "app_users",
-            params={
-                "select": "id,email,full_name,role,institution_id,account_status",
-                "institution_id": f"eq.{institution_id}",
-            },
+            params=params,
         )
         self._create_notifications_for_users(
             users,
@@ -2116,7 +2103,7 @@ class SupabaseListingService:
         self,
         notification_type: NotificationType,
         metadata: dict[str, Any],
-    ) -> str:
+    ) -> str | None:
         status_value = str(metadata.get("status") or metadata.get("verification_status") or "")
         if notification_type == NotificationType.ADMIN_LISTING_SUBMITTED:
             return "listing_submitted_for_review"
@@ -2133,27 +2120,55 @@ class SupabaseListingService:
                 return "institution_suspended"
             return "institution_pending_verification"
         if notification_type == NotificationType.LISTING_STATUS_CHANGED:
+            if status_value == ListingStatus.DRAFT.value:
+                return None
+            if status_value == ListingStatus.PENDING_ADMIN_APPROVAL.value:
+                return "listing_pending_admin_approval"
+            if status_value == ListingStatus.MATCHED_RESERVED.value:
+                return None
             if status_value == ListingStatus.LIVE.value:
                 return "listing_approved"
             if status_value == ListingStatus.REJECTED.value:
                 return "listing_rejected"
-            if status_value in {ListingStatus.PENDING_ADMIN_APPROVAL.value, ListingStatus.UNDER_REVIEW.value}:
-                return "listing_under_review"
             if status_value == ListingStatus.FULFILLED.value:
                 return "listing_marked_donated"
             return "listing_removed"
         if notification_type == NotificationType.REQUEST_STATUS_CHANGED:
             if status_value == RequestStatus.APPROVED_MATCHED.value:
                 return "request_selected"
-            if status_value == RequestStatus.AWAITING_DONOR_CONFIRMATION.value:
-                return "request_awaiting_donor_confirmation"
-            if status_value == RequestStatus.PICKUP_TRANSFER_COORDINATION.value:
-                return "request_pickup_transfer_coordination"
             if status_value == RequestStatus.COMPLETED.value:
                 return "request_completed"
             if status_value == RequestStatus.REJECTED_CANCELLED.value:
                 return "request_cancelled"
         return "generic_notification"
+
+    def _donor_listing_status_message(self, listing_title: str, status_value: str) -> str | None:
+        if status_value == ListingStatus.DRAFT.value:
+            return None
+        if status_value == ListingStatus.PENDING_ADMIN_APPROVAL.value:
+            return f"Your {listing_title} is pending admin approval."
+        if status_value == ListingStatus.REJECTED.value:
+            return f"Your {listing_title} has been rejected."
+        if status_value == ListingStatus.LIVE.value:
+            return f"Your {listing_title} is now live."
+        if status_value == ListingStatus.MATCHED_RESERVED.value:
+            return None
+        if status_value == ListingStatus.FULFILLED.value:
+            return f"Your {listing_title} has been marked as donated."
+        if status_value == ListingStatus.REMOVED_BY_ADMIN.value:
+            return f"Your {listing_title} has been removed by admin."
+        return f"Your {listing_title} has a listing status update."
+
+    def _institution_status_message(self, verification_status_value: str) -> str:
+        if verification_status_value == VerificationStatus.PENDING_VERIFICATION.value:
+            return "Your institution is pending verification."
+        if verification_status_value == VerificationStatus.VERIFIED.value:
+            return "Your institution has been verified."
+        if verification_status_value == VerificationStatus.REJECTED.value:
+            return "Your institution has been rejected."
+        if verification_status_value == VerificationStatus.SUSPENDED.value:
+            return "Your institution has been suspended."
+        return f"Your institution is now {self._friendly_status_label(verification_status_value)}."
 
     def _friendly_status_label(self, status_value: str) -> str:
         if status_value == ListingStatus.REJECTED.value:
