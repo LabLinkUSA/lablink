@@ -51,6 +51,8 @@ The backend service uses:
 
 - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - Healthcheck path: `/api/v1/health`
+- Python version: `3.11` via `/backend/.python-version`
+- Python dependencies: `/backend/requirements.txt`
 
 The frontend should point `NEXT_PUBLIC_API_BASE_URL` at the deployed backend domain plus `/api/v1`.
 
