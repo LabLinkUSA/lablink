@@ -1,0 +1,1 @@
+-- No-op migration created to validate the simplified Supabase CLI workflow.

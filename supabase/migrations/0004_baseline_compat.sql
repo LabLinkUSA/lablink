@@ -1,0 +1,1 @@
+-- Consolidated into 0001_init.sql and 0002_policies.sql for Supabase CLI compatibility.

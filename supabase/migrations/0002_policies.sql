@@ -126,63 +126,181 @@ using (
   or public.current_user_role() = 'admin'
 );
 
-create policy "verified recipients can create request board posts"
+create policy "recipients can manage their own pending requests"
+on public.equipment_requests
+for update
+using (
+  recipient_institution_id = public.current_user_institution_id()
+  or public.current_user_role() = 'admin'
+)
+with check (
+  recipient_institution_id = public.current_user_institution_id()
+  or public.current_user_role() = 'admin'
+);
+
+create policy "verified donors can update own listings"
+on public.listings
+for update
+using (
+  donor_institution_id = public.current_user_institution_id()
+  or public.current_user_role() = 'admin'
+)
+with check (
+  donor_institution_id = public.current_user_institution_id()
+  or public.current_user_role() = 'admin'
+);
+
+create policy "verified donors can attach listing photos"
+on public.listing_photos
+for insert
+with check (
+  exists (
+    select 1 from public.listings l
+    where l.id = listing_photos.listing_id
+      and l.donor_institution_id = public.current_user_institution_id()
+  )
+  or public.current_user_role() = 'admin'
+);
+
+create policy "donors and admins can read own listing documents"
+on public.listing_documents
+for select
+using (
+  exists (
+    select 1 from public.listings l
+    where l.id = listing_documents.listing_id
+      and l.donor_institution_id = public.current_user_institution_id()
+  )
+  or public.current_user_role() = 'admin'
+);
+
+create policy "donors and admins can upsert own listing documents"
+on public.listing_documents
+for all
+using (
+  exists (
+    select 1 from public.listings l
+    where l.id = listing_documents.listing_id
+      and l.donor_institution_id = public.current_user_institution_id()
+  )
+  or public.current_user_role() = 'admin'
+)
+with check (
+  exists (
+    select 1 from public.listings l
+    where l.id = listing_documents.listing_id
+      and l.donor_institution_id = public.current_user_institution_id()
+  )
+  or public.current_user_role() = 'admin'
+);
+
+create policy "participants and admins can read request threads"
+on public.request_message_threads
+for select
+using (
+  exists (
+    select 1
+    from public.equipment_requests r
+    join public.listings l on l.id = r.listing_id
+    where r.id = request_message_threads.request_id
+      and (
+        r.recipient_institution_id = public.current_user_institution_id()
+        or l.donor_institution_id = public.current_user_institution_id()
+        or public.current_user_role() = 'admin'
+      )
+  )
+);
+
+create policy "participants and admins can read request messages"
+on public.request_messages
+for select
+using (
+  exists (
+    select 1
+    from public.request_message_threads t
+    join public.equipment_requests r on r.id = t.request_id
+    join public.listings l on l.id = r.listing_id
+    where t.id = request_messages.thread_id
+      and (
+        r.recipient_institution_id = public.current_user_institution_id()
+        or l.donor_institution_id = public.current_user_institution_id()
+        or public.current_user_role() = 'admin'
+      )
+  )
+);
+
+create policy "participants can send request messages"
+on public.request_messages
+for insert
+with check (
+  sender_user_id = (public.current_app_user()).id
+  and exists (
+    select 1
+    from public.request_message_threads t
+    join public.equipment_requests r on r.id = t.request_id
+    join public.listings l on l.id = r.listing_id
+    where t.id = request_messages.thread_id
+      and (
+        r.recipient_institution_id = public.current_user_institution_id()
+        or l.donor_institution_id = public.current_user_institution_id()
+        or public.current_user_role() = 'admin'
+      )
+  )
+);
+
+create policy "verified recipients can create board posts"
 on public.request_board_posts
 for insert
 with check (
   public.current_user_is_verified()
   and public.current_user_role() = 'recipient_institution'
   and institution_id = public.current_user_institution_id()
+  and created_by_user_id = (public.current_app_user()).id
 );
 
-create policy "request board visible to donors and admins"
+create policy "public can read open board posts"
 on public.request_board_posts
 for select
 using (
-  public.current_user_role() in ('donor_lab', 'admin')
+  status = 'open'
   or institution_id = public.current_user_institution_id()
+  or public.current_user_role() = 'admin'
 );
 
-create policy "thread participants and admins can read threads"
-on public.request_message_threads
-for select
+create policy "recipients and admins can update own board posts"
+on public.request_board_posts
+for update
 using (
-  public.current_user_role() = 'admin'
-  or exists (
-    select 1
-    from public.equipment_requests r
-    where r.id = request_message_threads.request_id
-      and (
-        r.recipient_institution_id = public.current_user_institution_id()
-        or exists (
-          select 1
-          from public.listings l
-          where l.id = request_message_threads.listing_id
-            and l.donor_institution_id = public.current_user_institution_id()
-        )
-      )
-  )
+  institution_id = public.current_user_institution_id()
+  or public.current_user_role() = 'admin'
+)
+with check (
+  institution_id = public.current_user_institution_id()
+  or public.current_user_role() = 'admin'
 );
 
-create policy "thread participants and admins can read messages"
-on public.request_messages
+create policy "recipients can save visible listings"
+on public.saved_listings
+for insert
+with check (
+  user_id = (public.current_app_user()).id
+  and public.current_user_role() = 'recipient_institution'
+);
+
+create policy "users can read their saved listings"
+on public.saved_listings
 for select
 using (
-  public.current_user_role() = 'admin'
-  or exists (
-    select 1
-    from public.request_message_threads t
-    join public.equipment_requests r on r.id = t.request_id
-    where t.id = request_messages.thread_id
-      and (
-        r.recipient_institution_id = public.current_user_institution_id()
-        or exists (
-          select 1 from public.listings l
-          where l.id = t.listing_id
-            and l.donor_institution_id = public.current_user_institution_id()
-        )
-      )
-  )
+  user_id = (public.current_app_user()).id
+  or public.current_user_role() = 'admin'
+);
+
+create policy "users can remove their saved listings"
+on public.saved_listings
+for delete
+using (
+  user_id = (public.current_app_user()).id
+  or public.current_user_role() = 'admin'
 );
 
 create policy "users can read their notifications"
@@ -205,8 +323,18 @@ with check (
   or public.current_user_role() = 'admin'
 );
 
-create policy "admins manage audit logs"
+create policy "admins can read admin audit logs"
 on public.admin_audit_logs
+for select
+using (public.current_user_role() = 'admin');
+
+create policy "admins can insert admin audit logs"
+on public.admin_audit_logs
+for insert
+with check (public.current_user_role() = 'admin');
+
+create policy "admins can manage admin email allowlist"
+on public.admin_email_allowlist
 for all
 using (public.current_user_role() = 'admin')
 with check (public.current_user_role() = 'admin');

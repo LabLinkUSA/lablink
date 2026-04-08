@@ -55,3 +55,11 @@ Notes:
 
 ### Handy root commands
 For local development, point the frontend API base URL at `http://127.0.0.1:8000/api/v1` so the browser and backend use the same loopback host consistently.
+
+### Database Migration Workflow
+- `supabase/migrations/` is the only executable source of truth for database changes.
+- Create a migration with `make db-new name=<migration_name>`.
+- Preview pending changes with `make db-dry-run`.
+- Apply them with `make db-push`.
+- Check local versus remote status with `make db-status`.
+- `database/` SQL files are reference-only and are not pushed automatically.

@@ -1,0 +1,1 @@
+-- Consolidated into 0001_init.sql for Supabase CLI compatibility.
