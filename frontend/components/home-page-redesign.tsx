@@ -151,7 +151,7 @@ export function HomePageRedesign() {
       </section>
 
       <section className={styles.mission} id="mission">
-        <div>
+        <div className={styles.missionContent}>
           <span className={styles.sectionLabel}>Our Mission</span>
           <h2 className={styles.sectionTitle}>No equipment should collect dust while a student goes without.</h2>
           <p className={styles.lead}>
@@ -167,8 +167,8 @@ export function HomePageRedesign() {
         </div>
         <div className={styles.missionImageFrame}>
           <Image
-            src="/josh-seb-with-faces.png"
-            alt="Josh and Sebastian packing boxes labeled Hospital Bethesda, Yale University"
+            src="/home-mission-josh-seb-boxes.jpg"
+            alt="Josh and Sebastian standing behind packed boxes for Hospital Bethesda at Yale University"
             width={1200}
             height={900}
             className={styles.missionImage}
@@ -235,13 +235,15 @@ export function HomePageRedesign() {
             LabLink is student-founded, student-run, and mission-driven. We believe the people closest to the problem
             are best placed to solve it.
           </p>
-          <Image
-            src="/josh-seb-with-faces.png"
-            alt="The LabLink team"
-            width={1200}
-            height={900}
-            className={styles.teamImage}
-          />
+          <div className={styles.teamImageFrame}>
+            <Image
+              src="/josh-seb-with-faces.png"
+              alt="The LabLink team"
+              width={1200}
+              height={900}
+              className={styles.teamImage}
+            />
+          </div>
         </div>
         <div className={styles.teamCards}>
           {teamItems.map((item) => (

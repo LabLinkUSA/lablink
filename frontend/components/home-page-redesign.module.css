@@ -167,6 +167,7 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(to right, var(--forest) 0%, transparent 30%);
+  transition: opacity 500ms ease;
 }
 
 .heroImage,
@@ -181,6 +182,9 @@
   height: 100%;
   object-fit: cover;
   opacity: 0.85;
+  transition:
+    transform 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 500ms ease;
 }
 
 .mission,
@@ -193,7 +197,25 @@
 }
 
 .mission {
+  grid-template-columns: minmax(0, 1.28fr) minmax(17rem, 0.72fr);
+  align-items: start;
   background: var(--light);
+}
+
+.missionContent {
+  max-width: 48rem;
+}
+
+.missionContent .sectionTitle {
+  max-width: 16ch;
+}
+
+.missionContent .lead {
+  max-width: 74ch;
+}
+
+.missionContent .lead + .lead {
+  margin-top: calc(1.2 * var(--home-unit));
 }
 
 .sectionTitle {
@@ -214,8 +236,12 @@
 
 .missionImageFrame {
   position: relative;
+  width: min(100%, calc(23 * var(--home-unit)));
+  justify-self: end;
   overflow: hidden;
   border-radius: 4px;
+  box-shadow: 0 18px 48px rgba(26, 58, 42, 0.08);
+  transition: box-shadow 350ms ease;
 }
 
 .missionImage {
@@ -223,6 +249,7 @@
   aspect-ratio: 4 / 3.6;
   object-fit: cover;
   object-position: center top;
+  transition: transform 750ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .missionCaption {
@@ -236,6 +263,9 @@
   font-size: calc(0.82 * var(--home-unit));
   font-weight: 400;
   letter-spacing: 0.02em;
+  transition:
+    background 350ms ease,
+    color 350ms ease;
 }
 
 .story {
@@ -265,11 +295,12 @@
   border: 1px solid rgba(2, 195, 154, 0.2);
   border-left: 3px solid var(--mint);
   background: rgba(255, 255, 255, 0.04);
-  transition: background var(--transition);
-}
-
-.timelineItem:hover {
-  background: rgba(2, 195, 154, 0.06);
+  box-shadow: 0 18px 34px rgba(5, 20, 12, 0);
+  transition:
+    transform 320ms ease,
+    background var(--transition),
+    border-color var(--transition),
+    box-shadow 320ms ease;
 }
 
 .timelineDate,
@@ -334,11 +365,9 @@
 .photoImage {
   height: 100%;
   object-fit: cover;
-  transition: transform 500ms ease;
-}
-
-.photoCell:hover .photoImage {
-  transform: scale(1.03);
+  transition:
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 400ms ease;
 }
 
 .photoCaption {
@@ -351,11 +380,10 @@
   color: rgba(255, 255, 255, 0.9);
   font-size: calc(0.8 * var(--home-unit));
   opacity: 0;
-  transition: opacity 300ms ease;
-}
-
-.photoCell:hover .photoCaption {
-  opacity: 1;
+  transform: translateY(calc(0.45 * var(--home-unit)));
+  transition:
+    opacity 300ms ease,
+    transform 350ms ease;
 }
 
 .numbers {
@@ -379,6 +407,12 @@
   border: 1px solid rgba(26, 58, 42, 0.15);
   background: rgba(26, 58, 42, 0.08);
   text-align: center;
+  box-shadow: 0 14px 28px rgba(26, 58, 42, 0);
+  transition:
+    transform 280ms ease,
+    background var(--transition),
+    border-color var(--transition),
+    box-shadow 280ms ease;
 }
 
 .numberValue {
@@ -387,6 +421,9 @@
   font-size: calc(3 * var(--home-unit));
   line-height: 1;
   color: var(--forest);
+  transition:
+    transform 280ms ease,
+    color 280ms ease;
 }
 
 .numberLabel {
@@ -408,8 +445,18 @@
 
 .teamImage {
   height: auto;
+  border-radius: 4px;
+  transition:
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 450ms ease;
+}
+
+.teamImageFrame {
+  overflow: hidden;
   margin-top: calc(1 * var(--home-unit));
   border-radius: 4px;
+  box-shadow: 0 20px 46px rgba(26, 58, 42, 0.08);
+  transition: box-shadow 350ms ease;
 }
 
 .teamCards {
@@ -425,6 +472,12 @@
   padding: var(--home-card-pad-lg);
   border: 1px solid var(--border);
   background: #ffffff;
+  box-shadow: 0 18px 36px rgba(26, 58, 42, 0);
+  transition:
+    transform 320ms ease,
+    box-shadow 320ms ease,
+    border-color var(--transition),
+    background var(--transition);
 }
 
 .teamCardMuted {
@@ -444,6 +497,10 @@
   color: #ffffff;
   font-family: var(--font-display);
   font-size: calc(1.4 * var(--home-unit));
+  transition:
+    transform 320ms ease,
+    background var(--transition),
+    color var(--transition);
 }
 
 .teamAvatarMuted {
@@ -466,6 +523,86 @@
   color: #3a5a42;
   font-size: calc(0.9 * var(--home-unit));
   line-height: 1.65;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .heroRight:hover .heroImage {
+    transform: scale(1.045);
+    filter: saturate(1.06) brightness(1.05);
+  }
+
+  .heroRight:hover::after {
+    opacity: 0.82;
+  }
+
+  .missionImageFrame:hover {
+    box-shadow: 0 26px 58px rgba(26, 58, 42, 0.14);
+  }
+
+  .missionImageFrame:hover .missionImage {
+    transform: scale(1.04);
+  }
+
+  .missionImageFrame:hover .missionCaption {
+    background: linear-gradient(transparent, rgba(26, 58, 42, 0.96));
+    color: #ffffff;
+  }
+
+  .timelineItem:hover {
+    transform: translateY(calc(-0.32 * var(--home-unit)));
+    border-color: rgba(2, 195, 154, 0.36);
+    background: rgba(2, 195, 154, 0.08);
+    box-shadow: 0 18px 34px rgba(5, 20, 12, 0.22);
+  }
+
+  .photoCell:hover .photoImage {
+    transform: scale(1.045);
+    filter: saturate(1.05) contrast(1.02);
+  }
+
+  .photoCell:hover .photoCaption {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .numberCard:hover {
+    transform: translateY(calc(-0.36 * var(--home-unit)));
+    border-color: rgba(26, 58, 42, 0.24);
+    background: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 20px 42px rgba(26, 58, 42, 0.16);
+  }
+
+  .numberCard:hover .numberValue {
+    transform: scale(1.04);
+    color: #123629;
+  }
+
+  .teamImageFrame:hover {
+    box-shadow: 0 28px 62px rgba(26, 58, 42, 0.16);
+  }
+
+  .teamImageFrame:hover .teamImage {
+    transform: scale(1.035) translateY(calc(-0.3 * var(--home-unit)));
+    filter: saturate(1.04) contrast(1.02);
+  }
+
+  .teamCard:hover {
+    transform: translateY(calc(-0.28 * var(--home-unit)));
+    border-color: rgba(2, 195, 154, 0.3);
+    background: #fcfffd;
+    box-shadow: 0 18px 38px rgba(26, 58, 42, 0.12);
+  }
+
+  .teamCard:hover .teamAvatar {
+    transform: scale(1.06);
+    background: var(--forest);
+    color: var(--mint);
+  }
+
+  .teamCardMuted:hover .teamAvatar {
+    background: rgba(2, 195, 154, 0.22);
+    color: var(--forest);
+  }
 }
 
 .footer {
