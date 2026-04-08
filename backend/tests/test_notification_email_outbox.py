@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from app.schemas.domain import NotificationType
+from app.schemas.domain import NotificationEmailStatus, NotificationType
 from app.services.supabase_listings import SupabaseListingService
 
 
@@ -95,6 +95,8 @@ class NotificationEmailOutboxTests(unittest.TestCase):
         self.assertEqual(final_update["email_status"], "sent")
         self.assertEqual(final_update["email_attempt_count"], 1)
         self.assertEqual(final_update["email_provider_message_id"], "re_msg_1")
+        due_query = service._request.call_args_list[0].kwargs["params"]
+        self.assertEqual(due_query["email_status"], "eq.failed")
 
     def test_process_notification_emails_marks_failed_and_schedules_retry(self) -> None:
         service = self.make_service()
@@ -153,6 +155,39 @@ class NotificationEmailOutboxTests(unittest.TestCase):
         self.assertEqual(final_update["email_attempt_count"], 5)
         due_query = service._request.call_args_list[0].kwargs["params"]
         self.assertEqual(due_query["email_attempt_count"], "lt.5")
+
+    def test_process_notification_email_marks_sent_for_pending_notification(self) -> None:
+        service = self.make_service()
+        service._request = MagicMock(  # type: ignore[method-assign]
+            side_effect=[
+                [self.due_notification_row()],
+                [{"id": "notif_123"}],
+                None,
+            ]
+        )
+        service._send_resend_email = MagicMock(return_value="re_msg_1")  # type: ignore[method-assign]
+
+        response = service.process_notification_email("notif_123")
+
+        self.assertTrue(response.processed)
+        self.assertTrue(response.sent)
+        self.assertEqual(response.email_status, NotificationEmailStatus.SENT)
+        lookup_query = service._request.call_args_list[0].kwargs["params"]
+        self.assertEqual(lookup_query["id"], "eq.notif_123")
+
+    def test_process_notification_email_skips_already_processed_notification(self) -> None:
+        service = self.make_service()
+        row = self.due_notification_row()
+        row["email_status"] = "failed"
+        service._request = MagicMock(return_value=[row])  # type: ignore[method-assign]
+        service._send_resend_email = MagicMock()  # type: ignore[method-assign]
+
+        response = service.process_notification_email("notif_123")
+
+        self.assertFalse(response.processed)
+        self.assertFalse(response.sent)
+        self.assertEqual(response.email_status, NotificationEmailStatus.FAILED)
+        service._send_resend_email.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -29,6 +29,7 @@ Recommended production values for LabLink:
 - `LABLINK_RESEND_API_KEY`
 - `LABLINK_EMAIL_FROM`
 - `LABLINK_EMAIL_REPLY_TO`
+- `LABLINK_NOTIFICATION_WEBHOOK_SECRET`
 - `LABLINK_EMAIL_CRON_TOKEN`
 - `LABLINK_EMAIL_BATCH_SIZE`
 - `LABLINK_EMAIL_MAX_ATTEMPTS`
@@ -58,7 +59,20 @@ The frontend should point `NEXT_PUBLIC_API_BASE_URL` at the deployed backend dom
 
 ## Notification Email Processing
 
-Notification emails are queued in-app and delivered by the protected internal job endpoint:
+Notification emails are created from `public.notifications` rows. Initial delivery should be triggered by a Supabase Database Webhook:
+
+- `POST /api/v1/internal/webhooks/notification-email`
+
+Required header:
+
+- `X-LabLink-Webhook-Secret: <LABLINK_NOTIFICATION_WEBHOOK_SECRET>`
+
+Configure the webhook for:
+
+- Table: `public.notifications`
+- Event: `INSERT`
+
+Failed notification emails are retried by the protected internal job endpoint:
 
 - `POST /api/v1/internal/jobs/notification-emails/process`
 
@@ -66,4 +80,4 @@ Required header:
 
 - `Authorization: Bearer <LABLINK_EMAIL_CRON_TOKEN>`
 
-If you want the in-app notification to email flow to work in production, configure a Railway Scheduled Job or an external scheduler to call that endpoint on a regular interval.
+If you want the in-app notification to email flow to work in production, configure the Supabase Database Webhook for first-send delivery and keep a Railway Scheduled Job or external scheduler to retry failed emails on a regular interval.

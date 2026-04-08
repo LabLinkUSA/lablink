@@ -63,3 +63,18 @@ def require_internal_job_token(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header.")
     if token != settings.email_cron_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal job token.")
+
+
+def require_notification_webhook_secret(
+    webhook_secret: Annotated[str | None, Header(alias="X-LabLink-Webhook-Secret")] = None,
+) -> None:
+    settings = get_settings()
+    if not settings.notification_webhook_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Notification webhook secret is not configured.",
+        )
+    if not webhook_secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing webhook secret header.")
+    if webhook_secret != settings.notification_webhook_secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook secret.")

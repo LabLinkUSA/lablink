@@ -399,6 +399,25 @@ class NotificationEmailProcessingResponse(BaseModel):
     failed_count: int
 
 
+class NotificationEmailWebhookRecord(BaseModel):
+    id: str
+
+
+class NotificationEmailWebhookRequest(BaseModel):
+    type: str
+    table: str
+    schema_name: str = Field(alias="schema")
+    record: Optional[NotificationEmailWebhookRecord] = None
+    old_record: Optional[dict[str, Any]] = None
+
+
+class NotificationEmailDeliveryResponse(BaseModel):
+    notification_id: str
+    processed: bool
+    sent: bool
+    email_status: Optional[NotificationEmailStatus] = None
+
+
 class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
 

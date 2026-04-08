@@ -42,6 +42,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("LABLINK_EMAIL_CRON_TOKEN", "EMAIL_CRON_TOKEN"),
     )
+    notification_webhook_secret: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LABLINK_NOTIFICATION_WEBHOOK_SECRET", "NOTIFICATION_WEBHOOK_SECRET"),
+    )
     email_batch_size: int = Field(
         default=50,
         validation_alias=AliasChoices("LABLINK_EMAIL_BATCH_SIZE", "EMAIL_BATCH_SIZE"),

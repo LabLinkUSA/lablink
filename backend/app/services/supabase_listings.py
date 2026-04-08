@@ -33,6 +33,7 @@ from app.schemas.domain import (
     ListingDocumentTemplatesResponse,
     MarkNotificationsViewedResponse,
     Notification,
+    NotificationEmailDeliveryResponse,
     NotificationEmailStatus,
     NotificationEmailProcessingResponse,
     NotificationListResponse,
@@ -1838,7 +1839,7 @@ class SupabaseListingService:
                     "id,user_id,message,cta_href,metadata,email_status,email_attempt_count,"
                     "user:app_users(id,email,full_name,role,institution_id)"
                 ),
-                "email_status": f"in.({NotificationEmailStatus.PENDING.value},{NotificationEmailStatus.FAILED.value})",
+                "email_status": f"eq.{NotificationEmailStatus.FAILED.value}",
                 "email_next_attempt_at": f"lte.{now.isoformat()}",
                 "email_attempt_count": f"lt.{self.email_max_attempts}",
                 "order": "created_at.asc",
@@ -1863,6 +1864,42 @@ class SupabaseListingService:
             processed_count=processed_count,
             sent_count=sent_count,
             failed_count=failed_count,
+        )
+
+    def process_notification_email(self, notification_id: str) -> NotificationEmailDeliveryResponse:
+        row = self._get_notification_email_row(notification_id)
+        if not row:
+            return NotificationEmailDeliveryResponse(
+                notification_id=notification_id,
+                processed=False,
+                sent=False,
+                email_status=None,
+            )
+
+        email_status = NotificationEmailStatus(row["email_status"])
+        attempt_count = int(row.get("email_attempt_count") or 0)
+        if email_status != NotificationEmailStatus.PENDING or attempt_count >= self.email_max_attempts:
+            return NotificationEmailDeliveryResponse(
+                notification_id=notification_id,
+                processed=False,
+                sent=False,
+                email_status=email_status,
+            )
+
+        if not self._claim_notification_for_processing(row):
+            return NotificationEmailDeliveryResponse(
+                notification_id=notification_id,
+                processed=False,
+                sent=False,
+                email_status=NotificationEmailStatus.SENDING,
+            )
+
+        sent = self._deliver_notification_email(row)
+        return NotificationEmailDeliveryResponse(
+            notification_id=notification_id,
+            processed=True,
+            sent=sent,
+            email_status=NotificationEmailStatus.SENT if sent else NotificationEmailStatus.FAILED,
         )
 
     def _notify_institution(
@@ -1938,6 +1975,21 @@ class SupabaseListingService:
                 json=notification_row,
                 headers={"Prefer": "return=minimal"},
             )
+
+    def _get_notification_email_row(self, notification_id: str) -> dict[str, Any] | None:
+        rows = self._request(
+            "GET",
+            "notifications",
+            params={
+                "select": (
+                    "id,user_id,message,cta_href,metadata,email_status,email_attempt_count,"
+                    "user:app_users(id,email,full_name,role,institution_id)"
+                ),
+                "id": f"eq.{notification_id}",
+                "limit": "1",
+            },
+        )
+        return rows[0] if rows else None
 
     def _normalize_notification_metadata(
         self,
