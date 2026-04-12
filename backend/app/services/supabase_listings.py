@@ -799,6 +799,7 @@ class SupabaseListingService:
             },
             headers={"Prefer": "return=minimal"},
         )
+        self._cancel_open_requests_for_listing(listing_id)
         self._notify_role(
             "admin",
             notification_type=NotificationType.LISTING_STATUS_CHANGED,
@@ -824,7 +825,7 @@ class SupabaseListingService:
             self._notify_institution(
                 request.recipient_institution_id,
                 notification_type=NotificationType.LISTING_STATUS_CHANGED,
-                message=f"A listing you requested, {existing['title']}, was removed from the marketplace by the donor.",
+                message=f"The donor has removed the listing '{existing['title']}'. Your request has been closed.",
                 cta_href="/recipient",
                 entity_type="listing",
                 entity_id=listing_id,
@@ -1274,6 +1275,7 @@ class SupabaseListingService:
                 account_statuses={AccountStatus.VERIFIED.value},
             )
         if status_value == ListingStatus.REMOVED_BY_ADMIN:
+            self._cancel_open_requests_for_listing(listing_id)
             notified_institutions: set[str] = set()
             for request in affected_requests:
                 if request.recipient_institution_id in notified_institutions:
@@ -1283,7 +1285,7 @@ class SupabaseListingService:
                     request.recipient_institution_id,
                     notification_type=NotificationType.LISTING_STATUS_CHANGED,
                     message=self._with_admin_note(
-                        f"A listing you requested, {updated['title']}, was removed from the marketplace by LabLink admin.",
+                        f"This listing '{updated['title']}' has been removed by LabLink. Your request has been closed.",
                         admin_note,
                     ),
                     cta_href="/recipient",
@@ -2280,6 +2282,27 @@ class SupabaseListingService:
     def _ensure_donor_controls_listing(self, actor: AuthenticatedUser, row: dict[str, Any]) -> None:
         if row.get("donor_institution_id") != actor.institution.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only manage your own listings.")
+
+    def _cancel_open_requests_for_listing(self, listing_id: str) -> None:
+        """Set all open requests for a listing to rejected_cancelled via a single bulk PATCH."""
+        open_statuses = ",".join([
+            RequestStatus.SUBMITTED.value,
+            RequestStatus.ADMIN_REVIEW.value,
+            RequestStatus.APPROVED_MATCHED.value,
+        ])
+        self._request(
+            "PATCH",
+            "equipment_requests",
+            params={
+                "listing_id": f"eq.{listing_id}",
+                "status": f"in.({open_statuses})",
+            },
+            json={
+                "status": RequestStatus.REJECTED_CANCELLED.value,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
 
     def _ensure_listing_mutable(self, row: dict[str, Any], *, action: str) -> None:
         status_value = self._normalize_listing_status(row.get("status"))
