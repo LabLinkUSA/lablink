@@ -88,9 +88,16 @@ export default async function EditDonorListingPage({ params }: { params: Promise
     );
   }
 
+  const isLiveWithRequests = listing.status === "live" && listing.request_count > 0;
+
   return (
     <section className="page-section">
       <div className="shell donor-form-page">
+        {isLiveWithRequests ? (
+          <p className="auth-notice auth-notice-warning" style={{ marginBottom: "1.5rem" }}>
+            This listing is live and has active requests. Editing key fields (title, condition, quantity, etc.) will return it to admin review until re-approved.
+          </p>
+        ) : null}
         <DonorListingForm listing={listing} mode="edit" documentTemplates={documentTemplates.templates} />
       </div>
     </section>
