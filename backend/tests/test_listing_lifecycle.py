@@ -138,6 +138,87 @@ class RemoveDonorListingCancelsRequestsTests(unittest.TestCase):
         body = cancel_calls[0][1]["json"]
         assert body["status"] == RequestStatus.REJECTED_CANCELLED.value
 
+    def test_admin_removal_cancels_open_requests_and_skips_completed(self) -> None:
+        service = make_service()
+        actor = self._make_actor()
+
+        listing_row = {
+            "id": "listing_abc",
+            "title": "PCR Thermocycler",
+            "status": "live",
+            "donor_institution_id": "inst_donor",
+            "created_by_user_id": "user_donor",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "request_count": 1,
+            "category": "lab_equipment",
+            "item_condition": "good",
+            "quantity": 1,
+            "location": "New York",
+            "availability_window": "2026-05-01",
+            "description": "A reliable thermocycler.",
+            "dimensions_weight": "30cm x 20cm, 5kg",
+            "handling_requirements": "None",
+            "working_status": "fully_functional",
+            "documentation_included": "",
+            "special_handling_flags": "",
+            "delivery_mode": "pickup_only",
+            "listing_photos": [],
+        }
+
+        equipment_requests_call_count = {"count": 0}
+
+        def fake_request(method, table, **kwargs):
+            if method == "GET" and table == "listings":
+                return [listing_row]
+            if method == "PATCH" and table == "listings":
+                return {**listing_row, "status": "removed_by_admin"}
+            if method == "GET" and table == "equipment_requests":
+                equipment_requests_call_count["count"] += 1
+                return []
+            if method == "PATCH" and table == "equipment_requests":
+                return None
+            if method == "GET" and table == "app_users":
+                return []
+            if method == "POST" and table == "admin_audit_logs":
+                return None
+            return None
+
+        service._request = MagicMock(side_effect=fake_request)  # type: ignore[method-assign]
+
+        # Simulate admin calling update_listing_status with REMOVED_BY_ADMIN
+        from app.schemas.domain import (
+            AccountStatus, AuthenticatedUser, Institution, Role,
+            User, VerificationStatus,
+        )
+        admin_institution = Institution(
+            id="inst_admin",
+            name="LabLink Admin",
+            type=Role.ADMIN,
+            verification_status=VerificationStatus.VERIFIED,
+            location="",
+            description="",
+        )
+        admin_user = User(
+            id="user_admin",
+            full_name="Admin User",
+            email="admin@lablink.io",
+            role=Role.ADMIN,
+            account_status=AccountStatus.VERIFIED,
+            institution_id="inst_admin",
+        )
+        admin_actor = AuthenticatedUser(user=admin_user, institution=admin_institution)
+
+        service.update_listing_status(admin_actor, "listing_abc", ListingStatus.REMOVED_BY_ADMIN)  # type: ignore[arg-type]
+
+        # Verify a bulk PATCH on equipment_requests with rejected_cancelled was issued
+        cancel_calls = [
+            c for c in service._request.call_args_list
+            if c[0][0] == "PATCH" and c[0][1] == "equipment_requests"
+        ]
+        assert len(cancel_calls) == 1, "Expected exactly one bulk PATCH to cancel requests on admin removal"
+        body = cancel_calls[0][1]["json"]
+        assert body["status"] == RequestStatus.REJECTED_CANCELLED.value
+
 
 from app.services.supabase_listings import _changed_material_fields
 from app.schemas.domain import ListingDraftSave

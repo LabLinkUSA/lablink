@@ -1311,6 +1311,7 @@ class SupabaseListingService:
         if status_value == ListingStatus.REMOVED_BY_ADMIN:
             affected_requests = self._get_requests_for_listing_ids(
                 [listing_id],
+                exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
                 latest_per_recipient=True,
             )
         elif status_value == ListingStatus.PENDING_ADMIN_APPROVAL:
