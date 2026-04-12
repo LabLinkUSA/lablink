@@ -71,7 +71,15 @@ export function DonorListingActions({
   return (
     <div className="list-row-actions">
       {canManageListing ? (
-        <Link href={`/donor/listings/${listingId}/edit`} className="button button-secondary">
+        <Link
+          href={`/donor/listings/${listingId}/edit`}
+          className="button button-secondary"
+          title={
+            status === "live"
+              ? "Editing key fields (title, condition, quantity, etc.) may return this listing to admin review."
+              : undefined
+          }
+        >
           {isRejectedListing ? "Edit / Resubmit" : "Edit"}
         </Link>
       ) : null}
