@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from app.schemas.domain import ListingStatus, RequestStatus
 from app.services.supabase_listings import SupabaseListingService
@@ -43,8 +43,12 @@ class CancelOpenRequestsTests(unittest.TestCase):
 
         params = service._request.call_args[1]["params"]
         # The status filter is an `in.(...)` that only covers open statuses
-        assert "completed" not in params["status"]
-        assert "rejected_cancelled" not in params["status"]
+        included = set(params["status"].replace("in.(", "").replace(")", "").split(","))
+        assert included == {
+            RequestStatus.SUBMITTED.value,
+            RequestStatus.ADMIN_REVIEW.value,
+            RequestStatus.APPROVED_MATCHED.value,
+        }
 
 
 class RemoveDonorListingCancelsRequestsTests(unittest.TestCase):
@@ -84,11 +88,39 @@ class RemoveDonorListingCancelsRequestsTests(unittest.TestCase):
             "request_count": 2,
         }
 
+        stub_request_row = {
+            "id": "req_001",
+            "listing_id": "listing_abc",
+            "recipient_institution_id": "inst_recipient",
+            "submitted_by_user_id": "user_recipient",
+            "intended_use": "research",
+            "program_or_department": "biology",
+            "audience": "",
+            "needed_by": "2026-12-31",
+            "urgency_notes": "",
+            "delivery_constraints": "none",
+            "storage_readiness": "ready",
+            "funding_or_logistics_notes": "",
+            "status": RequestStatus.SUBMITTED.value,
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "listing": None,
+        }
+        equipment_requests_call_count = 0
+
         def fake_request(method, table, **kwargs):
+            nonlocal equipment_requests_call_count
             if method == "GET" and table == "listings":
                 return [listing_row]
             if method == "GET" and table == "equipment_requests":
-                return []  # simplify: empty affected_requests for notification loop
+                equipment_requests_call_count += 1
+                # The first GET is an internal active-request-count lookup inside
+                # _get_listing_row. The second GET fetches affected_requests in
+                # remove_donor_listing — return a stub open request so the guard
+                # triggers _cancel_open_requests_for_listing.
+                # Subsequent calls (notification loop) return empty.
+                if equipment_requests_call_count == 2:
+                    return [stub_request_row]
+                return []
             if method == "GET" and table == "app_users":
                 return []
             return None

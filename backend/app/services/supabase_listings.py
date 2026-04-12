@@ -799,7 +799,8 @@ class SupabaseListingService:
             },
             headers={"Prefer": "return=minimal"},
         )
-        self._cancel_open_requests_for_listing(listing_id)
+        if affected_requests:
+            self._cancel_open_requests_for_listing(listing_id)
         self._notify_role(
             "admin",
             notification_type=NotificationType.LISTING_STATUS_CHANGED,
