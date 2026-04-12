@@ -306,11 +306,8 @@ class SaveDonorListingReReviewTests(unittest.TestCase):
         actor = self._make_actor()
         listing_row = self._live_listing_row()
         open_request = self._open_request_row()
-        call_count = {"listings_get": 0}
-
         def fake_request(method, table, **kwargs):
             if method == "GET" and table == "listings":
-                call_count["listings_get"] += 1
                 return [listing_row]
             if method == "GET" and table == "equipment_requests":
                 return [open_request]
@@ -356,9 +353,9 @@ class SaveDonorListingReReviewTests(unittest.TestCase):
             if c[0][0] == "PATCH" and c[0][1] == "listings"
             and c[1].get("json", {}).get("status") is not None
         ]
-        if listing_patches:
-            patched_status = listing_patches[0][1]["json"]["status"]
-            assert patched_status == "live", f"Expected status to stay live, got {patched_status}"
+        assert listing_patches, "Expected a PATCH on listings — save_donor_listing must always persist the payload"
+        patched_status = listing_patches[0][1]["json"]["status"]
+        assert patched_status != "pending_admin_approval", "Expected re-review NOT to be triggered"
 
     def test_non_material_change_on_live_listing_with_requests_does_not_trigger_re_review(self) -> None:
         service = make_service()
@@ -401,6 +398,36 @@ class SaveDonorListingReReviewTests(unittest.TestCase):
             if c[0][0] == "PATCH" and c[0][1] == "listings"
             and c[1].get("json", {}).get("status") is not None
         ]
-        if listing_patches:
-            patched_status = listing_patches[0][1]["json"]["status"]
-            assert patched_status == "live", f"Expected status to stay live, got {patched_status}"
+        assert listing_patches, "Expected a PATCH on listings — save_donor_listing must always persist the payload"
+        patched_status = listing_patches[0][1]["json"]["status"]
+        assert patched_status != "pending_admin_approval", "Expected re-review NOT to be triggered"
+
+    def test_material_change_on_matched_reserved_listing_does_not_trigger_re_review(self) -> None:
+        service = make_service()
+        actor = self._make_actor()
+        listing_row = {**self._live_listing_row(), "status": "matched_reserved"}
+        open_request = self._open_request_row()
+
+        def fake_request(method, table, **kwargs):
+            if method == "GET" and table == "listings":
+                return [listing_row]
+            if method == "GET" and table == "equipment_requests":
+                return [open_request]
+            if method == "GET" and table == "app_users":
+                return []
+            return None
+
+        service._request = MagicMock(side_effect=fake_request)  # type: ignore[method-assign]
+
+        service.save_donor_listing(actor, "listing_abc", self._payload_with_material_change())  # type: ignore[arg-type]
+
+        listing_patches = [
+            c for c in service._request.call_args_list
+            if c[0][0] == "PATCH" and c[0][1] == "listings"
+            and c[1].get("json", {}).get("status") is not None
+        ]
+        assert listing_patches, "Expected a PATCH on listings"
+        patched_status = listing_patches[0][1]["json"]["status"]
+        assert patched_status != "pending_admin_approval", (
+            f"matched_reserved listing must not be returned to review, got {patched_status}"
+        )

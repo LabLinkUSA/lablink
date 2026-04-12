@@ -56,6 +56,7 @@ def _changed_material_fields(existing: dict[str, Any], payload: "ListingDraftSav
     """Return the set of material field names that differ between the DB row and the incoming payload."""
 
     def _s(v: Any) -> str:
+        """Coerce to stripped string. Only safe for string-typed fields."""
         return str(v or "").strip()
 
     changed: set[str] = set()
@@ -65,7 +66,8 @@ def _changed_material_fields(existing: dict[str, Any], payload: "ListingDraftSav
         changed.add("category")
     if _s(existing.get("item_condition")) != _s(payload.condition):
         changed.add("condition")
-    if int(existing.get("quantity") or 1) != payload.quantity:
+    raw_qty = existing.get("quantity")
+    if int(raw_qty if raw_qty is not None else 1) != payload.quantity:
         changed.add("quantity")
     if _s(existing.get("description")) != _s(payload.description):
         changed.add("description")
@@ -602,6 +604,9 @@ class SupabaseListingService:
         # live listing + material field changed + at least one open request
         triggers_re_review = False
         open_requests_for_re_review: list[EquipmentRequest] = []
+        # Re-review only applies to LIVE listings. MATCHED_RESERVED listings with active requests
+        # are intentionally excluded — a matched listing is already in an allocation workflow and
+        # must not be silently returned to the approval queue by a donor edit.
         if normalized_status == ListingStatus.LIVE.value:
             if _changed_material_fields(existing, payload):
                 open_requests_for_re_review = self._get_requests_for_listing_ids(
