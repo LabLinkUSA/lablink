@@ -52,6 +52,38 @@ from app.services.supabase_profiles import ADMIN_INSTITUTION_ID
 RESEND_API_URL = "https://api.resend.com/emails"
 
 
+def _changed_material_fields(existing: dict[str, Any], payload: "ListingDraftSave") -> set[str]:
+    """Return the set of material field names that differ between the DB row and the incoming payload."""
+
+    def _s(v: Any) -> str:
+        return str(v or "").strip()
+
+    changed: set[str] = set()
+    if _s(existing.get("title")) != _s(payload.title):
+        changed.add("title")
+    if _s(existing.get("category")) != _s(payload.category):
+        changed.add("category")
+    if _s(existing.get("item_condition")) != _s(payload.condition):
+        changed.add("condition")
+    if int(existing.get("quantity") or 1) != payload.quantity:
+        changed.add("quantity")
+    if _s(existing.get("description")) != _s(payload.description):
+        changed.add("description")
+    if _s(existing.get("working_status")) != _s(payload.working_status):
+        changed.add("working_status")
+    if _s(existing.get("delivery_mode")) != _s(payload.delivery_mode):
+        changed.add("delivery_mode")
+    if _s(existing.get("handling_requirements")) != _s(payload.handling_requirements):
+        changed.add("handling_requirements")
+    if _s(existing.get("special_handling_flags")) != _s(payload.special_handling_flags):
+        changed.add("special_handling_flags")
+    if _s(existing.get("availability_window")) != _s(payload.availability_window):
+        changed.add("availability_window")
+    if _s(existing.get("dimensions_weight")) != _s(payload.dimensions_weight):
+        changed.add("dimensions_weight")
+    return changed
+
+
 class SupabaseListingService:
     def __init__(
         self,
@@ -565,7 +597,27 @@ class SupabaseListingService:
         self._ensure_listing_mutable(existing, action="edit")
 
         normalized_status = self._normalize_listing_status(existing["status"])
-        next_status = ListingStatus.DRAFT.value if normalized_status == ListingStatus.DRAFT.value else existing["status"]
+
+        # Determine if this edit triggers re-review:
+        # live listing + material field changed + at least one open request
+        triggers_re_review = False
+        open_requests_for_re_review: list[EquipmentRequest] = []
+        if normalized_status == ListingStatus.LIVE.value:
+            if _changed_material_fields(existing, payload):
+                open_requests_for_re_review = self._get_requests_for_listing_ids(
+                    [listing_id],
+                    exclude_statuses={RequestStatus.REJECTED_CANCELLED, RequestStatus.COMPLETED},
+                    latest_per_recipient=True,
+                )
+                if open_requests_for_re_review:
+                    triggers_re_review = True
+
+        if triggers_re_review:
+            next_status = ListingStatus.PENDING_ADMIN_APPROVAL.value
+        elif normalized_status == ListingStatus.DRAFT.value:
+            next_status = ListingStatus.DRAFT.value
+        else:
+            next_status = existing["status"]
 
         self._request(
             "PATCH",
@@ -610,6 +662,52 @@ class SupabaseListingService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Listing was updated but could not be reloaded.",
             )
+
+        if triggers_re_review:
+            notified_institutions: set[str] = set()
+            for request in open_requests_for_re_review:
+                if request.recipient_institution_id in notified_institutions:
+                    continue
+                notified_institutions.add(request.recipient_institution_id)
+                self._notify_institution(
+                    request.recipient_institution_id,
+                    notification_type=NotificationType.LISTING_STATUS_CHANGED,
+                    message=(
+                        f"A listing you requested, '{updated['title']}', has been updated by the donor "
+                        f"and is temporarily under review. You'll be notified when it's approved again."
+                    ),
+                    cta_href="/recipient",
+                    entity_type="listing",
+                    entity_id=listing_id,
+                    metadata={
+                        "email_template_key": "listing_under_review",
+                        "entity_title": updated["title"],
+                        "listing_id": listing_id,
+                        "status": ListingStatus.PENDING_ADMIN_APPROVAL.value,
+                        "request_id": request.id,
+                    },
+                    role_value="recipient_institution",
+                    account_statuses={AccountStatus.VERIFIED.value},
+                )
+            self._notify_role(
+                "admin",
+                notification_type=NotificationType.ADMIN_LISTING_SUBMITTED,
+                message=f"{actor.institution.name} edited a live listing back into review: {updated['title']}.",
+                cta_href="/admin",
+                entity_type="listing",
+                entity_id=listing_id,
+                metadata={
+                    "email_template_key": "listing_submitted_for_review",
+                    "entity_title": updated["title"],
+                    "listing_id": listing_id,
+                    "institution_id": actor.institution.id,
+                    "status": ListingStatus.PENDING_ADMIN_APPROVAL.value,
+                    "actor_institution_name": actor.institution.name,
+                    "resubmitted": True,
+                },
+                account_statuses={AccountStatus.VERIFIED.value},
+            )
+
         return self._to_listing(updated)
 
     def submit_draft_listing(self, actor: AuthenticatedUser, listing_id: str) -> Listing:
