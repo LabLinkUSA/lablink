@@ -7,6 +7,7 @@ app/api/routes/admin.py
 app/api/routes/auth.py
 app/api/routes/dependencies.py
 app/api/routes/donor.py
+app/api/routes/internal.py
 app/api/routes/notifications.py
 app/api/routes/public.py
 app/api/routes/recipient.py
@@ -19,7 +20,7 @@ app/repositories/__init__.py
 app/schemas/__init__.py
 app/schemas/domain.py
 app/services/__init__.py
-app/services/demo_data.py
+app/services/notification_email.py
 app/services/supabase_auth.py
 app/services/supabase_listings.py
 app/services/supabase_profiles.py
@@ -28,3 +29,7 @@ lablink_backend.egg-info/SOURCES.txt
 lablink_backend.egg-info/dependency_links.txt
 lablink_backend.egg-info/requires.txt
 lablink_backend.egg-info/top_level.txt
+tests/test_listing_lifecycle.py
+tests/test_notification_email_outbox.py
+tests/test_notification_email_templates.py
+tests/test_notification_flows.py
