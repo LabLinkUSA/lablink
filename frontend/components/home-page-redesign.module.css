@@ -197,7 +197,7 @@
 }
 
 .mission {
-  grid-template-columns: minmax(0, 1.28fr) minmax(17rem, 0.72fr);
+  grid-template-columns: 1fr 1fr;
   align-items: start;
   background: var(--light);
 }
@@ -236,8 +236,7 @@
 
 .missionImageFrame {
   position: relative;
-  width: min(100%, calc(23 * var(--home-unit)));
-  justify-self: end;
+  width: 100%;
   overflow: hidden;
   border-radius: 4px;
   box-shadow: 0 18px 48px rgba(26, 58, 42, 0.08);

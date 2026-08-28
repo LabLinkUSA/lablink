@@ -27,7 +27,10 @@ function getNavItems(profile?: AuthenticatedUser | null) {
     return [];
   }
 
-  const navItems = [{ href: "/", label: "Home" }, { href: "/listings", label: "Browse" }];
+  const navItems: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
+  if (profile) {
+    navItems.push({ href: "/listings", label: "Browse" });
+  }
   const isVerifiedDonor =
     role === "donor_lab" &&
     profile?.user.account_status === "verified" &&
