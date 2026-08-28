@@ -7,6 +7,16 @@ _Nothing in progress._
 
 ## Completed Work
 
+### Session — 2026-08-28 (Homepage UI Tweaks)
+
+| Commit | Summary |
+|---|---|
+| `1b43a94` | fix: enlarge mission image and hide Browse tab for unauthenticated users |
+
+**Frontend changes:** `home-page-redesign.module.css` — mission section grid changed to equal columns (`1fr 1fr`) and image frame max-width cap removed so the photo fills available space. `site-header.tsx` — Browse nav link now only renders when the user is logged in.
+
+---
+
 ### Session — 2026-04-12 (Lifecycle Enforcement)
 Spec: `docs/superpowers/specs/2026-04-12-listing-lifecycle-enforcement-design.md`
 Plan: `docs/superpowers/plans/2026-04-12-listing-lifecycle-enforcement.md`
