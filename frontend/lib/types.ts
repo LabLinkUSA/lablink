@@ -104,6 +104,7 @@ export interface ListingDraftSaveInput {
   special_handling_flags: string;
   delivery_mode: string;
   photo_urls: string[];
+  board_post_id?: string | null;
 }
 
 export interface ListingApprovalUpdate {
