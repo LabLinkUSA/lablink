@@ -7,6 +7,30 @@ _Nothing in progress._
 
 ## Completed Work
 
+### Session — 2026-08-31 (Request Board Feature)
+Spec: `docs/superpowers/specs/2026-08-31-lablink-upgrade-spec.md`
+Plan: `docs/superpowers/plans/2026-08-31-request-board.md`
+
+| Commit | Summary |
+|---|---|
+| `a123e5b` | docs: add request board plan and upgrade spec |
+| `9689623` | feat: add request board CRUD service methods and tests |
+| `0272a7a` | feat: wire up request board routes for recipient and donor |
+| `b37332a` | feat: link listings to board posts with migration and route |
+| `63c3fbc` | fix: add board_post_id to ListingDraftSaveInput TypeScript type |
+| `ab9d5d3` | feat: add recipient request board UI with creation form |
+| `839e909` | feat: add donor request board browse page with respond-with-listing flow |
+| `2d7773d` | feat: add board post admin visibility and status transitions |
+| `6a28c7b` | fix: add missing RBAC role check on recipient close board post route |
+
+**Backend changes:** `supabase_listings.py` — added 6 service methods for board post CRUD (`create_board_post`, `get_board_posts_for_recipient/donor/admin`, `close_board_post`, `_to_board_post`), wired board posts into recipient dashboard, added `board_post_id` to `create_draft_listing` with status transition to `match_in_progress`. `domain.py` — updated `RequestBoardPost`, `RequestBoardPostCreate`, `Listing`, `ListingDraftSave`, `AdminDashboardResponse` schemas. Routes added for recipient (POST/GET/close), donor (GET, create-listing-from-post), admin (close).
+**Frontend changes:** New `request-board-form.tsx` (recipient creation form), `request-board-browser.tsx` (donor browse page), `donor/request-board/page.tsx`. Updated recipient and donor dashboards with board post sections. Added admin board posts section with close functionality. Added nav links for donors.
+**Database:** Migration `0003_board_post_listing_link.sql` — added `board_post_id` FK column to listings table.
+**Tests:** `test_request_board.py` — 7 new tests for board post CRUD and listing linking (41 total passing).
+**Docs:** Created upgrade spec covering request board, intelligent matching, and CI/CD plans. Created detailed implementation plan for request board (6 tasks). Also created plans for intelligent matching and CI/CD+testing (next phases).
+
+---
+
 ### Session — 2026-08-28 (Homepage UI Tweaks)
 
 | Commit | Summary |
@@ -63,7 +87,7 @@ Plan: `docs/superpowers/plans/2026-04-12-listing-lifecycle-enforcement.md`
 - [x] **Requests closed on listing removal** — Done. Bulk-cancelled on donor and admin removal; reason-aware emails sent.
 
 ### Medium Priority
-- [ ] **Request board** — Recipient UI for posting wanted-item requests; donor UI for browsing and responding with a new listing.
+- [x] **Request board** — Done. Recipients create/view/close board posts; donors browse and respond with linked listings; admins see all posts.
 - [ ] **Admin queue search/filter** — Server-side filtering by date, institution, status, category in admin verification and moderation queues.
 - [ ] **Image upload validation** — Server-side file type and size limits on listing photo uploads.
 - [ ] **Duplicate institution detection** — Admin tooling to review and merge duplicate institution records.

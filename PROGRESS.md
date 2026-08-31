@@ -72,10 +72,10 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 ## Equipment Request Board
 | Feature | Status | Notes |
 |---|---|---|
-| Schema + backend stub | ✅ | Returns empty array in v1 |
-| Recipient post wanted-item requests | ⬜ | No UI |
-| Board visible to verified donors | ⬜ | |
-| Donor responds by creating listing tied to board post | ⬜ | |
+| Schema + backend stub | ✅ | Full CRUD service methods, routes for all roles |
+| Recipient post wanted-item requests | ✅ | Creation form, dashboard section, close functionality |
+| Board visible to verified donors | ✅ | Browse page with cards at /donor/request-board |
+| Donor responds by creating listing tied to board post | ✅ | "Respond with Listing" creates draft linked via board_post_id FK |
 
 ---
 
