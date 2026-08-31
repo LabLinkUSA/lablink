@@ -216,7 +216,7 @@ class SupabaseListingService:
                 if row.get("listing") and not self._listing_row_is_removed(row["listing"])
             ],
             threads=[],
-            request_board_posts=[],
+            request_board_posts=self.get_board_posts_for_recipient(actor),
         )
 
     def list_notifications(

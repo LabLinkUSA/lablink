@@ -42,7 +42,7 @@ def get_donor_dashboard(actor: AuthenticatedUser = Depends(require_actor)) -> Do
 def get_donor_request_board(actor: AuthenticatedUser = Depends(require_actor)) -> list[RequestBoardPost]:
     if actor.user.role != Role.DONOR_LAB:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Donor access required.")
-    return []
+    return get_supabase_listing_service().get_board_posts_for_donor(actor)
 
 
 @router.post("/listings/drafts", response_model=Listing, status_code=status.HTTP_201_CREATED)
