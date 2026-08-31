@@ -129,4 +129,6 @@ def close_board_post(
     post_id: str,
     actor: AuthenticatedUser = Depends(require_actor),
 ) -> RequestBoardPost:
+    if actor.user.role != Role.RECIPIENT_INSTITUTION:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
     return get_supabase_listing_service().close_board_post(actor, post_id)
