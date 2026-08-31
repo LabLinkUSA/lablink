@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { DashboardSidebarShell } from "@/components/dashboard-sidebar-shell";
 import {
@@ -8,7 +10,9 @@ import {
   OperationsHeader,
   OperationsTableSection,
 } from "@/components/operations-dashboard-ui";
+import { RequestBoardForm } from "@/components/request-board-form";
 import { StatusPill } from "@/components/status-pill";
+import { closeBoardPost } from "@/lib/api";
 import { titleCaseStatus } from "@/lib/format";
 import type { ListingStatus, RecipientDashboardResponse } from "@/lib/types";
 
@@ -45,6 +49,22 @@ export function RecipientDashboardWorkspace({
   activeRequests: number;
   totalImpact: number;
 }) {
+  const router = useRouter();
+  const [showNewPostForm, setShowNewPostForm] = useState(false);
+  const [closingPostId, setClosingPostId] = useState<string | null>(null);
+
+  async function handleClosePost(postId: string) {
+    setClosingPostId(postId);
+    await closeBoardPost(postId);
+    setClosingPostId(null);
+    router.refresh();
+  }
+
+  function handleFormSuccess() {
+    setShowNewPostForm(false);
+    router.refresh();
+  }
+
   return (
     <DashboardSidebarShell
       brandSubtitle="Recipient workspace"
@@ -175,6 +195,80 @@ export function RecipientDashboardWorkspace({
                   </tr>
                 ))
               )}
+              </OperationsTableSection>
+            ),
+          },
+          {
+            id: "recipient-request-board",
+            title: "Request Board",
+            shortLabel: "Board",
+            count: dashboard.request_board_posts.length,
+            icon: "board",
+            tone: "tertiary",
+            content: (
+              <OperationsTableSection
+                title="Request Board Posts"
+                tone="tertiary"
+                columns={["Request", "Category", "Needed By", "Status", ""]}
+                action={
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => setShowNewPostForm((prev) => !prev)}
+                  >
+                    {showNewPostForm ? "Cancel" : "New Request"}
+                  </button>
+                }
+                footer={<span>Showing {dashboard.request_board_posts.length} board post(s)</span>}
+              >
+                {showNewPostForm ? (
+                  <tr>
+                    <td colSpan={5} className="ops-table-empty-cell">
+                      <div className="ops-inline-form">
+                        <RequestBoardForm onSuccess={handleFormSuccess} />
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                {dashboard.request_board_posts.length === 0 && !showNewPostForm ? (
+                  <tr>
+                    <td colSpan={5} className="ops-table-empty-cell">
+                      <div className="ops-empty-state">No board posts yet. Use &ldquo;New Request&rdquo; to post a need.</div>
+                    </td>
+                  </tr>
+                ) : (
+                  dashboard.request_board_posts.map((post) => (
+                    <tr key={post.id} className="ops-table-row">
+                      <td>
+                        <p className="ops-equipment-title">{post.title}</p>
+                        <p className="ops-equipment-subtitle">{post.intended_use}</p>
+                      </td>
+                      <td>
+                        <span className="ops-condition-badge">{post.category}</span>
+                      </td>
+                      <td>
+                        <span className="ops-table-date">{post.needed_by}</span>
+                      </td>
+                      <td>
+                        <StatusPill status={post.status} />
+                      </td>
+                      <td className="ops-table-align-right">
+                        {post.status === "open" ? (
+                          <button
+                            type="button"
+                            className="button button-secondary"
+                            disabled={closingPostId === post.id}
+                            onClick={() => handleClosePost(post.id)}
+                          >
+                            {closingPostId === post.id ? "Closing…" : "Close"}
+                          </button>
+                        ) : (
+                          <span className="ops-table-fallback">{titleCaseStatus(post.status)}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </OperationsTableSection>
             ),
           },

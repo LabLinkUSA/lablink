@@ -207,8 +207,21 @@ export interface RequestBoardPost {
   created_by_user_id: string;
   description: string;
   needed_by: string;
+  quantity_needed: number;
+  location: string;
+  intended_use: string;
   status: BoardPostStatus;
   created_at: string;
+}
+
+export interface RequestBoardPostCreate {
+  title: string;
+  category: string;
+  description: string;
+  needed_by: string;
+  quantity_needed: number;
+  location: string;
+  intended_use: string;
 }
 
 export interface AdminAction {

@@ -12,6 +12,7 @@ import type {
   ListingDetailResponse,
   RecipientDashboardResponse,
   RequestBoardPost,
+  RequestBoardPostCreate,
   RecipientRequestStateResponse,
   SavedListingStateResponse,
 } from "@/lib/types";
@@ -111,4 +112,24 @@ export async function getRecipientSavedListingState(listingId: string): Promise<
 
 export async function getRecipientRequestState(listingId: string): Promise<RecipientRequestStateResponse | null> {
   return fetchAuthedJson<RecipientRequestStateResponse>(`/recipient/requests/${listingId}/state`);
+}
+
+export async function createRequestBoardPost(
+  payload: RequestBoardPostCreate
+): Promise<RequestBoardPost | null> {
+  return fetchAuthedJson<RequestBoardPost>("/recipient/request-board", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getRecipientBoardPosts(): Promise<RequestBoardPost[] | null> {
+  return fetchAuthedJson<RequestBoardPost[]>("/recipient/request-board");
+}
+
+export async function closeBoardPost(postId: string): Promise<RequestBoardPost | null> {
+  return fetchAuthedJson<RequestBoardPost>(`/recipient/request-board/${postId}/close`, {
+    method: "POST",
+  });
 }
