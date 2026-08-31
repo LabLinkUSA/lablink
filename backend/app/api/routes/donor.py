@@ -51,6 +51,15 @@ def create_draft_listing(actor: AuthenticatedUser = Depends(require_actor)) -> L
     return get_supabase_listing_service().create_draft_listing(actor)
 
 
+@router.post("/request-board/{post_id}/create-listing", response_model=Listing, status_code=status.HTTP_201_CREATED)
+def create_listing_from_board_post(
+    post_id: str,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> Listing:
+    require_verified_donor(actor)
+    return get_supabase_listing_service().create_draft_listing(actor, board_post_id=post_id)
+
+
 @router.get("/listings/{listing_id}/form-templates", response_model=ListingDocumentTemplatesResponse)
 def get_listing_form_templates(
     listing_id: str,

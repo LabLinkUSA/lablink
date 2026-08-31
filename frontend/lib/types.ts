@@ -69,6 +69,7 @@ export interface Listing {
   created_by_user_id: string;
   created_at: string;
   request_count: number;
+  board_post_id?: string | null;
 }
 
 export interface ListingCreateInput {

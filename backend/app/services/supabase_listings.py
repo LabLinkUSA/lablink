@@ -558,42 +558,44 @@ class SupabaseListingService:
         self._ensure_donor_controls_listing(actor, row)
         return self._to_internal_listing_detail(row)
 
-    def create_draft_listing(self, actor: AuthenticatedUser) -> Listing:
+    def create_draft_listing(self, actor: AuthenticatedUser, *, board_post_id: str | None = None) -> Listing:
         listing_id = f"listing_{uuid4().hex[:12]}"
         timestamp = datetime.now(timezone.utc).isoformat()
-        self._request(
+        row_data: dict[str, Any] = {
+            "id": listing_id,
+            "donor_institution_id": actor.institution.id,
+            "created_by_user_id": actor.user.id,
+            "title": "",
+            "category": "",
+            "item_condition": "",
+            "quantity": 1,
+            "location": "",
+            "availability_window": "",
+            "description": "",
+            "dimensions_weight": "",
+            "handling_requirements": "",
+            "working_status": "",
+            "documentation_included": "",
+            "special_handling_flags": "",
+            "delivery_mode": "pickup_only",
+            "status": ListingStatus.DRAFT.value,
+            "updated_at": timestamp,
+        }
+        if board_post_id:
+            row_data["board_post_id"] = board_post_id
+        rows = self._request(
             "POST",
             "listings",
-            json={
-                "id": listing_id,
-                "donor_institution_id": actor.institution.id,
-                "created_by_user_id": actor.user.id,
-                "title": "",
-                "category": "",
-                "item_condition": "",
-                "quantity": 1,
-                "location": "",
-                "availability_window": "",
-                "description": "",
-                "dimensions_weight": "",
-                "handling_requirements": "",
-                "working_status": "",
-                "documentation_included": "",
-                "special_handling_flags": "",
-                "delivery_mode": "pickup_only",
-                "status": ListingStatus.DRAFT.value,
-                "updated_at": timestamp,
-            },
-            headers={"Prefer": "return=minimal"},
+            json=row_data,
+            headers={"Prefer": "return=representation"},
         )
 
-        row = self._get_listing_row(listing_id)
-        if not row:
+        if not rows:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Draft listing was created but could not be loaded.",
             )
-        return self._to_listing(row)
+        return self._to_listing(rows[0])
 
     def save_donor_listing(self, actor: AuthenticatedUser, listing_id: str, payload: ListingDraftSave) -> Listing:
         existing = self._get_listing_row(listing_id)
@@ -2542,6 +2544,7 @@ class SupabaseListingService:
                 "created_by_user_id": row["created_by_user_id"],
                 "created_at": row["created_at"],
                 "request_count": row.get("request_count", 0),
+                "board_post_id": row.get("board_post_id"),
             }
         )
 

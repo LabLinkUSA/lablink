@@ -208,5 +208,41 @@ class TestCloseBoardPost(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 403)
 
 
+class TestBoardPostListingLink(unittest.TestCase):
+    def test_create_draft_with_board_post_id(self):
+        svc = make_service()
+        actor = make_donor()
+
+        created_listing = {
+            "id": "lst_001",
+            "title": "",
+            "category": "",
+            "item_condition": "",
+            "quantity": 1,
+            "location": "",
+            "availability_window": "",
+            "description": "",
+            "dimensions_weight": "",
+            "handling_requirements": "",
+            "working_status": "",
+            "documentation_included": "",
+            "special_handling_flags": "",
+            "delivery_mode": "pickup_only",
+            "status": "draft",
+            "donor_institution_id": "inst_d1",
+            "created_by_user_id": "user_d1",
+            "created_at": "2026-08-31T00:00:00+00:00",
+            "board_post_id": "bp_001",
+        }
+        svc._request.return_value = [created_listing]
+
+        result = svc.create_draft_listing(actor, board_post_id="bp_001")
+        self.assertEqual(result.board_post_id, "bp_001")
+
+        call_args = svc._request.call_args
+        json_body = call_args[1].get("json") or call_args.kwargs.get("json")
+        self.assertEqual(json_body["board_post_id"], "bp_001")
+
+
 if __name__ == "__main__":
     unittest.main()

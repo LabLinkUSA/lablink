@@ -131,6 +131,7 @@ class Listing(BaseModel):
     created_by_user_id: str
     created_at: datetime
     request_count: int = 0
+    board_post_id: Optional[str] = None
 
 
 class EquipmentRequest(BaseModel):
@@ -222,6 +223,7 @@ class ListingDraftSave(BaseModel):
     special_handling_flags: str = ""
     delivery_mode: str = "pickup_only"
     photo_urls: List[str] = Field(default_factory=list)
+    board_post_id: Optional[str] = None
 
     @field_validator(
         "title",
