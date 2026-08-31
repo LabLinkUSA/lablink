@@ -175,6 +175,9 @@ class RequestBoardPost(BaseModel):
     institution_id: str
     created_by_user_id: str
     description: str
+    quantity_needed: int = 1
+    location: str = ""
+    intended_use: str = ""
     needed_by: date
     status: BoardPostStatus
     created_at: datetime
@@ -423,10 +426,13 @@ class MessageCreate(BaseModel):
 
 
 class RequestBoardPostCreate(BaseModel):
-    title: str
-    category: str
-    description: str
+    title: str = Field(min_length=1, max_length=255)
+    category: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=2000)
     needed_by: date
+    quantity_needed: int = Field(ge=1, default=1)
+    location: str = Field(min_length=1, max_length=255)
+    intended_use: str = Field(min_length=1, max_length=2000)
 
 
 class AuthenticatedUser(BaseModel):
