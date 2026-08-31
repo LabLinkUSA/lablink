@@ -133,3 +133,9 @@ export async function closeBoardPost(postId: string): Promise<RequestBoardPost |
     method: "POST",
   });
 }
+
+export async function createListingFromBoardPost(postId: string): Promise<Listing | null> {
+  return fetchAuthedJson<Listing>(`/donor/request-board/${postId}/create-listing`, {
+    method: "POST",
+  });
+}
