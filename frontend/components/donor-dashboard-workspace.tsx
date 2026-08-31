@@ -117,6 +117,25 @@ export function DonorDashboardWorkspace({
             ),
           },
           {
+            id: "donor-request-board",
+            title: "Recipient Request Board",
+            shortLabel: "Board",
+            count: 0,
+            icon: "board",
+            tone: "tertiary",
+            content: (
+              <div className="ops-section-link-panel">
+                <p className="ops-section-link-panel-body">
+                  Browse open equipment requests posted by recipient institutions and respond by creating a linked
+                  listing.
+                </p>
+                <Link href="/donor/request-board" className="button button-primary">
+                  Browse Request Board
+                </Link>
+              </div>
+            ),
+          },
+          {
             id: "donor-incoming-requests",
             title: "Incoming Requests",
             shortLabel: "Requests",

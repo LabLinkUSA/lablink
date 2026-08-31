@@ -69,6 +69,7 @@ export interface Listing {
   created_by_user_id: string;
   created_at: string;
   request_count: number;
+  board_post_id?: string | null;
 }
 
 export interface ListingCreateInput {
@@ -103,6 +104,7 @@ export interface ListingDraftSaveInput {
   special_handling_flags: string;
   delivery_mode: string;
   photo_urls: string[];
+  board_post_id?: string | null;
 }
 
 export interface ListingApprovalUpdate {
@@ -205,8 +207,21 @@ export interface RequestBoardPost {
   created_by_user_id: string;
   description: string;
   needed_by: string;
+  quantity_needed: number;
+  location: string;
+  intended_use: string;
   status: BoardPostStatus;
   created_at: string;
+}
+
+export interface RequestBoardPostCreate {
+  title: string;
+  category: string;
+  description: string;
+  needed_by: string;
+  quantity_needed: number;
+  location: string;
+  intended_use: string;
 }
 
 export interface AdminAction {
@@ -264,6 +279,7 @@ export interface AdminDashboardResponse {
   requests_requiring_attention: EquipmentRequest[];
   active_threads: MessageThread[];
   recent_actions: AdminAction[];
+  board_posts: RequestBoardPost[];
 }
 
 export interface OnboardingCreate {

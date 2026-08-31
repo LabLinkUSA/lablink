@@ -42,13 +42,22 @@ def get_donor_dashboard(actor: AuthenticatedUser = Depends(require_actor)) -> Do
 def get_donor_request_board(actor: AuthenticatedUser = Depends(require_actor)) -> list[RequestBoardPost]:
     if actor.user.role != Role.DONOR_LAB:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Donor access required.")
-    return []
+    return get_supabase_listing_service().get_board_posts_for_donor(actor)
 
 
 @router.post("/listings/drafts", response_model=Listing, status_code=status.HTTP_201_CREATED)
 def create_draft_listing(actor: AuthenticatedUser = Depends(require_actor)) -> Listing:
     require_verified_donor(actor)
     return get_supabase_listing_service().create_draft_listing(actor)
+
+
+@router.post("/request-board/{post_id}/create-listing", response_model=Listing, status_code=status.HTTP_201_CREATED)
+def create_listing_from_board_post(
+    post_id: str,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> Listing:
+    require_verified_donor(actor)
+    return get_supabase_listing_service().create_draft_listing(actor, board_post_id=post_id)
 
 
 @router.get("/listings/{listing_id}/form-templates", response_model=ListingDocumentTemplatesResponse)

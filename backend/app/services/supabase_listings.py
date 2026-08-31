@@ -22,6 +22,7 @@ from app.schemas.domain import (
     AdminAction,
     AdminDashboardResponse,
     AuthenticatedUser,
+    BoardPostStatus,
     DonorDashboardResponse,
     EquipmentRequest,
     InternalListingDetailResponse,
@@ -44,7 +45,10 @@ from app.schemas.domain import (
     ListingDetailResponse,
     ListingDraftSave,
     ListingStatus,
+    RequestBoardPost,
+    RequestBoardPostCreate,
     RequestStatus,
+    Role,
     VerificationStatus,
 )
 from app.services.supabase_profiles import ADMIN_INSTITUTION_ID
@@ -212,7 +216,7 @@ class SupabaseListingService:
                 if row.get("listing") and not self._listing_row_is_removed(row["listing"])
             ],
             threads=[],
-            request_board_posts=[],
+            request_board_posts=self.get_board_posts_for_recipient(actor),
         )
 
     def list_notifications(
@@ -554,42 +558,54 @@ class SupabaseListingService:
         self._ensure_donor_controls_listing(actor, row)
         return self._to_internal_listing_detail(row)
 
-    def create_draft_listing(self, actor: AuthenticatedUser) -> Listing:
+    def create_draft_listing(self, actor: AuthenticatedUser, *, board_post_id: str | None = None) -> Listing:
         listing_id = f"listing_{uuid4().hex[:12]}"
         timestamp = datetime.now(timezone.utc).isoformat()
-        self._request(
+        row_data: dict[str, Any] = {
+            "id": listing_id,
+            "donor_institution_id": actor.institution.id,
+            "created_by_user_id": actor.user.id,
+            "title": "",
+            "category": "",
+            "item_condition": "",
+            "quantity": 1,
+            "location": "",
+            "availability_window": "",
+            "description": "",
+            "dimensions_weight": "",
+            "handling_requirements": "",
+            "working_status": "",
+            "documentation_included": "",
+            "special_handling_flags": "",
+            "delivery_mode": "pickup_only",
+            "status": ListingStatus.DRAFT.value,
+            "updated_at": timestamp,
+        }
+        if board_post_id:
+            row_data["board_post_id"] = board_post_id
+            self._request(
+                "PATCH",
+                "request_board_posts",
+                params={"id": f"eq.{board_post_id}"},
+                json={
+                    "status": BoardPostStatus.MATCH_IN_PROGRESS.value,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
+                headers={"Prefer": "return=minimal"},
+            )
+        rows = self._request(
             "POST",
             "listings",
-            json={
-                "id": listing_id,
-                "donor_institution_id": actor.institution.id,
-                "created_by_user_id": actor.user.id,
-                "title": "",
-                "category": "",
-                "item_condition": "",
-                "quantity": 1,
-                "location": "",
-                "availability_window": "",
-                "description": "",
-                "dimensions_weight": "",
-                "handling_requirements": "",
-                "working_status": "",
-                "documentation_included": "",
-                "special_handling_flags": "",
-                "delivery_mode": "pickup_only",
-                "status": ListingStatus.DRAFT.value,
-                "updated_at": timestamp,
-            },
-            headers={"Prefer": "return=minimal"},
+            json=row_data,
+            headers={"Prefer": "return=representation"},
         )
 
-        row = self._get_listing_row(listing_id)
-        if not row:
+        if not rows:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Draft listing was created but could not be loaded.",
             )
-        return self._to_listing(row)
+        return self._to_listing(rows[0])
 
     def save_donor_listing(self, actor: AuthenticatedUser, listing_id: str, payload: ListingDraftSave) -> Listing:
         existing = self._get_listing_row(listing_id)
@@ -1264,6 +1280,7 @@ class SupabaseListingService:
                 )
                 for row in audit_rows
             ],
+            board_posts=self.get_board_posts_for_admin(),
         )
 
     def get_admin_listing_detail(self, listing_id: str) -> InternalListingDetailResponse:
@@ -2538,6 +2555,7 @@ class SupabaseListingService:
                 "created_by_user_id": row["created_by_user_id"],
                 "created_at": row["created_at"],
                 "request_count": row.get("request_count", 0),
+                "board_post_id": row.get("board_post_id"),
             }
         )
 
@@ -2841,6 +2859,118 @@ class SupabaseListingService:
         if response.content:
             return response.json()
         return None
+
+    # -------------------------------------------------------------------------
+    # Request Board Posts
+    # -------------------------------------------------------------------------
+
+    def _to_board_post(self, row: dict[str, Any]) -> RequestBoardPost:
+        return RequestBoardPost(
+            id=row["id"],
+            title=row["title"],
+            category=row["category"],
+            institution_id=row["institution_id"],
+            created_by_user_id=row["created_by_user_id"],
+            description=row["description"],
+            quantity_needed=row.get("quantity_needed", 1),
+            location=row.get("location", ""),
+            intended_use=row.get("intended_use", ""),
+            needed_by=row["needed_by"],
+            status=BoardPostStatus(row["status"]),
+            created_at=row["created_at"],
+        )
+
+    def create_board_post(self, actor: AuthenticatedUser, payload: RequestBoardPostCreate) -> RequestBoardPost:
+        if actor.user.role != Role.RECIPIENT_INSTITUTION:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
+        if actor.institution.verification_status != VerificationStatus.VERIFIED:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Institution must be verified.")
+
+        post_id = f"bp_{uuid4().hex[:12]}"
+        row_data = {
+            "id": post_id,
+            "institution_id": actor.institution.id,
+            "created_by_user_id": actor.user.id,
+            "title": payload.title,
+            "category": payload.category,
+            "description": payload.description,
+            "quantity_needed": payload.quantity_needed,
+            "location": payload.location,
+            "intended_use": payload.intended_use,
+            "needed_by": payload.needed_by.isoformat(),
+            "status": BoardPostStatus.OPEN.value,
+        }
+        rows = self._request(
+            "POST",
+            "request_board_posts",
+            json=row_data,
+            headers={"Prefer": "return=representation"},
+        )
+        return self._to_board_post(rows[0])
+
+    def get_board_posts_for_recipient(self, actor: AuthenticatedUser) -> list[RequestBoardPost]:
+        rows = self._request(
+            "GET",
+            "request_board_posts",
+            params={
+                "institution_id": f"eq.{actor.institution.id}",
+                "order": "created_at.desc",
+            },
+        )
+        return [self._to_board_post(r) for r in rows]
+
+    def get_board_posts_for_donor(self, actor: AuthenticatedUser) -> list[RequestBoardPost]:
+        rows = self._request(
+            "GET",
+            "request_board_posts",
+            params={
+                "status": f"eq.{BoardPostStatus.OPEN.value}",
+                "order": "created_at.desc",
+            },
+        )
+        return [self._to_board_post(r) for r in rows]
+
+    def get_board_posts_for_admin(self) -> list[RequestBoardPost]:
+        rows = self._request(
+            "GET",
+            "request_board_posts",
+            params={"order": "created_at.desc"},
+        )
+        return [self._to_board_post(r) for r in rows]
+
+    def close_board_post(self, actor: AuthenticatedUser, post_id: str) -> RequestBoardPost:
+        rows = self._request(
+            "GET",
+            "request_board_posts",
+            params={"id": f"eq.{post_id}"},
+        )
+        if not rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Board post not found.")
+        existing = rows[0]
+
+        is_owner = existing["institution_id"] == actor.institution.id
+        is_admin = actor.user.role == Role.ADMIN
+        if not is_owner and not is_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to close this post.")
+        if existing["status"] == BoardPostStatus.CLOSED.value:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post is already closed.")
+
+        self._request(
+            "PATCH",
+            "request_board_posts",
+            params={"id": f"eq.{post_id}"},
+            json={
+                "status": BoardPostStatus.CLOSED.value,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+        )
+        updated = self._request(
+            "GET",
+            "request_board_posts",
+            params={"id": f"eq.{post_id}"},
+        )
+        return self._to_board_post(updated[0])
 
     def _account_status_for_verification_status(self, verification_status: VerificationStatus) -> AccountStatus:
         if verification_status == VerificationStatus.VERIFIED:

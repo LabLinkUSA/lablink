@@ -112,4 +112,23 @@ def create_request_board_post(
 ) -> RequestBoardPost:
     if actor.user.role != Role.RECIPIENT_INSTITUTION:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Database-backed request board posting is not implemented yet.")
+    return get_supabase_listing_service().create_board_post(actor, payload)
+
+
+@router.get("/request-board", response_model=list[RequestBoardPost])
+def get_recipient_board_posts(
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> list[RequestBoardPost]:
+    if actor.user.role != Role.RECIPIENT_INSTITUTION:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
+    return get_supabase_listing_service().get_board_posts_for_recipient(actor)
+
+
+@router.post("/request-board/{post_id}/close", response_model=RequestBoardPost)
+def close_board_post(
+    post_id: str,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> RequestBoardPost:
+    if actor.user.role != Role.RECIPIENT_INSTITUTION:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient access required.")
+    return get_supabase_listing_service().close_board_post(actor, post_id)

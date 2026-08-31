@@ -76,6 +76,17 @@ function CompetitionQueueIcon() {
   );
 }
 
+function RequestBoardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4.75 6.5A1.75 1.75 0 0 1 6.5 4.75h11A1.75 1.75 0 0 1 19.25 6.5v3a1.75 1.75 0 0 1-1.75 1.75h-11A1.75 1.75 0 0 1 4.75 9.5Zm1.5 0v3c0 .14.11.25.25.25h11a.25.25 0 0 0 .25-.25v-3a.25.25 0 0 0-.25-.25h-11a.25.25 0 0 0-.25.25Zm-1.5 8A1.75 1.75 0 0 1 6.5 12.75h11a1.75 1.75 0 0 1 1.75 1.75v3a1.75 1.75 0 0 1-1.75 1.75h-11A1.75 1.75 0 0 1 4.75 17.5Zm1.5 0v3c0 .14.11.25.25.25h11a.25.25 0 0 0 .25-.25v-3a.25.25 0 0 0-.25-.25h-11a.25.25 0 0 0-.25.25Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 const ADMIN_SECTION_ORDER = [
   {
     id: "institution-verification",
@@ -98,14 +109,24 @@ const ADMIN_SECTION_ORDER = [
     icon: CompetitionQueueIcon,
     tone: "secondary",
   },
+  {
+    id: "request-board",
+    title: "Request Board",
+    shortLabel: "Board",
+    icon: RequestBoardIcon,
+    tone: "secondary",
+  },
 ] as const;
 
 type AdminSectionId = (typeof ADMIN_SECTION_ORDER)[number]["id"];
 
 export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
+  const router = useRouter();
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [selectedCompetitionListingId, setSelectedCompetitionListingId] = useState<string | null>(null);
+  const [closingPostId, setClosingPostId] = useState<string | null>(null);
+  const [boardPostError, setBoardPostError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSectionId>("institution-verification");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const groupedCompetitionRequests = Array.from(
@@ -169,10 +190,52 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  async function handleCloseBoardPost(postId: string) {
+    setClosingPostId(postId);
+    setBoardPostError(null);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("You must be signed in as an admin to close a board post.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/board-posts/${postId}/close`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = "Could not close the board post.";
+        try {
+          const body = (await response.json()) as { detail?: string };
+          if (body.detail) {
+            message = body.detail;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+
+      router.refresh();
+    } catch (closeError) {
+      setBoardPostError(closeError instanceof Error ? closeError.message : "Could not close the board post.");
+    } finally {
+      setClosingPostId(null);
+    }
+  }
+
   const sectionCounts: Record<AdminSectionId, number> = {
     "institution-verification": dashboard.pending_institutions.length,
     "listing-moderation": dashboard.listings_for_review.length,
     "request-competition": groupedCompetitionRequests.length,
+    "request-board": dashboard.board_posts.length,
   };
 
   return (
@@ -438,6 +501,61 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 })
               )}
             </OperationsTableSection>
+          </section>
+
+          <section id="request-board" className="admin-ops-section" data-admin-section>
+            <div className="admin-ops-section-intro">
+              <h2>
+                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[3].tone}`} />
+                Request Board
+              </h2>
+            </div>
+            <OperationsTableSection
+              title="Request Board"
+              tone="secondary"
+              hideTitle
+              columns={["Post", "Institution", "Equipment Type", "Status", ""]}
+              footer={<span>Showing {dashboard.board_posts.length} board post(s)</span>}
+            >
+              {dashboard.board_posts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="ops-table-empty-cell">
+                    <div className="ops-empty-state">No board posts yet.</div>
+                  </td>
+                </tr>
+              ) : (
+                dashboard.board_posts.map((post) => (
+                  <tr key={post.id} className="ops-table-row">
+                    <td>
+                      <div>
+                        <p className="ops-equipment-title">{post.title}</p>
+                        <p className="ops-equipment-subtitle">{post.description}</p>
+                      </div>
+                    </td>
+                    <td>{post.institution_id}</td>
+                    <td>{post.category}</td>
+                    <td>
+                      <StatusPill status={post.status} />
+                    </td>
+                    <td className="ops-table-align-right">
+                      {post.status !== "closed" ? (
+                        <button
+                          type="button"
+                          className="button button-outline"
+                          onClick={() => void handleCloseBoardPost(post.id)}
+                          disabled={closingPostId === post.id}
+                        >
+                          {closingPostId === post.id ? "Closing..." : "Close post"}
+                        </button>
+                      ) : (
+                        <span className="ops-table-linkish">Closed</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </OperationsTableSection>
+            {boardPostError ? <p className="auth-notice auth-notice-error">{boardPostError}</p> : null}
           </section>
         </div>
       </div>

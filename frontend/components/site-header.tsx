@@ -38,6 +38,7 @@ function getNavItems(profile?: AuthenticatedUser | null) {
 
   if (role === "donor_lab") {
     navItems.push({ href: isVerifiedDonor ? "/donor/list-equipment" : "/donor", label: "Donate" });
+    navItems.push({ href: "/donor/request-board", label: "Request Board" });
     navItems.push({ href: "/donor", label: "Dashboard" });
   } else if (role === "recipient_institution") {
     navItems.push({ href: "/recipient", label: "Dashboard" });

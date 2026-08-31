@@ -10,6 +10,7 @@ from app.schemas.domain import (
     InstitutionVerificationUpdate,
     Listing,
     ListingApprovalUpdate,
+    RequestBoardPost,
     RequestStatusUpdate,
     Role,
 )
@@ -95,3 +96,13 @@ def cancel_listing_match(listing_id: str, actor: AuthenticatedUser = Depends(req
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
     return get_supabase_listing_service().cancel_listing_match(actor, listing_id)
+
+
+@router.post("/board-posts/{post_id}/close", response_model=RequestBoardPost)
+def admin_close_board_post(
+    post_id: str,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> RequestBoardPost:
+    if actor.user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return get_supabase_listing_service().close_board_post(actor, post_id)
