@@ -583,6 +583,16 @@ class SupabaseListingService:
         }
         if board_post_id:
             row_data["board_post_id"] = board_post_id
+            self._request(
+                "PATCH",
+                "request_board_posts",
+                params={"id": f"eq.{board_post_id}"},
+                json={
+                    "status": BoardPostStatus.MATCH_IN_PROGRESS.value,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
+                headers={"Prefer": "return=minimal"},
+            )
         rows = self._request(
             "POST",
             "listings",
@@ -1270,6 +1280,7 @@ class SupabaseListingService:
                 )
                 for row in audit_rows
             ],
+            board_posts=self.get_board_posts_for_admin(),
         )
 
     def get_admin_listing_detail(self, listing_id: str) -> InternalListingDetailResponse:

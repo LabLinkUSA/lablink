@@ -279,6 +279,7 @@ export interface AdminDashboardResponse {
   requests_requiring_attention: EquipmentRequest[];
   active_threads: MessageThread[];
   recent_actions: AdminAction[];
+  board_posts: RequestBoardPost[];
 }
 
 export interface OnboardingCreate {

@@ -475,6 +475,7 @@ class AdminDashboardResponse(BaseModel):
     requests_requiring_attention: List[EquipmentRequest]
     active_threads: List[MessageThread]
     recent_actions: List[AdminAction]
+    board_posts: List[RequestBoardPost] = Field(default_factory=list)
 
 
 class ThreadDetailResponse(BaseModel):
