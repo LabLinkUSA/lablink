@@ -7,13 +7,15 @@ _Nothing in progress._
 
 ## Completed Work
 
-### Session — 2026-09-02 (Admin Queue Filtering)
+### Session — 2026-09-02 (Admin Queue Filtering + Image Upload Validation)
 
 | Commit | Summary |
 |---|---|
 | `ea290b7` | feat: add client-side search and filter controls to admin dashboard queues |
+| `255f030` | feat: add image upload validation — restrict to JPEG/PNG/WebP, max 10 MB |
 
-**Frontend changes:** `admin-review-dashboard.tsx` — added `useState` filter state per queue (search text + dropdown selections), `useMemo` for derived filtered arrays, filter bar UI with search inputs and contextual dropdowns above each queue table. Sidebar counts update to reflect filtered results. Footer shows "X of Y" when filters narrow results. Empty states distinguish "no data" from "no filter matches." `globals.css` — added `.admin-filter-bar`, `.admin-filter-search`, `.admin-filter-select` styles.
+**Frontend changes:** `admin-review-dashboard.tsx` — added `useState` filter state per queue (search text + dropdown selections), `useMemo` for derived filtered arrays, filter bar UI with search inputs and contextual dropdowns above each queue table. Sidebar counts update to reflect filtered results. Footer shows "X of Y" when filters narrow results. Empty states distinguish "no data" from "no filter matches." `globals.css` — added `.admin-filter-bar`, `.admin-filter-search`, `.admin-filter-select` styles. `donor-listing-form.tsx` — client-side file type and size validation before upload, tightened `accept` attribute.
+**Backend changes:** `donor.py` — restricted image uploads to JPEG/PNG/WebP, added 10 MB size limit with clear 400 error messages.
 
 ---
 
@@ -99,7 +101,7 @@ Plan: `docs/superpowers/plans/2026-04-12-listing-lifecycle-enforcement.md`
 ### Medium Priority
 - [x] **Request board** — Done. Recipients create/view/close board posts; donors browse and respond with linked listings; admins see all posts.
 - [x] **Admin queue search/filter** — Done. Client-side text search and dropdown filters per admin queue section.
-- [ ] **Image upload validation** — Server-side file type and size limits on listing photo uploads.
+- [x] **Image upload validation** — Done. JPEG/PNG/WebP only, 10 MB max; validated client + server.
 - [ ] **Duplicate institution detection** — Admin tooling to review and merge duplicate institution records.
 - [ ] **Listing expiration** — Automated expiry of listings past their availability window.
 

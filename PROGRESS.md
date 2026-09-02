@@ -103,7 +103,7 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 |---|---|---|
 | Role-based access control (RBAC) | ✅ | Enforced at route + RLS level |
 | Audit trail for admin actions | ✅ | admin_audit_logs table |
-| Image upload limits + validation | ⬜ | No server-side validation |
+| Image upload limits + validation | ✅ | JPEG/PNG/WebP only, 10 MB max; validated client + server |
 | Row-level security policies | ✅ | All core tables |
 | E2E tests (Playwright) | ⬜ | Dependency added; no tests written |
 | Unit/integration tests (backend) | ✅ | Notification email tests present |
