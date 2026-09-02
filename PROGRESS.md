@@ -65,7 +65,7 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 | Recipient dashboard (requests, saved listings, threads) | ✅ | |
 | Admin dashboard (verification queue, moderation, requests, audit) | ✅ | |
 | Save / favorite listings | ✅ | |
-| Admin search / filter within queues | ⬜ | Loads all items; no server-side filtering |
+| Admin search / filter within queues | ✅ | Client-side text search + dropdown filters per queue section |
 
 ---
 

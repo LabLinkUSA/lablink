@@ -7,6 +7,16 @@ _Nothing in progress._
 
 ## Completed Work
 
+### Session — 2026-09-02 (Admin Queue Filtering)
+
+| Commit | Summary |
+|---|---|
+| `ea290b7` | feat: add client-side search and filter controls to admin dashboard queues |
+
+**Frontend changes:** `admin-review-dashboard.tsx` — added `useState` filter state per queue (search text + dropdown selections), `useMemo` for derived filtered arrays, filter bar UI with search inputs and contextual dropdowns above each queue table. Sidebar counts update to reflect filtered results. Footer shows "X of Y" when filters narrow results. Empty states distinguish "no data" from "no filter matches." `globals.css` — added `.admin-filter-bar`, `.admin-filter-search`, `.admin-filter-select` styles.
+
+---
+
 ### Session — 2026-08-31 (Request Board Feature)
 Spec: `docs/superpowers/specs/2026-08-31-lablink-upgrade-spec.md`
 Plan: `docs/superpowers/plans/2026-08-31-request-board.md`
@@ -88,7 +98,7 @@ Plan: `docs/superpowers/plans/2026-04-12-listing-lifecycle-enforcement.md`
 
 ### Medium Priority
 - [x] **Request board** — Done. Recipients create/view/close board posts; donors browse and respond with linked listings; admins see all posts.
-- [ ] **Admin queue search/filter** — Server-side filtering by date, institution, status, category in admin verification and moderation queues.
+- [x] **Admin queue search/filter** — Done. Client-side text search and dropdown filters per admin queue section.
 - [ ] **Image upload validation** — Server-side file type and size limits on listing photo uploads.
 - [ ] **Duplicate institution detection** — Admin tooling to review and merge duplicate institution records.
 - [ ] **Listing expiration** — Automated expiry of listings past their availability window.
