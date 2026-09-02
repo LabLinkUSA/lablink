@@ -459,9 +459,24 @@ export function DonorListingForm({
     setCurrentStep(nextStep);
   }
 
+  const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+
   async function handleImageSelected(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) {
+      return;
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      setUploadError("Only JPEG, PNG, and WebP images are supported.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      setUploadError("Image must be smaller than 10 MB.");
+      event.target.value = "";
       return;
     }
 
@@ -793,7 +808,7 @@ export function DonorListingForm({
                       <strong>Upload listing image</strong>
                       <p>Use a clear photo that shows the equipment condition and any included accessories.</p>
                     </div>
-                    <input id="listing-image" type="file" accept="image/*" onChange={handleImageSelected} />
+                    <input id="listing-image" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleImageSelected} />
                     <p className="donor-form-upload-file">
                       {isUploadingImage
                         ? "Uploading image..."

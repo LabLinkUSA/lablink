@@ -137,12 +137,25 @@ async def upload_listing_image(
     actor: AuthenticatedUser = Depends(require_actor),
 ) -> ListingImageUploadResponse:
     require_verified_donor(actor)
-    if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only image uploads are supported.")
+
+    ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+    if not image.content_type or image.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only JPEG, PNG, and WebP images are supported.",
+        )
 
     content = await image.read()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded image is empty.")
+
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image must be smaller than 10 MB.",
+        )
 
     photo_url = get_supabase_listing_service().upload_listing_image(
         actor,
