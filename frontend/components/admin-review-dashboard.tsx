@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -129,21 +129,123 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   const [boardPostError, setBoardPostError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSectionId>("institution-verification");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const groupedCompetitionRequests = Array.from(
-    dashboard.requests_requiring_attention.reduce((groups, request) => {
-      const existingGroup = groups.get(request.listing_id);
-      if (existingGroup) {
-        existingGroup.requests.push(request);
-        return groups;
-      }
 
-      groups.set(request.listing_id, {
-        listing: request.listing,
-        requests: [request],
-      });
-      return groups;
-    }, new Map<string, { listing: AdminDashboardResponse["requests_requiring_attention"][number]["listing"]; requests: AdminDashboardResponse["requests_requiring_attention"] }>()),
+  const [institutionSearch, setInstitutionSearch] = useState("");
+  const [institutionStatusFilter, setInstitutionStatusFilter] = useState("");
+  const [institutionTypeFilter, setInstitutionTypeFilter] = useState("");
+
+  const [listingSearch, setListingSearch] = useState("");
+  const [listingStatusFilter, setListingStatusFilter] = useState("");
+  const [listingCategoryFilter, setListingCategoryFilter] = useState("");
+
+  const [requestSearch, setRequestSearch] = useState("");
+
+  const [boardSearch, setBoardSearch] = useState("");
+  const [boardStatusFilter, setBoardStatusFilter] = useState("");
+  const [boardCategoryFilter, setBoardCategoryFilter] = useState("");
+
+  const filteredInstitutions = useMemo(() => {
+    let items = dashboard.pending_institutions;
+    if (institutionSearch) {
+      const q = institutionSearch.toLowerCase();
+      items = items.filter(
+        (i) => i.name.toLowerCase().includes(q) || i.location.toLowerCase().includes(q),
+      );
+    }
+    if (institutionStatusFilter) {
+      items = items.filter((i) => i.verification_status === institutionStatusFilter);
+    }
+    if (institutionTypeFilter) {
+      items = items.filter((i) => i.type === institutionTypeFilter);
+    }
+    return items;
+  }, [dashboard.pending_institutions, institutionSearch, institutionStatusFilter, institutionTypeFilter]);
+
+  const filteredListings = useMemo(() => {
+    let items = dashboard.listings_for_review;
+    if (listingSearch) {
+      const q = listingSearch.toLowerCase();
+      items = items.filter(
+        (i) => i.title.toLowerCase().includes(q) || i.category.toLowerCase().includes(q) || i.location.toLowerCase().includes(q),
+      );
+    }
+    if (listingStatusFilter) {
+      items = items.filter((i) => i.status === listingStatusFilter);
+    }
+    if (listingCategoryFilter) {
+      const q = listingCategoryFilter.toLowerCase();
+      items = items.filter((i) => i.category.toLowerCase() === q);
+    }
+    return items;
+  }, [dashboard.listings_for_review, listingSearch, listingStatusFilter, listingCategoryFilter]);
+
+  const listingCategories = useMemo(
+    () => [...new Set(dashboard.listings_for_review.map((l) => l.category))].sort(),
+    [dashboard.listings_for_review],
   );
+
+  const listingStatuses = useMemo(
+    () => [...new Set(dashboard.listings_for_review.map((l) => l.status))].sort(),
+    [dashboard.listings_for_review],
+  );
+
+  const institutionTypes = useMemo(
+    () => [...new Set(dashboard.pending_institutions.map((i) => i.type))].sort(),
+    [dashboard.pending_institutions],
+  );
+
+  const institutionStatuses = useMemo(
+    () => [...new Set(dashboard.pending_institutions.map((i) => i.verification_status))].sort(),
+    [dashboard.pending_institutions],
+  );
+
+  const boardCategories = useMemo(
+    () => [...new Set(dashboard.board_posts.map((p) => p.category))].sort(),
+    [dashboard.board_posts],
+  );
+
+  const groupedCompetitionRequests = useMemo(() => {
+    const groups = Array.from(
+      dashboard.requests_requiring_attention.reduce((map, request) => {
+        const existingGroup = map.get(request.listing_id);
+        if (existingGroup) {
+          existingGroup.requests.push(request);
+          return map;
+        }
+
+        map.set(request.listing_id, {
+          listing: request.listing,
+          requests: [request],
+        });
+        return map;
+      }, new Map<string, { listing: AdminDashboardResponse["requests_requiring_attention"][number]["listing"]; requests: AdminDashboardResponse["requests_requiring_attention"] }>()),
+    );
+    if (!requestSearch) return groups;
+    const q = requestSearch.toLowerCase();
+    return groups.filter(
+      ([, group]) =>
+        (group.listing?.title ?? "").toLowerCase().includes(q) ||
+        group.requests.some((r) => r.program_or_department.toLowerCase().includes(q)),
+    );
+  }, [dashboard.requests_requiring_attention, requestSearch]);
+
+  const filteredBoardPosts = useMemo(() => {
+    let items = dashboard.board_posts;
+    if (boardSearch) {
+      const q = boardSearch.toLowerCase();
+      items = items.filter(
+        (p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
+      );
+    }
+    if (boardStatusFilter) {
+      items = items.filter((p) => p.status === boardStatusFilter);
+    }
+    if (boardCategoryFilter) {
+      const q = boardCategoryFilter.toLowerCase();
+      items = items.filter((p) => p.category.toLowerCase() === q);
+    }
+    return items;
+  }, [dashboard.board_posts, boardSearch, boardStatusFilter, boardCategoryFilter]);
 
   useEffect(() => {
     const storedValue = window.localStorage.getItem("lablink-admin-sidebar-collapsed");
@@ -232,10 +334,10 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   }
 
   const sectionCounts: Record<AdminSectionId, number> = {
-    "institution-verification": dashboard.pending_institutions.length,
-    "listing-moderation": dashboard.listings_for_review.length,
+    "institution-verification": filteredInstitutions.length,
+    "listing-moderation": filteredListings.length,
     "request-competition": groupedCompetitionRequests.length,
-    "request-board": dashboard.board_posts.length,
+    "request-board": filteredBoardPosts.length,
   };
 
   return (
@@ -332,21 +434,54 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 Institution Verification
               </h2>
             </div>
+            <div className="admin-filter-bar">
+              <input
+                type="search"
+                className="admin-filter-search"
+                placeholder="Search by name or location..."
+                value={institutionSearch}
+                onChange={(e) => setInstitutionSearch(e.target.value)}
+              />
+              {institutionStatuses.length > 1 && (
+                <select
+                  className="admin-filter-select"
+                  value={institutionStatusFilter}
+                  onChange={(e) => setInstitutionStatusFilter(e.target.value)}
+                >
+                  <option value="">All statuses</option>
+                  {institutionStatuses.map((s) => (
+                    <option key={s} value={s}>{s.replaceAll("_", " ")}</option>
+                  ))}
+                </select>
+              )}
+              {institutionTypes.length > 1 && (
+                <select
+                  className="admin-filter-select"
+                  value={institutionTypeFilter}
+                  onChange={(e) => setInstitutionTypeFilter(e.target.value)}
+                >
+                  <option value="">All types</option>
+                  {institutionTypes.map((t) => (
+                    <option key={t} value={t}>{t.replaceAll("_", " ")}</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <OperationsTableSection
               title="Institution Reviews"
               tone="primary"
               hideTitle
               columns={["Institution", "Location", "Status", ""]}
-              footer={<span>Showing {dashboard.pending_institutions.length} institution review item(s)</span>}
+              footer={<span>Showing {filteredInstitutions.length} of {dashboard.pending_institutions.length} institution review item(s)</span>}
             >
-              {dashboard.pending_institutions.length === 0 ? (
+              {filteredInstitutions.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="ops-table-empty-cell">
-                    <div className="ops-empty-state">No institution reviews waiting right now.</div>
+                    <div className="ops-empty-state">{dashboard.pending_institutions.length === 0 ? "No institution reviews waiting right now." : "No institutions match the current filters."}</div>
                   </td>
                 </tr>
               ) : (
-                dashboard.pending_institutions.map((institution) => (
+                filteredInstitutions.map((institution) => (
                   <tr
                     key={institution.id}
                     className="ops-table-row ops-table-row-clickable"
@@ -378,21 +513,54 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 Listing Verification
               </h2>
             </div>
+            <div className="admin-filter-bar">
+              <input
+                type="search"
+                className="admin-filter-search"
+                placeholder="Search by title, category, or location..."
+                value={listingSearch}
+                onChange={(e) => setListingSearch(e.target.value)}
+              />
+              {listingStatuses.length > 1 && (
+                <select
+                  className="admin-filter-select"
+                  value={listingStatusFilter}
+                  onChange={(e) => setListingStatusFilter(e.target.value)}
+                >
+                  <option value="">All statuses</option>
+                  {listingStatuses.map((s) => (
+                    <option key={s} value={s}>{s.replaceAll("_", " ")}</option>
+                  ))}
+                </select>
+              )}
+              {listingCategories.length > 1 && (
+                <select
+                  className="admin-filter-select"
+                  value={listingCategoryFilter}
+                  onChange={(e) => setListingCategoryFilter(e.target.value)}
+                >
+                  <option value="">All categories</option>
+                  {listingCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <OperationsTableSection
               title="Listing Reviews"
               tone="primary"
               hideTitle
               columns={["Equipment", "Institution", "Condition", "Status"]}
-              footer={<span>Showing {dashboard.listings_for_review.length} listing review item(s)</span>}
+              footer={<span>Showing {filteredListings.length} of {dashboard.listings_for_review.length} listing review item(s)</span>}
             >
-              {dashboard.listings_for_review.length === 0 ? (
+              {filteredListings.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="ops-table-empty-cell">
-                    <div className="ops-empty-state">No listings currently need moderation.</div>
+                    <div className="ops-empty-state">{dashboard.listings_for_review.length === 0 ? "No listings currently need moderation." : "No listings match the current filters."}</div>
                   </td>
                 </tr>
               ) : (
-                dashboard.listings_for_review.map((listing) => (
+                filteredListings.map((listing) => (
                   <tr
                     key={listing.id}
                     className="ops-table-row ops-table-row-clickable"
@@ -433,6 +601,15 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[2].tone}`} />
                 Recipient Selection
               </h2>
+            </div>
+            <div className="admin-filter-bar">
+              <input
+                type="search"
+                className="admin-filter-search"
+                placeholder="Search by listing title or institution..."
+                value={requestSearch}
+                onChange={(e) => setRequestSearch(e.target.value)}
+              />
             </div>
             <OperationsTableSection
               title="Recipient Selection"
@@ -510,21 +687,52 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 Request Board
               </h2>
             </div>
+            <div className="admin-filter-bar">
+              <input
+                type="search"
+                className="admin-filter-search"
+                placeholder="Search by title or description..."
+                value={boardSearch}
+                onChange={(e) => setBoardSearch(e.target.value)}
+              />
+              <select
+                className="admin-filter-select"
+                value={boardStatusFilter}
+                onChange={(e) => setBoardStatusFilter(e.target.value)}
+              >
+                <option value="">All statuses</option>
+                <option value="open">open</option>
+                <option value="match_in_progress">match in progress</option>
+                <option value="closed">closed</option>
+              </select>
+              {boardCategories.length > 1 && (
+                <select
+                  className="admin-filter-select"
+                  value={boardCategoryFilter}
+                  onChange={(e) => setBoardCategoryFilter(e.target.value)}
+                >
+                  <option value="">All categories</option>
+                  {boardCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <OperationsTableSection
               title="Request Board"
               tone="secondary"
               hideTitle
               columns={["Post", "Institution", "Equipment Type", "Status", ""]}
-              footer={<span>Showing {dashboard.board_posts.length} board post(s)</span>}
+              footer={<span>Showing {filteredBoardPosts.length} of {dashboard.board_posts.length} board post(s)</span>}
             >
-              {dashboard.board_posts.length === 0 ? (
+              {filteredBoardPosts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="ops-table-empty-cell">
-                    <div className="ops-empty-state">No board posts yet.</div>
+                    <div className="ops-empty-state">{dashboard.board_posts.length === 0 ? "No board posts yet." : "No board posts match the current filters."}</div>
                   </td>
                 </tr>
               ) : (
-                dashboard.board_posts.map((post) => (
+                filteredBoardPosts.map((post) => (
                   <tr key={post.id} className="ops-table-row">
                     <td>
                       <div>

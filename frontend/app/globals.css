@@ -3794,6 +3794,57 @@ a .message-row {
   line-height: 1.65;
 }
 
+.admin-filter-bar {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-filter-search {
+  flex: 1 1 14rem;
+  min-width: 0;
+  height: 2.6rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(188, 202, 196, 0.6);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 0.88rem;
+  color: var(--text);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.admin-filter-search:focus {
+  outline: none;
+  border-color: rgba(0, 107, 89, 0.55);
+  box-shadow: 0 0 0 3px rgba(0, 107, 89, 0.08);
+}
+
+.admin-filter-search::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.admin-filter-select {
+  height: 2.6rem;
+  padding: 0 2rem 0 0.75rem;
+  border: 1px solid rgba(188, 202, 196, 0.6);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.admin-filter-select:focus {
+  outline: none;
+  border-color: rgba(0, 107, 89, 0.55);
+  box-shadow: 0 0 0 3px rgba(0, 107, 89, 0.08);
+}
+
 .ops-main-stack {
   display: grid;
   gap: 1.5rem;
