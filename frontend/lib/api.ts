@@ -5,6 +5,8 @@ import type {
   AdminDashboardResponse,
   AuthenticatedUser,
   DonorDashboardResponse,
+  DuplicateInstitutionGroup,
+  Institution,
   InternalListingDetailResponse,
   Listing,
   ListingDocumentSaveResponse,
@@ -126,6 +128,19 @@ export async function createRequestBoardPost(
 
 export async function getRecipientBoardPosts(): Promise<RequestBoardPost[] | null> {
   return fetchAuthedJson<RequestBoardPost[]>("/recipient/request-board");
+}
+
+export async function getDuplicateInstitutions(): Promise<DuplicateInstitutionGroup[]> {
+  const result = await fetchAuthedJson<DuplicateInstitutionGroup[]>("/admin/institutions/duplicates");
+  return result ?? [];
+}
+
+export async function mergeInstitutions(primaryId: string, duplicateId: string): Promise<Institution | null> {
+  return fetchAuthedJson<Institution>("/admin/institutions/merge", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ primary_id: primaryId, duplicate_id: duplicateId }),
+  });
 }
 
 export async function closeBoardPost(postId: string): Promise<RequestBoardPost | null> {

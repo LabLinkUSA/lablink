@@ -4818,6 +4818,63 @@ a .message-row {
   justify-content: flex-end;
 }
 
+.admin-duplicate-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-duplicate-item {
+  padding: 0.25rem 0;
+}
+
+.admin-merge-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+
+.admin-merge-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1.5px solid rgba(188, 202, 196, 0.4);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.admin-merge-option:hover {
+  border-color: rgba(188, 202, 196, 0.7);
+}
+
+.admin-merge-option-selected {
+  border-color: var(--accent);
+  background: rgba(38, 117, 84, 0.04);
+}
+
+.admin-merge-option input[type="radio"] {
+  margin-top: 0.25rem;
+  accent-color: var(--accent);
+}
+
+.admin-merge-option div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-merge-role-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
 .donor-form-actions {
   display: flex;
   flex-direction: column;

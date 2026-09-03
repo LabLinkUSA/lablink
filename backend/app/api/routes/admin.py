@@ -4,9 +4,11 @@ from app.api.routes.dependencies import require_actor
 from app.schemas.domain import (
     AdminDashboardResponse,
     AuthenticatedUser,
+    DuplicateInstitutionGroup,
     EquipmentRequest,
     InternalListingDetailResponse,
     Institution,
+    InstitutionMergeRequest,
     InstitutionVerificationUpdate,
     Listing,
     ListingApprovalUpdate,
@@ -15,6 +17,7 @@ from app.schemas.domain import (
     Role,
 )
 from app.services.supabase_listings import get_supabase_listing_service
+from app.services.supabase_profiles import get_supabase_profile_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -106,3 +109,26 @@ def admin_close_board_post(
     if actor.user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
     return get_supabase_listing_service().close_board_post(actor, post_id)
+
+
+@router.get("/institutions/duplicates", response_model=list[DuplicateInstitutionGroup])
+def get_duplicate_institutions(
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> list[DuplicateInstitutionGroup]:
+    if actor.user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return get_supabase_profile_service().get_duplicate_institution_groups()
+
+
+@router.post("/institutions/merge", response_model=Institution)
+def merge_institutions(
+    payload: InstitutionMergeRequest,
+    actor: AuthenticatedUser = Depends(require_actor),
+) -> Institution:
+    if actor.user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return get_supabase_profile_service().merge_institutions(
+        payload.primary_id,
+        payload.duplicate_id,
+        actor_user_id=actor.user.id,
+    )

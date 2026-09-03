@@ -12,7 +12,7 @@ import {
 import { StatusPill } from "@/components/status-pill";
 import { formatDate } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AdminDashboardResponse, Institution, InternalListingDetailResponse, Listing, ListingDetailResponse } from "@/lib/types";
+import type { AdminDashboardResponse, DuplicateInstitutionGroup, Institution, InternalListingDetailResponse, Listing, ListingDetailResponse } from "@/lib/types";
 
 type AdminReviewDashboardProps = {
   dashboard: AdminDashboardResponse;
@@ -76,6 +76,17 @@ function CompetitionQueueIcon() {
   );
 }
 
+function DuplicateInstitutionsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v7a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 4 13.5Zm2.5-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1ZM8 17.5A2.5 2.5 0 0 0 10.5 20h7a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 17.5 8V9.5a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function RequestBoardIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -116,6 +127,13 @@ const ADMIN_SECTION_ORDER = [
     icon: RequestBoardIcon,
     tone: "secondary",
   },
+  {
+    id: "duplicate-institutions",
+    title: "Duplicate Institutions",
+    shortLabel: "Duplicates",
+    icon: DuplicateInstitutionsIcon,
+    tone: "tertiary",
+  },
 ] as const;
 
 type AdminSectionId = (typeof ADMIN_SECTION_ORDER)[number]["id"];
@@ -127,6 +145,11 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   const [selectedCompetitionListingId, setSelectedCompetitionListingId] = useState<string | null>(null);
   const [closingPostId, setClosingPostId] = useState<string | null>(null);
   const [boardPostError, setBoardPostError] = useState<string | null>(null);
+  const [duplicateGroups, setDuplicateGroups] = useState<DuplicateInstitutionGroup[]>([]);
+  const [isDuplicatesLoading, setIsDuplicatesLoading] = useState(true);
+  const [mergeConfirm, setMergeConfirm] = useState<{ group: DuplicateInstitutionGroup; primaryId: string; duplicateId: string } | null>(null);
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSectionId>("institution-verification");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -259,6 +282,73 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
+    void (async () => {
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !data.session?.access_token) return;
+
+        const response = await fetch(`${API_BASE_URL}/admin/institutions/duplicates`, {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        });
+        if (response.ok) {
+          setDuplicateGroups((await response.json()) as DuplicateInstitutionGroup[]);
+        }
+      } catch {
+        // silently fail — duplicates are supplemental
+      } finally {
+        setIsDuplicatesLoading(false);
+      }
+    })();
+  }, []);
+
+  async function handleMerge() {
+    if (!mergeConfirm) return;
+    setIsMerging(true);
+    setMergeError(null);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw new Error(sessionError.message);
+      const accessToken = data.session?.access_token;
+      if (!accessToken) throw new Error("You must be signed in as an admin.");
+
+      const response = await fetch(`${API_BASE_URL}/admin/institutions/merge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          primary_id: mergeConfirm.primaryId,
+          duplicate_id: mergeConfirm.duplicateId,
+        }),
+      });
+
+      if (!response.ok) {
+        let message = "Could not merge institutions.";
+        try {
+          const body = (await response.json()) as { detail?: string };
+          if (body.detail) message = body.detail;
+        } catch {}
+        throw new Error(message);
+      }
+
+      const refreshResponse = await fetch(`${API_BASE_URL}/admin/institutions/duplicates`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (refreshResponse.ok) {
+        setDuplicateGroups((await refreshResponse.json()) as DuplicateInstitutionGroup[]);
+      }
+      setMergeConfirm(null);
+      router.refresh();
+    } catch (mergeErr) {
+      setMergeError(mergeErr instanceof Error ? mergeErr.message : "Could not merge institutions.");
+    } finally {
+      setIsMerging(false);
+    }
+  }
+
+  useEffect(() => {
     const sections = ADMIN_SECTION_ORDER.map((section) => document.getElementById(section.id)).filter(
       (element): element is HTMLElement => Boolean(element),
     );
@@ -338,6 +428,7 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
     "listing-moderation": filteredListings.length,
     "request-competition": groupedCompetitionRequests.length,
     "request-board": filteredBoardPosts.length,
+    "duplicate-institutions": duplicateGroups.length,
   };
 
   return (
@@ -765,8 +856,156 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             </OperationsTableSection>
             {boardPostError ? <p className="auth-notice auth-notice-error">{boardPostError}</p> : null}
           </section>
+
+          <section id="duplicate-institutions" className="admin-ops-section" data-admin-section>
+            <div className="admin-ops-section-intro">
+              <h2>
+                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[4].tone}`} />
+                Duplicate Institutions
+              </h2>
+            </div>
+            <OperationsTableSection
+              title="Duplicate Institutions"
+              tone="tertiary"
+              hideTitle
+              columns={["Institution", "Location", "Status", ""]}
+              footer={<span>Showing {duplicateGroups.length} duplicate group(s)</span>}
+            >
+              {isDuplicatesLoading ? (
+                <tr>
+                  <td colSpan={4} className="ops-table-empty-cell">
+                    <div className="ops-empty-state">Loading duplicate detection...</div>
+                  </td>
+                </tr>
+              ) : duplicateGroups.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="ops-table-empty-cell">
+                    <div className="ops-empty-state">No duplicate institutions detected.</div>
+                  </td>
+                </tr>
+              ) : (
+                duplicateGroups.map((group, groupIndex) => (
+                  <tr key={groupIndex} className="ops-table-row">
+                    <td>
+                      <div className="admin-duplicate-group">
+                        {group.institutions.map((inst) => (
+                          <div key={inst.id} className="admin-duplicate-item">
+                            <p className="ops-equipment-title">{inst.name}</p>
+                            <p className="ops-equipment-subtitle">{inst.type.replaceAll("_", " ")}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="admin-duplicate-group">
+                        {group.institutions.map((inst) => (
+                          <div key={inst.id} className="admin-duplicate-item">
+                            {inst.location}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="admin-duplicate-group">
+                        {group.institutions.map((inst) => (
+                          <div key={inst.id} className="admin-duplicate-item">
+                            <StatusPill status={inst.verification_status} />
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="ops-table-align-right">
+                      {group.institutions.length === 2 ? (
+                        <button
+                          type="button"
+                          className="button button-secondary"
+                          onClick={() =>
+                            setMergeConfirm({
+                              group,
+                              primaryId: group.institutions[0].id,
+                              duplicateId: group.institutions[1].id,
+                            })
+                          }
+                        >
+                          Merge
+                        </button>
+                      ) : (
+                        <span className="ops-table-linkish">Review ({group.institutions.length} matches)</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </OperationsTableSection>
+          </section>
         </div>
       </div>
+
+      {mergeConfirm ? (
+        <div className="review-modal-overlay" role="presentation" onClick={() => { setMergeConfirm(null); setMergeError(null); }}>
+          <section
+            className="review-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="merge-confirm-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="review-modal-header">
+              <div>
+                <span className="eyebrow">Merge institutions</span>
+                <h2 id="merge-confirm-title">Confirm institution merge</h2>
+              </div>
+              <button type="button" className="button button-outline" onClick={() => { setMergeConfirm(null); setMergeError(null); }}>
+                Close
+              </button>
+            </div>
+
+            <div className="review-modal-section">
+              <p>
+                All users, listings, requests, and board posts from the duplicate institution will be reassigned
+                to the primary institution. The duplicate will be permanently deleted.
+              </p>
+            </div>
+
+            <div className="admin-merge-selection">
+              {mergeConfirm.group.institutions.map((inst) => (
+                <label key={inst.id} className={`admin-merge-option ${mergeConfirm.primaryId === inst.id ? "admin-merge-option-selected" : ""}`}>
+                  <input
+                    type="radio"
+                    name="primary-institution"
+                    value={inst.id}
+                    checked={mergeConfirm.primaryId === inst.id}
+                    onChange={() =>
+                      setMergeConfirm({
+                        ...mergeConfirm,
+                        primaryId: inst.id,
+                        duplicateId: mergeConfirm.group.institutions.find((i) => i.id !== inst.id)?.id ?? "",
+                      })
+                    }
+                  />
+                  <div>
+                    <strong>{inst.name}</strong>
+                    <span>{inst.location}</span>
+                    <StatusPill status={inst.verification_status} />
+                    <span className="admin-merge-role-tag">{mergeConfirm.primaryId === inst.id ? "Primary (keep)" : "Duplicate (delete)"}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {mergeError ? <p className="auth-notice auth-notice-error">{mergeError}</p> : null}
+
+            <div className="page-actions" style={{ marginTop: "1rem" }}>
+              <button type="button" className="button button-outline" onClick={() => { setMergeConfirm(null); setMergeError(null); }} disabled={isMerging}>
+                Cancel
+              </button>
+              <button type="button" className="button button-primary" onClick={handleMerge} disabled={isMerging}>
+                {isMerging ? "Merging..." : "Merge institutions"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {selectedInstitution ? (
         <InstitutionReviewModal institution={selectedInstitution} onClose={() => setSelectedInstitution(null)} />

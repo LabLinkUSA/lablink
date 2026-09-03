@@ -12,6 +12,7 @@ from app.schemas.domain import (
     AccountStatus,
     AuthenticatedSupabaseUser,
     AuthenticatedUser,
+    DuplicateInstitutionGroup,
     Institution,
     Role,
     OnboardingCreate,
@@ -256,6 +257,143 @@ class SupabaseProfileService:
                     return cleaned
 
         return auth_user.email.split("@", 1)[0]
+
+    def get_duplicate_institution_groups(self) -> list[DuplicateInstitutionGroup]:
+        rows = self._request(
+            "GET",
+            "institutions",
+            params={
+                "select": "id,name,role_type,verification_status,location,description",
+                "id": f"neq.{ADMIN_INSTITUTION_ID}",
+                "order": "name.asc",
+            },
+        )
+        if not rows:
+            return []
+
+        groups_by_key: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            key = row["name"].strip().lower()
+            groups_by_key.setdefault(key, []).append(row)
+
+        # Also check containment: if one name contains another
+        keys = list(groups_by_key.keys())
+        merged_keys: dict[str, str] = {}
+        for i, key_a in enumerate(keys):
+            if key_a in merged_keys:
+                continue
+            for key_b in keys[i + 1:]:
+                if key_b in merged_keys:
+                    continue
+                if key_a in key_b or key_b in key_a:
+                    target = merged_keys.get(key_a, key_a)
+                    merged_keys[key_b] = target
+                    groups_by_key.setdefault(target, []).extend(groups_by_key.pop(key_b, []))
+
+        result: list[DuplicateInstitutionGroup] = []
+        for group_rows in groups_by_key.values():
+            if len(group_rows) < 2:
+                continue
+            institutions = [
+                Institution(
+                    id=r["id"],
+                    name=r["name"],
+                    type=r["role_type"],
+                    verification_status=r["verification_status"],
+                    location=r["location"],
+                    description=r["description"],
+                )
+                for r in group_rows
+            ]
+            result.append(DuplicateInstitutionGroup(institutions=institutions))
+        return result
+
+    def merge_institutions(self, primary_id: str, duplicate_id: str, actor_user_id: str) -> Institution:
+        if primary_id == duplicate_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Primary and duplicate institution IDs must be different.",
+            )
+
+        primary_rows = self._request(
+            "GET",
+            "institutions",
+            params={
+                "select": "id,name,role_type,verification_status,location,description",
+                "id": f"eq.{primary_id}",
+                "limit": "1",
+            },
+        )
+        if not primary_rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Primary institution not found.")
+
+        duplicate_rows = self._request(
+            "GET",
+            "institutions",
+            params={
+                "select": "id,name,role_type,verification_status,location,description",
+                "id": f"eq.{duplicate_id}",
+                "limit": "1",
+            },
+        )
+        if not duplicate_rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Duplicate institution not found.")
+
+        # Reassign all foreign keys from duplicate to primary
+        self._request(
+            "PATCH",
+            "app_users",
+            params={"institution_id": f"eq.{duplicate_id}"},
+            json={"institution_id": primary_id},
+            headers={"Prefer": "return=minimal"},
+        )
+        self._request(
+            "PATCH",
+            "equipment_listings",
+            params={"donor_institution_id": f"eq.{duplicate_id}"},
+            json={"donor_institution_id": primary_id},
+            headers={"Prefer": "return=minimal"},
+        )
+        self._request(
+            "PATCH",
+            "equipment_requests",
+            params={"recipient_institution_id": f"eq.{duplicate_id}"},
+            json={"recipient_institution_id": primary_id},
+            headers={"Prefer": "return=minimal"},
+        )
+        self._request(
+            "PATCH",
+            "request_board_posts",
+            params={"institution_id": f"eq.{duplicate_id}"},
+            json={"institution_id": primary_id},
+            headers={"Prefer": "return=minimal"},
+        )
+
+        # Delete duplicate institution
+        self._request("DELETE", "institutions", params={"id": f"eq.{duplicate_id}"})
+
+        # Audit log
+        self._insert_row(
+            "admin_audit_logs",
+            {
+                "id": f"audit_{uuid4().hex[:12]}",
+                "actor_user_id": actor_user_id,
+                "action_type": "institution_merged",
+                "subject_table": "institutions",
+                "subject_id": primary_id,
+                "notes": f"Merged duplicate institution {duplicate_id} into {primary_id}.",
+            },
+        )
+
+        primary_row = primary_rows[0]
+        return Institution(
+            id=primary_row["id"],
+            name=primary_row["name"],
+            type=primary_row["role_type"],
+            verification_status=primary_row["verification_status"],
+            location=primary_row["location"],
+            description=primary_row["description"],
+        )
 
     def _to_authenticated_user(self, row: dict[str, Any]) -> AuthenticatedUser:
         institution = Institution.model_validate(row["institution"])
