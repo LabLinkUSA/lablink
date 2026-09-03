@@ -1,8 +1,8 @@
 SHELL := /bin/zsh
 
-.PHONY: setup setup-frontend setup-backend dev-frontend dev-backend db-new db-push db-dry-run db-status
+.PHONY: setup setup-frontend setup-backend setup-e2e dev-frontend dev-backend db-new db-push db-dry-run db-status test-backend test-e2e
 
-setup: setup-frontend setup-backend
+setup: setup-frontend setup-backend setup-e2e
 
 setup-frontend:
 	cd frontend && npm install
@@ -10,6 +10,9 @@ setup-frontend:
 setup-backend:
 	cd backend && python3 -m venv .venv
 	cd backend && . .venv/bin/activate && pip install --upgrade pip && pip install -e .
+
+setup-e2e:
+	cd e2e && npm install
 
 front:
 	cd frontend && npm run dev
@@ -29,3 +32,9 @@ db-dry-run:
 
 db-status:
 	supabase migration list
+
+test-backend:
+	cd backend && . .venv/bin/activate && python -m pytest tests/ -v
+
+test-e2e:
+	cd e2e && npx playwright test --config=playwright.config.ts
