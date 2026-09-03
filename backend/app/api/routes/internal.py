@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.routes.dependencies import require_internal_job_token, require_notification_webhook_secret
 from app.schemas.domain import (
+    ListingExpirationResponse,
     NotificationEmailDeliveryResponse,
     NotificationEmailProcessingResponse,
     NotificationEmailWebhookRequest,
@@ -34,3 +35,11 @@ def process_notification_email_webhook(
             detail="Invalid notification email webhook payload.",
         )
     return get_supabase_listing_service().process_notification_email(payload.record.id)
+
+
+@router.post("/jobs/listings/expire", response_model=ListingExpirationResponse)
+def expire_listings(
+    _: None = Depends(require_internal_job_token),
+) -> ListingExpirationResponse:
+    expired_count = get_supabase_listing_service().expire_stale_listings()
+    return ListingExpirationResponse(expired_count=expired_count)

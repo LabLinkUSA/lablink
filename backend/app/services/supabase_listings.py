@@ -1920,6 +1920,65 @@ class SupabaseListingService:
             )
         return self._to_listing(updated)
 
+    def expire_stale_listings(self) -> int:
+        """Find live listings past their expires_at date and remove them."""
+        now = datetime.now(timezone.utc).isoformat()
+        rows = self._request(
+            "GET",
+            "listings",
+            params={
+                "select": "id,title,donor_institution_id",
+                "status": f"eq.{ListingStatus.LIVE.value}",
+                "expires_at": f"lte.{now}",
+            },
+        )
+        if not rows:
+            return 0
+
+        for row in rows:
+            listing_id = row["id"]
+            self._request(
+                "PATCH",
+                "listings",
+                params={"id": f"eq.{listing_id}"},
+                json={
+                    "status": ListingStatus.REMOVED_BY_DONOR.value,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
+                headers={"Prefer": "return=minimal"},
+            )
+            self._cancel_open_requests_for_listing(listing_id)
+            self._request(
+                "POST",
+                "admin_audit_logs",
+                json={
+                    "id": f"audit_{uuid4().hex[:12]}",
+                    "actor_user_id": "system",
+                    "action_type": "listing_expired",
+                    "subject_table": "listings",
+                    "subject_id": listing_id,
+                    "notes": f"Listing '{row['title']}' expired automatically (expires_at reached).",
+                },
+                headers={"Prefer": "return=minimal"},
+            )
+            self._notify_institution(
+                row["donor_institution_id"],
+                notification_type=NotificationType.LISTING_STATUS_CHANGED,
+                message=f"Your listing '{row['title']}' has expired and been removed from the marketplace.",
+                cta_href="/donor",
+                entity_type="listing",
+                entity_id=listing_id,
+                metadata={
+                    "email_template_key": "listing_removed",
+                    "entity_title": row["title"],
+                    "listing_id": listing_id,
+                    "status": ListingStatus.REMOVED_BY_DONOR.value,
+                },
+                role_value="donor_lab",
+                account_statuses={AccountStatus.VERIFIED.value},
+            )
+        return len(rows)
+
     def _notify_role(
         self,
         role_value: str,

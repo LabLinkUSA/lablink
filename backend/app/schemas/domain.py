@@ -132,6 +132,7 @@ class Listing(BaseModel):
     created_at: datetime
     request_count: int = 0
     board_post_id: Optional[str] = None
+    expires_at: datetime | None = None
 
 
 class EquipmentRequest(BaseModel):
@@ -224,6 +225,7 @@ class ListingDraftSave(BaseModel):
     delivery_mode: str = "pickup_only"
     photo_urls: List[str] = Field(default_factory=list)
     board_post_id: Optional[str] = None
+    expires_at: datetime | None = None
 
     @field_validator(
         "title",
@@ -264,6 +266,7 @@ class ListingPayloadBase(BaseModel):
     special_handling_flags: str
     delivery_mode: str
     photo_urls: List[str] = Field(default_factory=list)
+    expires_at: datetime | None = None
 
     @field_validator(
         "title",
@@ -404,6 +407,10 @@ class NotificationEmailProcessingResponse(BaseModel):
     failed_count: int
 
 
+class ListingExpirationResponse(BaseModel):
+    expired_count: int
+
+
 class NotificationEmailWebhookRecord(BaseModel):
     id: str
 
@@ -505,3 +512,12 @@ class OnboardingResponse(BaseModel):
     user: User
     institution: Institution
     created: bool
+
+
+class DuplicateInstitutionGroup(BaseModel):
+    institutions: List[Institution]
+
+
+class InstitutionMergeRequest(BaseModel):
+    primary_id: str
+    duplicate_id: str

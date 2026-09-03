@@ -70,6 +70,7 @@ export interface Listing {
   created_at: string;
   request_count: number;
   board_post_id?: string | null;
+  expires_at?: string | null;
 }
 
 export interface ListingCreateInput {
@@ -87,6 +88,7 @@ export interface ListingCreateInput {
   special_handling_flags: string;
   delivery_mode: string;
   photo_urls: string[];
+  expires_at?: string | null;
 }
 
 export interface ListingDraftSaveInput {
@@ -105,6 +107,7 @@ export interface ListingDraftSaveInput {
   delivery_mode: string;
   photo_urls: string[];
   board_post_id?: string | null;
+  expires_at?: string | null;
 }
 
 export interface ListingApprovalUpdate {
@@ -319,4 +322,8 @@ export interface NotificationListResponse {
 export interface MarkNotificationsViewedResponse {
   marked_count: number;
   viewed_at: string;
+}
+
+export interface DuplicateInstitutionGroup {
+  institutions: Institution[];
 }

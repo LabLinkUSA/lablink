@@ -78,6 +78,7 @@ function buildInitialDraft(listing: Listing): ListingDraftSaveInput {
     special_handling_flags: listing.special_handling_flags,
     delivery_mode: listing.delivery_mode,
     photo_urls: listing.photo_urls,
+    expires_at: listing.expires_at ?? null,
   };
 }
 
@@ -97,6 +98,7 @@ function createEmptyDraft(): ListingDraftSaveInput {
     special_handling_flags: "",
     delivery_mode: "pickup_only",
     photo_urls: [],
+    expires_at: null,
   };
 }
 
@@ -776,6 +778,15 @@ export function DonorListingForm({
                       placeholder="Available now, pickup by May 15, end of semester..."
                     />
                     {fieldErrors.availability_window ? <span className="auth-field-error">{fieldErrors.availability_window}</span> : null}
+                  </div>
+                  <div>
+                    <label htmlFor="listing-expires-at">Expiration date (optional)</label>
+                    <input
+                      id="listing-expires-at"
+                      type="date"
+                      value={draft.expires_at ? draft.expires_at.slice(0, 10) : ""}
+                      onChange={(event) => updateDraft("expires_at", event.target.value ? event.target.value : null)}
+                    />
                   </div>
                   <div className={getFieldClassName("working_status")}>
                     <label htmlFor="listing-working-status">Working status</label>
