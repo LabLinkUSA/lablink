@@ -13,7 +13,7 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 | Pending verification state on new accounts | ✅ | account_status enum enforced |
 | Admin email allowlist auto-provisioning | ✅ | Admin created on first login |
 | Admin approve / reject / suspend accounts | ✅ | Via admin dashboard |
-| Duplicate institution detection + merging | ⬜ | Not implemented |
+| Duplicate institution detection + merging | ✅ | Name similarity detection, admin merge UI with FK reassignment |
 
 ---
 
@@ -31,7 +31,7 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 | Public catalog browser with filters | ✅ | Search, category, condition, location |
 | Listing detail page | ✅ | Photos, donor info, full specs |
 | Material-edit re-review (live listing edited after requests exist) | ✅ | 11 material fields trigger re-review; recipients + admin notified |
-| Listing expiration / auto-removal on timeout | ⬜ | Not automated |
+| Listing expiration / auto-removal on timeout | ✅ | Optional expires_at date field + cron sweep endpoint |
 
 ---
 

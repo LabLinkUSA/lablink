@@ -13,9 +13,12 @@ _Nothing in progress._
 |---|---|
 | `ea290b7` | feat: add client-side search and filter controls to admin dashboard queues |
 | `255f030` | feat: add image upload validation — restrict to JPEG/PNG/WebP, max 10 MB |
+| `cf5ab3f` | feat: add listing expiration with expires_at date field and cron sweep |
+| `ad8ccd2` | feat: add duplicate institution detection and merge for admins |
 
-**Frontend changes:** `admin-review-dashboard.tsx` — added `useState` filter state per queue (search text + dropdown selections), `useMemo` for derived filtered arrays, filter bar UI with search inputs and contextual dropdowns above each queue table. Sidebar counts update to reflect filtered results. Footer shows "X of Y" when filters narrow results. Empty states distinguish "no data" from "no filter matches." `globals.css` — added `.admin-filter-bar`, `.admin-filter-search`, `.admin-filter-select` styles. `donor-listing-form.tsx` — client-side file type and size validation before upload, tightened `accept` attribute.
-**Backend changes:** `donor.py` — restricted image uploads to JPEG/PNG/WebP, added 10 MB size limit with clear 400 error messages.
+**Frontend changes:** `admin-review-dashboard.tsx` — added `useState` filter state per queue (search text + dropdown selections), `useMemo` for derived filtered arrays, filter bar UI with search inputs and contextual dropdowns above each queue table. Sidebar counts update to reflect filtered results. Footer shows "X of Y" when filters narrow results. Empty states distinguish "no data" from "no filter matches." Added duplicate institutions section with merge confirmation modal. `globals.css` — added `.admin-filter-bar`, `.admin-filter-search`, `.admin-filter-select`, `.admin-duplicate-*`, `.admin-merge-*` styles. `donor-listing-form.tsx` — client-side file type and size validation before upload, tightened `accept` attribute, added optional expiration date picker. `types.ts` — added `expires_at` to Listing/ListingCreateInput/ListingDraftSaveInput, added `DuplicateInstitutionGroup`. `api.ts` — added `getDuplicateInstitutions()` and `mergeInstitutions()`.
+**Backend changes:** `donor.py` — restricted image uploads to JPEG/PNG/WebP, added 10 MB size limit. `domain.py` — added `expires_at` to Listing/ListingDraftSave/ListingPayloadBase, added `ListingExpirationResponse`, `DuplicateInstitutionGroup`, `InstitutionMergeRequest`. `supabase_listings.py` — added `expire_stale_listings()` method. `internal.py` — added `POST /internal/jobs/listings/expire` cron endpoint. `supabase_profiles.py` — added `get_duplicate_institution_groups()` and `merge_institutions()`. `admin.py` — added `GET /admin/institutions/duplicates` and `POST /admin/institutions/merge`.
+**Database:** Migration `0010_add_listing_expires_at.sql` — added optional `expires_at` timestamptz column to listings.
 
 ---
 
@@ -102,8 +105,8 @@ Plan: `docs/superpowers/plans/2026-04-12-listing-lifecycle-enforcement.md`
 - [x] **Request board** — Done. Recipients create/view/close board posts; donors browse and respond with linked listings; admins see all posts.
 - [x] **Admin queue search/filter** — Done. Client-side text search and dropdown filters per admin queue section.
 - [x] **Image upload validation** — Done. JPEG/PNG/WebP only, 10 MB max; validated client + server.
-- [ ] **Duplicate institution detection** — Admin tooling to review and merge duplicate institution records.
-- [ ] **Listing expiration** — Automated expiry of listings past their availability window.
+- [x] **Duplicate institution detection** — Done. Name similarity detection, admin merge UI with FK reassignment.
+- [x] **Listing expiration** — Done. Optional expires_at date field + cron sweep endpoint.
 
 ### Lower Priority
 - [ ] **Stripe platform donations** — Optional Stripe integration for donations to LabLink (not equipment payments).
