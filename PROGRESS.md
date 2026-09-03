@@ -93,7 +93,7 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 ## Payments
 | Feature | Status | Notes |
 |---|---|---|
-| Stripe for optional platform donations | ⬜ | Noted in PRD but not implemented |
+| Stripe for optional platform donations | 🚫 | Dropped from v1 scope |
 | Buyer-to-seller payments | 🚫 | Explicitly out of scope for v1 |
 
 ---
@@ -105,6 +105,6 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 | Audit trail for admin actions | ✅ | admin_audit_logs table |
 | Image upload limits + validation | ✅ | JPEG/PNG/WebP only, 10 MB max; validated client + server |
 | Row-level security policies | ✅ | All core tables |
-| E2E tests (Playwright) | ⬜ | Dependency added; no tests written |
+| E2E tests (Playwright) | ✅ | 3 specs: donor listing lifecycle, recipient request board, admin institution verification |
 | Unit/integration tests (backend) | ✅ | Notification email tests present |
 | Mobile responsiveness | ⬜ | Not prioritized in v1 |

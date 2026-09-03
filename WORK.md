@@ -7,6 +7,11 @@ _Nothing in progress._
 
 ## Completed Work
 
+### Session — 2026-09-03 (E2E Testing)
+
+**E2E test infrastructure:** Created `e2e/` directory with Playwright config (Chromium, sequential, auto-starts dev servers), auth helper (`loginAs()` using real form selectors), and 3 test specs: donor listing lifecycle (4-step wizard fill, photo + PDF upload, admin approval), recipient request board post submission, and admin institution verification. Added test fixtures (minimal JPEG + two PDFs for upload tests). Updated `.gitignore` for Playwright artifacts and `Makefile` with `setup-e2e`, `test-backend`, `test-e2e` targets.
+**Backlog change:** Removed Stripe platform donations (dropped from scope).
+
 ### Session — 2026-09-02 (Admin Polish + Data Integrity)
 
 | Commit | Summary |
@@ -109,7 +114,6 @@ Plan: `docs/superpowers/plans/2026-04-12-listing-lifecycle-enforcement.md`
 - [x] **Listing expiration** — Done. Optional expires_at date field + cron sweep endpoint.
 
 ### Lower Priority
-- [ ] **Stripe platform donations** — Optional Stripe integration for donations to LabLink (not equipment payments).
 - [ ] **Email unsubscribe** — Unsubscribe management for notification emails.
-- [ ] **E2E tests** — Playwright tests for critical user flows (sign up, list equipment, submit request, admin approve).
+- [x] **E2E tests** — Done. 3 Playwright specs: donor listing lifecycle, recipient request board, admin institution verification.
 - [ ] **Admin bulk operations** — Bulk approve/reject in verification and moderation queues.
