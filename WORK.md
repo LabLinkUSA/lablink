@@ -7,7 +7,7 @@ _Nothing in progress._
 
 ## Completed Work
 
-### Session — 2026-09-02 (Admin Queue Filtering + Image Upload Validation)
+### Session — 2026-09-02 (Admin Polish + Data Integrity)
 
 | Commit | Summary |
 |---|---|
