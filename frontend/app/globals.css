@@ -38,7 +38,7 @@ body.app-body::before {
   left: -4rem;
   width: 18rem;
   height: 18rem;
-  background: rgba(2, 195, 154, 0.12);
+  background: rgba(16, 199, 154, 0.12);
 }
 
 body.app-body::after {
@@ -46,7 +46,7 @@ body.app-body::after {
   bottom: 4rem;
   width: 20rem;
   height: 20rem;
-  background: rgba(44, 95, 45, 0.08);
+  background: rgba(20, 48, 42, 0.08);
 }
 
 a {
@@ -85,7 +85,7 @@ input[type="radio"] {
 }
 
 :focus-visible {
-  outline: 2px solid rgba(2, 195, 154, 0.45);
+  outline: 2px solid rgba(16, 199, 154, 0.55);
   outline-offset: 2px;
 }
 
@@ -102,8 +102,8 @@ h4 {
   flex: 1 0 auto;
   padding-top: var(--ll-nav-offset);
   background:
-    radial-gradient(circle at top right, rgba(2, 195, 154, 0.08), transparent 22rem),
-    linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(240, 247, 244, 0.68) 100%);
+    radial-gradient(circle at top right, rgba(16, 199, 154, 0.08), transparent 22rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(238, 244, 241, 0.68) 100%);
 }
 
 body.app-body:has(.home-redesign-page) .site-main {

@@ -4,7 +4,7 @@ Every frontend route is built on the homepage's design system. Use `frontend/com
 
 ## Tokens, type, shape, components, motion
 
-Source of truth: `frontend/components/home-page-redesign.module.css`. The tokens below are lifted verbatim.
+Source of truth: `frontend/app/tokens.css` (tokens originate from the homepage, `frontend/components/home-page-redesign.module.css`).
 
 ### Color tokens
 
@@ -28,8 +28,8 @@ Source of truth: `frontend/components/home-page-redesign.module.css`. The tokens
 
 | Group | Statuses | Pill bg / text |
 |---|---|---|
-| Positive | live, verified, approved_matched, completed, fulfilled, active, open | `rgba(16,199,154,.14)` / `#0B7A5F` |
-| Pending | draft, submitted, admin_review, pending_*, listing_under_review, match_in_progress | `rgba(214,163,40,.16)` / `#7A5A0B` |
+| Positive | live, verified, approved_matched, completed, fulfilled, active, open | `rgba(16,199,154,.14)` / `#0B6E55` |
+| Pending | draft, submitted, admin_review, pending_*, listing_under_review, match_in_progress | `rgba(214,163,40,.16)` / `#6B4F0A` |
 | Reserved / neutral | matched_reserved, closed, locked, restricted | `rgba(20,48,42,.08)` / `#14302A` |
 | Negative | rejected, rejected_cancelled, removed_by_admin, removed_by_donor, suspended | `rgba(196,64,52,.12)` / `#8C2A20` |
 
@@ -37,8 +37,8 @@ All text/background pairs must meet WCAG AA (4.5:1). Verified during implementat
 
 ### Typography
 
-- **Display:** Playfair Display 500/600/700 + italic 500/600, loaded once in `app/layout.tsx` via `next/font` as `--font-playfair`. Replaces DM Serif Display everywhere.
-- **Body:** DM Sans 400–700, moved from the `@import` in `globals.css` to `next/font` (`--font-dm-sans`).
+- **Display:** Playfair Display 500/600/700 + italic 500/600, loaded once in `app/layout.tsx` via `next/font` as `--font-playfair`.
+- **Body:** DM Sans 400–700, loaded via `next/font` in `app/layout.tsx` as `--font-dm-sans`.
 - **Scale (app pages):**
 
 | Role | Size | Weight / tracking |
