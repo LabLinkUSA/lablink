@@ -39,6 +39,7 @@ Never use seller/buyer terminology. Always use donor/recipient.
 | `backend/app/api/routes/admin.py` | Admin API routes |
 | `backend/app/api/routes/dependencies.py` | Auth dependency injection |
 | `backend/tests/test_listing_lifecycle.py` | Lifecycle enforcement tests (14 tests) |
+| `DESIGN.md` | Design system (tokens, type, components, motion) — use components/ui for all new UI |
 | `supabase/migrations/` | Database schema migrations |
 | `docs/superpowers/specs/` | Design specs from brainstorming sessions |
 | `docs/superpowers/plans/` | Implementation plans |

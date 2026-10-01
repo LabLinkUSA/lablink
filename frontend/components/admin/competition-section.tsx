@@ -22,7 +22,7 @@ export function CompetitionSection({
 }) {
   return (
     <>
-      <FilterBar search={{ value: search, onChange: onSearch, placeholder: "Search by listing title or institution..." }} />
+      <FilterBar search={{ value: search, onChange: onSearch, placeholder: "Search by listing title or institution…" }} />
       <DataTable
         head={["Listing", "Recipients", "Primary Status", ""]}
         footer={<span>Showing {rows.length} recipient selection item(s)</span>}
@@ -59,7 +59,7 @@ export function CompetitionSection({
                 <div className={tableStyles.titleCell}>
                   {group.listing?.photo_urls[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={group.listing.photo_urls[0]} alt={group.listing.title} className={tableStyles.thumb} />
+                    <img src={group.listing.photo_urls[0]} alt={group.listing.title} width={52} height={52} loading="lazy" className={tableStyles.thumb} />
                   ) : (
                     <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>No image</span>
                   )}

@@ -23,7 +23,7 @@ export function DuplicatesSection({
   onMerge(group: DuplicateInstitutionGroup): void;
 }) {
   if (isLoading) {
-    return <EmptyState variant="empty" title="Loading duplicate detection..." />;
+    return <EmptyState variant="empty" title="Loading duplicate detection…" />;
   }
 
   if (groups.length === 0) {

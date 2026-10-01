@@ -56,6 +56,7 @@ export function ForgotPasswordShell() {
           <Input
             id="reset-email"
             type="email"
+            spellCheck={false}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
@@ -64,7 +65,7 @@ export function ForgotPasswordShell() {
         </Field>
 
         <Button type="submit" block size="lg" disabled={isPending}>
-          {isPending ? "Sending reset link..." : "Send reset link"}
+          {isPending ? "Sending reset link…" : "Send reset link"}
         </Button>
       </form>
 

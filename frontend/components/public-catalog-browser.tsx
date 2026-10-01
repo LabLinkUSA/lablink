@@ -83,7 +83,7 @@ export function PublicCatalogBrowser({ listings }: { listings: Listing[] }) {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by model, category, condition, or location..."
+                placeholder="Search by model, category, condition, or location…"
               />
             </label>
           }

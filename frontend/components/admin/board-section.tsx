@@ -35,7 +35,7 @@ export function BoardSection({
   return (
     <>
       <FilterBar
-        search={{ value: search, onChange: onSearch, placeholder: "Search by title or description..." }}
+        search={{ value: search, onChange: onSearch, placeholder: "Search by title or description…" }}
         selects={[
           {
             name: "boardStatusFilter",
@@ -87,7 +87,7 @@ export function BoardSection({
                   onClick={() => onClosePost(post.id)}
                   disabled={closingPostId === post.id}
                 >
-                  {closingPostId === post.id ? "Closing..." : "Close post"}
+                  {closingPostId === post.id ? "Closing…" : "Close post"}
                 </Button>
               ) : (
                 <span className={styles.unavailable}>Closed</span>

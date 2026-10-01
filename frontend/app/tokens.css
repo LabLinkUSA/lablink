@@ -20,30 +20,6 @@
   --ll-nav-offset: 96px;
   --ll-container: 1240px;
   --ll-gutter: clamp(20px, 5vw, 72px);
-
-  /* Legacy variables remapped so un-migrated rules share the new palette. */
-  --font-body: var(--ll-body);
-  --font-display: var(--ll-display);
-  --forest: var(--ll-ink);
-  --mid: var(--ll-ink);
-  --mint: var(--ll-mint);
-  --light: var(--ll-canvas);
-  --background: var(--ll-canvas);
-  --background-soft: var(--ll-canvas);
-  --surface: var(--ll-surface);
-  --surface-muted: var(--ll-surface-hover);
-  --text: var(--ll-text);
-  --muted: var(--ll-muted);
-  --muted-soft: var(--ll-muted);
-  --primary: var(--ll-ink);
-  --primary-container: var(--ll-ink);
-  --primary-strong: var(--ll-ink);
-  --primary-soft: rgba(16, 199, 154, 0.1);
-  --secondary: var(--ll-mint);
-  --secondary-container: rgba(16, 199, 154, 0.14);
-  --secondary-text: var(--ll-ink);
-  --line: var(--ll-line);
-  --line-strong: var(--ll-line-strong);
 }
 
 body.app-body {

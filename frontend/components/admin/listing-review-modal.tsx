@@ -213,7 +213,7 @@ export function ListingReviewModal({
 
           <section className={styles.subsection}>
             <h3 className={styles.subheading}>Compliance Forms</h3>
-            {isDetailLoading ? <p className={styles.bodyText}>Loading compliance documents...</p> : null}
+            {isDetailLoading ? <p className={styles.bodyText}>Loading compliance documents…</p> : null}
             {!isDetailLoading && documents.length === 0 ? (
               <p className={styles.bodyText}>No compliance PDFs are attached to this listing.</p>
             ) : null}
@@ -298,7 +298,7 @@ export function ListingReviewModal({
             </Field>
             <div className={styles.formActions}>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update status"}
+                {isSubmitting ? "Updating…" : "Update status"}
               </Button>
             </div>
           </form>
@@ -329,7 +329,7 @@ export function ListingReviewModal({
                   }}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Removing..." : "Yes, remove listing"}
+                  {isSubmitting ? "Removing…" : "Yes, remove listing"}
                 </Button>
               </div>
             </section>

@@ -107,4 +107,5 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 | Row-level security policies | ✅ | All core tables |
 | E2E tests (Playwright) | ✅ | 3 specs: donor listing lifecycle, recipient request board, admin institution verification |
 | Unit/integration tests (backend) | ✅ | Notification email tests present |
-| Mobile responsiveness | ⬜ | Not prioritized in v1 |
+| Mobile responsiveness | ✅ | All routes responsive to 360px (app-wide redesign) |
+| Design system (tokens + UI kit) | ✅ | `app/tokens.css`, `components/ui/`; see `DESIGN.md` |

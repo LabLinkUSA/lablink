@@ -137,7 +137,7 @@ export function UpdatePasswordShell() {
       />
 
       {isCheckingRecovery ? (
-        <Notice tone="info">Checking your reset link...</Notice>
+        <Notice tone="info">Checking your reset link…</Notice>
       ) : showRecoveryError ? (
         <>
           <Notice tone="error">{error ?? "This reset link is invalid, expired, or has already been used."}</Notice>
@@ -177,7 +177,7 @@ export function UpdatePasswordShell() {
               />
             </Field>
             <Button type="submit" block size="lg" disabled={isPending}>
-              {isPending ? "Updating password..." : "Update password"}
+              {isPending ? "Updating password…" : "Update password"}
             </Button>
           </form>
 

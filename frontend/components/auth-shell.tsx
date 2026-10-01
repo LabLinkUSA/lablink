@@ -494,7 +494,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
           actions={
             <>
               <Button type="button" onClick={handleSignOut} disabled={isPending}>
-                {isPending ? "Working..." : "Sign out"}
+                {isPending ? "Working…" : "Sign out"}
               </Button>
               {sessionUser.role ? (
                 <ButtonLink href={getDashboardHref(sessionUser.role as Role)} variant="secondary">
@@ -510,6 +510,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
             <Input
               id="sign-in-email"
               type="email"
+              spellCheck={false}
               value={signInEmail}
               onChange={(event) => setSignInEmail(event.target.value)}
               autoComplete="email"
@@ -566,6 +567,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
             <Input
               id="sign-up-email"
               type="email"
+              spellCheck={false}
               value={signUpEmail}
               onChange={(event) => setSignUpEmail(event.target.value)}
               autoComplete="email"

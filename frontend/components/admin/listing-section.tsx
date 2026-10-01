@@ -34,7 +34,7 @@ export function ListingSection({
   return (
     <>
       <FilterBar
-        search={{ value: search, onChange: onSearch, placeholder: "Search by title, category, or location..." }}
+        search={{ value: search, onChange: onSearch, placeholder: "Search by title, category, or location…" }}
         selects={[
           ...(statuses.length > 1
             ? [
@@ -88,7 +88,7 @@ export function ListingSection({
               <div className={tableStyles.titleCell}>
                 {listing.photo_urls[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={listing.photo_urls[0]} alt={listing.title} className={tableStyles.thumb} />
+                  <img src={listing.photo_urls[0]} alt={listing.title} width={52} height={52} loading="lazy" className={tableStyles.thumb} />
                 ) : (
                   <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>No image</span>
                 )}

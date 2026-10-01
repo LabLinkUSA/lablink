@@ -35,7 +35,7 @@ export function MergeModal({
             Cancel
           </Button>
           <Button onClick={onConfirm} disabled={isMerging}>
-            {isMerging ? "Merging..." : "Merge institutions"}
+            {isMerging ? "Merging…" : "Merge institutions"}
           </Button>
         </>
       }

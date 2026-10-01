@@ -7,6 +7,41 @@ _Nothing in progress._
 
 ## Completed Work
 
+### Session — 2026-09-30 (App-Wide Redesign)
+Spec: `docs/superpowers/specs/2026-09-30-app-wide-redesign-design.md`
+
+| Commit | Summary |
+|---|---|
+| `9cc3042` | feat: port Claude Design homepage, add design handoff docs, redesign spec/plan, design skills |
+| `2baa908` | fix: move client-side request board calls off server-only api module |
+| `235ea36` | feat: add design tokens, next/font loading, and redesign test harness |
+| `9186537` | feat: add homepage-system UI kit and dev kit fixture |
+| `0fda61e` | fix: kit status-pill specificity, single modal onClose, field aria/invalid wiring |
+| `35f9a24` | feat: replace site header with auth-aware floating nav and shared footer |
+| `b544dc5` | fix: single active nav link, restore sign-out pending/error handling, offset auth pages for nav |
+| `9f977c0` | feat: redesign sign-in and sign-up on the homepage design system |
+| `e2a92c2` | fix: keep nav sign-in on one line off-home, explicit two-column sign-up pairs |
+| `ff01950` | feat: redesign password reset pages |
+| `809b13c` | feat: redesign equipment catalog |
+| `e575c4f` | fix: catalog mobile category popover clipping |
+| `085e238` | feat: redesign listing detail page |
+| `e993e88` | feat: shared ink-rail dashboard shell and gate screens |
+| `b35c1dc` | fix: dashboard shell review round 1 (count-up, h1 gates, scroll margin) |
+| `5fbcc95` | feat: redesign donor dashboard content and modals |
+| `cea0264` | feat: redesign recipient dashboard and request board form |
+| `5d5c52e` | feat: redesign donor listing wizard |
+| `9a1342a` | fix: donor wizard modal lock, single action bar |
+| `1f57c4a` | feat: redesign donor request board |
+| `cdcae1e` | feat: split and redesign admin dashboard sections and review modals |
+| _final_ | chore: remove legacy styles, add DESIGN.md, finalize app-wide redesign |
+
+**Frontend changes:** Every route (auth, password pages, catalog, listing detail, donor/recipient/admin dashboards, donor wizard, request board) rebuilt on the homepage design system. New tokens in `app/tokens.css`, shared UI kit in `components/ui/` (Button, Card, Field, Modal, DataTable, StatusPill, Reveal, ...), `components/chrome/` (auth-aware floating nav + footer), `components/dashboard/` (ink-rail dashboard shell), `components/auth/`, plus per-page CSS modules. Fonts via `next/font` (Playfair Display + DM Sans). Client components that imported server-only `lib/api.ts` now use a browser-session API module, which also fixed `next build`. Cleanup: `globals.css` cut from 5,646 to 210 lines (resets, `.shell`, `.site-main`, `.sr-only`, homepage page rules, reduced-motion only), legacy palette variables and global form-control theming removed, kit fixture `/dev/kit` removed, audit fixes from web-interface-guidelines (image dimensions + lazy loading, ellipsis typography, `spellCheck` on email fields, `touch-action`, modal `overscroll-behavior`). `DESIGN.md` documents the system.
+**Backend / DB changes:** none.
+**Tests:** Playwright redesign suite in `e2e/redesign/` (`e2e/redesign.config.ts`); authed tests need the backend and seeded accounts and skip without it.
+**Deferred (spec §7):** delete unused TSX (`ListingCard`, `ListingListRow`, `DashboardPanel`, unused `operations-dashboard-ui` exports, `app/admin/actions.ts`); known data issues (admin metric labels, board-section institution IDs, hardcoded request-board count, missing request-board verification check).
+
+---
+
 ### Session — 2026-09-03 (E2E Testing)
 
 **E2E test infrastructure:** Created `e2e/` directory with Playwright config (Chromium, sequential, auto-starts dev servers), auth helper (`loginAs()` using real form selectors), and 3 test specs: donor listing lifecycle (4-step wizard fill, photo + PDF upload, admin approval), recipient request board post submission, and admin institution verification. Added test fixtures (minimal JPEG + two PDFs for upload tests). Updated `.gitignore` for Playwright artifacts and `Makefile` with `setup-e2e`, `test-backend`, `test-e2e` targets.

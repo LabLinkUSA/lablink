@@ -87,7 +87,7 @@ export function DonorListingActions({
       ) : null}
       {canManageListing ? (
         <Button variant="danger" size="sm" onClick={() => setIsRemovalConfirmOpen(true)} disabled={isRemoving}>
-          {isRemoving ? "Removing..." : "Remove"}
+          {isRemoving ? "Removing…" : "Remove"}
         </Button>
       ) : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
@@ -111,7 +111,7 @@ export function DonorListingActions({
               }}
               disabled={isRemoving}
             >
-              {isRemoving ? "Removing..." : removesDraftPermanently ? "Yes, permanently delete draft" : "Yes, remove listing"}
+              {isRemoving ? "Removing…" : removesDraftPermanently ? "Yes, permanently delete draft" : "Yes, remove listing"}
             </Button>
           </>
         }

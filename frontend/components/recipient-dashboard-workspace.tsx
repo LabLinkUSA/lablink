@@ -106,7 +106,7 @@ export function RecipientDashboardWorkspace({
                     <div className={tableStyles.titleCell}>
                       {request.listing?.photo_urls[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={request.listing.photo_urls[0]} alt={request.listing.title} className={tableStyles.thumb} />
+                        <img src={request.listing.photo_urls[0]} alt={request.listing.title} width={52} height={52} loading="lazy" className={tableStyles.thumb} />
                       ) : (
                         <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>—</span>
                       )}
@@ -155,7 +155,7 @@ export function RecipientDashboardWorkspace({
                     <div className={tableStyles.titleCell}>
                       {listing.photo_urls[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={listing.photo_urls[0]} alt={listing.title} className={tableStyles.thumb} />
+                        <img src={listing.photo_urls[0]} alt={listing.title} width={52} height={52} loading="lazy" className={tableStyles.thumb} />
                       ) : (
                         <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>—</span>
                       )}

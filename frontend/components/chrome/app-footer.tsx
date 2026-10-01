@@ -5,7 +5,7 @@ export function AppFooter() {
     <footer className={styles.footer}>
       <div className={styles.footerInner}>
         <div>
-          <img src="/lablink-header-logo.png" alt="LabLink" className={styles.logoImage} />
+          <img src="/lablink-header-logo.png" alt="LabLink" width={6837} height={1079} loading="lazy" className={styles.logoImage} />
           <div className={styles.footerMeta}>A Yale nonprofit · New Haven, CT · Founded 2024</div>
         </div>
         <p className={styles.footerNote}>

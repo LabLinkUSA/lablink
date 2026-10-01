@@ -8,12 +8,12 @@ test("tokens are defined on :root", async ({ page }) => {
   expect(mint).toBe("#10c79a");
 });
 
-test("legacy variables are remapped to the new palette", async ({ page }) => {
+test("legacy palette variables no longer exist", async ({ page }) => {
   await page.goto("/auth");
   const forest = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue("--forest").trim().toLowerCase(),
+    getComputedStyle(document.documentElement).getPropertyValue("--forest").trim(),
   );
-  expect(forest).toBe("#14302a");
+  expect(forest).toBe("");
 });
 
 test("display headings use Playfair Display", async ({ page }) => {

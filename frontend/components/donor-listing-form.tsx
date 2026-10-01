@@ -280,7 +280,7 @@ export function DonorListingForm({
 
     createDraftPromiseRef.current = (async () => {
       setSaveState("saving");
-      setSaveMessage("Creating draft...");
+      setSaveMessage("Creating draft…");
 
       try {
         const accessToken = await getAccessToken();
@@ -376,7 +376,7 @@ export function DonorListingForm({
         const nextSave = pendingSaveRef.current;
         pendingSaveRef.current = null;
         setSaveState("saving");
-        setSaveMessage("Saving draft...");
+        setSaveMessage("Saving draft…");
         const currentResult = await persistDraft(nextSave.payload, nextSave.snapshot);
         didSucceed = didSucceed && currentResult;
       }
@@ -740,7 +740,7 @@ export function DonorListingForm({
                         id="listing-title"
                         value={draft.title}
                         onChange={(event) => updateDraft("title", event.target.value)}
-                        placeholder="PCR machine, Leica microscope, centrifuge..."
+                        placeholder="PCR machine, Leica microscope, centrifuge…"
                       />
                     </Field>
                     <Field label="Category" htmlFor="listing-category" error={fieldErrors.category}>
@@ -748,7 +748,7 @@ export function DonorListingForm({
                         id="listing-category"
                         value={draft.category}
                         onChange={(event) => updateDraft("category", event.target.value)}
-                        placeholder="Molecular biology, imaging, clinical diagnostics..."
+                        placeholder="Molecular biology, imaging, clinical diagnostics…"
                       />
                     </Field>
                     <Field label="Condition" htmlFor="listing-condition" error={fieldErrors.condition}>
@@ -756,7 +756,7 @@ export function DonorListingForm({
                         id="listing-condition"
                         value={draft.condition}
                         onChange={(event) => updateDraft("condition", event.target.value)}
-                        placeholder="Used, like new, needs calibration..."
+                        placeholder="Used, like new, needs calibration…"
                       />
                     </Field>
                     <Field label="Quantity" htmlFor="listing-quantity" error={fieldErrors.quantity}>
@@ -775,7 +775,7 @@ export function DonorListingForm({
                         id="listing-window"
                         value={draft.availability_window}
                         onChange={(event) => updateDraft("availability_window", event.target.value)}
-                        placeholder="Available now, pickup by May 15, end of semester..."
+                        placeholder="Available now, pickup by May 15, end of semester…"
                       />
                     </Field>
                     <Field label="Expiration date (optional)" htmlFor="listing-expires-at">
@@ -791,7 +791,7 @@ export function DonorListingForm({
                         id="listing-working-status"
                         value={draft.working_status}
                         onChange={(event) => updateDraft("working_status", event.target.value)}
-                        placeholder="Fully functional, powers on but untested, for parts..."
+                        placeholder="Fully functional, powers on but untested, for parts…"
                       />
                     </Field>
                     <Field label="Description" htmlFor="listing-description" error={fieldErrors.description} span="full">
@@ -815,7 +815,7 @@ export function DonorListingForm({
                         <p>Use a clear photo that shows the equipment condition and any included accessories.</p>
                         <p className={styles.uploadFile}>
                           {isUploadingImage
-                            ? "Uploading image..."
+                            ? "Uploading image…"
                             : selectedImageName
                               ? `Selected file: ${selectedImageName}`
                               : "PNG, JPG, and other standard image formats are supported."}
@@ -867,7 +867,7 @@ export function DonorListingForm({
                           id="listing-handling"
                           value={draft.handling_requirements}
                           onChange={(event) => updateDraft("handling_requirements", event.target.value)}
-                          placeholder="Two-person lift, keep upright, cold storage needed..."
+                          placeholder="Two-person lift, keep upright, cold storage needed…"
                         />
                       </Field>
                       <Field label="Documentation included" htmlFor="listing-docs" error={fieldErrors.documentation_included}>
@@ -875,7 +875,7 @@ export function DonorListingForm({
                           id="listing-docs"
                           value={draft.documentation_included}
                           onChange={(event) => updateDraft("documentation_included", event.target.value)}
-                          placeholder="User manual, maintenance log, calibration records..."
+                          placeholder="User manual, maintenance log, calibration records…"
                         />
                       </Field>
                       <Field label="Special handling flags" htmlFor="listing-special-flags" error={fieldErrors.special_handling_flags} span="full">
@@ -960,7 +960,7 @@ export function DonorListingForm({
                 </Button>
               ) : (
                 <Button type="submit" arrow className="donor-form-primary-action" disabled={!canSubmit}>
-                  {isSubmitting ? "Submitting..." : isRejectedListing ? "Resubmit for admin review" : "Submit for admin review"}
+                  {isSubmitting ? "Submitting…" : isRejectedListing ? "Resubmit for admin review" : "Submit for admin review"}
                 </Button>
               )}
             </div>
@@ -1002,7 +1002,7 @@ export function DonorListingForm({
                 <p>Choose the edited PDF you just saved from your PDF viewer. LabLink will validate the required fields and store that exact file.</p>
                 <input ref={pdfUploadInputRef} type="file" accept="application/pdf,.pdf" onChange={handleCompletedPdfSelected} />
                 <p className={styles.uploadFile}>
-                  {isSavingDocument ? "Validating and saving uploaded PDF..." : selectedPdfName ? `Selected file: ${selectedPdfName}` : "Only completed PDF files are accepted."}
+                  {isSavingDocument ? "Validating and saving uploaded PDF…" : selectedPdfName ? `Selected file: ${selectedPdfName}` : "Only completed PDF files are accepted."}
                 </p>
               </div>
 

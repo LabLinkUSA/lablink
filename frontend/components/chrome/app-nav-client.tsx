@@ -93,7 +93,7 @@ export function AppNavClient({ model }: { model: NavModel }) {
   return (
     <header className={cx(styles.nav, isHome && styles.navHome, signedOutHome && styles.navHomeSignedOut)}>
       <Link href={model.brandHref} className={styles.navLogo} aria-label="LabLink home">
-        <img src="/lablink-header-logo.png" alt="LabLink" className={styles.logoImage} />
+        <img src="/lablink-header-logo.png" alt="LabLink" width={6837} height={1079} fetchPriority="high" className={styles.logoImage} />
       </Link>
       <nav aria-label="Primary" className={styles.navPill}>
         <div className={styles.desktopLinks}>{linkList}</div>
@@ -124,7 +124,7 @@ export function AppNavClient({ model }: { model: NavModel }) {
                     Dashboard
                   </Link>
                   <button role="menuitem" type="button" className={styles.accountItem} onClick={signOut} disabled={signingOut}>
-                    {signingOut ? "Logging out..." : "Log out"}
+                    {signingOut ? "Logging out…" : "Log out"}
                   </button>
                 </div>
               ) : null}

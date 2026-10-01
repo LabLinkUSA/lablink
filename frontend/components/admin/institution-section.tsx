@@ -33,7 +33,7 @@ export function InstitutionSection({
   return (
     <>
       <FilterBar
-        search={{ value: search, onChange: onSearch, placeholder: "Search by name or location..." }}
+        search={{ value: search, onChange: onSearch, placeholder: "Search by name or location…" }}
         selects={[
           ...(statuses.length > 1
             ? [

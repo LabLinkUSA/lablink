@@ -89,7 +89,7 @@ export function DonorDashboardWorkspace({
                       <div className={tableStyles.titleCell}>
                         {listing.photo_urls[0] ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={listing.photo_urls[0]} alt={listing.title} className={tableStyles.thumb} />
+                          <img src={listing.photo_urls[0]} alt={listing.title} width={52} height={52} loading="lazy" className={tableStyles.thumb} />
                         ) : (
                           <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>—</span>
                         )}
@@ -243,8 +243,8 @@ function DonorIncomingRequestsModal({
   }, [listingId]);
 
   return (
-    <Modal open onClose={onClose} wide eyebrow="Incoming requests" title={detail?.listing.title ?? "Loading listing..."}>
-      {isLoading ? <Notice tone="info">Loading incoming requests...</Notice> : null}
+    <Modal open onClose={onClose} wide eyebrow="Incoming requests" title={detail?.listing.title ?? "Loading listing…"}>
+      {isLoading ? <Notice tone="info">Loading incoming requests…</Notice> : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
 
       {detail ? (

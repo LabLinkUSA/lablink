@@ -163,17 +163,17 @@ export function RequestCompetitionModal({
       onClose={onClose}
       wide
       eyebrow="Recipient selection"
-      title={detail?.listing.title ?? "Loading listing..."}
+      title={detail?.listing.title ?? "Loading listing…"}
       footer={
         hasMatchedRequest ? (
           <Button variant="danger" onClick={handleCancelMatch} disabled={isCancelling}>
-            {isCancelling ? "Cancelling..." : "Cancel match"}
+            {isCancelling ? "Cancelling…" : "Cancel match"}
           </Button>
         ) : undefined
       }
     >
       <div className={styles.stack}>
-        {isLoading ? <Notice tone="info">Loading recipient selection...</Notice> : null}
+        {isLoading ? <Notice tone="info">Loading recipient selection…</Notice> : null}
         {error ? <Notice tone="error">{error}</Notice> : null}
 
         {detail ? (
@@ -196,7 +196,7 @@ export function RequestCompetitionModal({
                     onClick={() => handleSelectRecipient(request.id)}
                     disabled={selectedRequestId === request.id}
                   >
-                    {selectedRequestId === request.id ? "Selecting..." : "Select recipient"}
+                    {selectedRequestId === request.id ? "Selecting…" : "Select recipient"}
                   </Button>
                 </div>
               </article>

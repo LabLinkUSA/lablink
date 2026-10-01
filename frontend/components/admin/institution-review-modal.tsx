@@ -117,7 +117,7 @@ export function InstitutionReviewModal({
           </Field>
           <div className={styles.formActions}>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Updating..." : "Update status"}
+              {isSubmitting ? "Updating…" : "Update status"}
             </Button>
           </div>
         </form>
