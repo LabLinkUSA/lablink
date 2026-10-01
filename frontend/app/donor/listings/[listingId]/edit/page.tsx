@@ -1,4 +1,4 @@
-import { Avatar, ButtonLink, EmptyState } from "@/components/ui";
+import { Avatar, ButtonLink, EmptyState, Notice } from "@/components/ui";
 import { DonorListingForm } from "@/components/donor-listing-form";
 import { getCurrentProfile, getDonorDashboard, getDonorListingDetail, getDonorListingFormTemplates } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
@@ -97,9 +97,9 @@ export default async function EditDonorListingPage({ params }: { params: Promise
     <section className="page-section">
       <div className="shell donor-form-page">
         {isLiveWithRequests ? (
-          <p className="auth-notice auth-notice-warning" style={{ marginBottom: "1.5rem" }}>
+          <Notice tone="warning" className="donor-form-notice">
             This listing is live and has active requests. Editing key fields (title, condition, quantity, etc.) will return it to admin review until re-approved.
-          </p>
+          </Notice>
         ) : null}
         <DonorListingForm listing={listing} mode="edit" documentTemplates={documentTemplates.templates} />
       </div>

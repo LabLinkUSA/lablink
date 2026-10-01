@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Avatar, Button, ButtonLink, Eyebrow, Field, FieldGrid, Input, Modal, Notice, Select, Textarea, cx } from "@/components/ui";
+import pillStyles from "@/components/ui/status-pill.module.css";
+import styles from "@/components/donor-form/donor-form.module.css";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type {
   Listing,
@@ -170,14 +172,14 @@ function getDocumentStatusLabel(status: ListingDocumentTemplate["document"]["sta
   return "Required";
 }
 
-function getDocumentStatusClass(status: ListingDocumentTemplate["document"]["status"]) {
+function getDocumentStatusTone(status: ListingDocumentTemplate["document"]["status"]) {
   if (status === "completed") {
-    return "donor-document-status donor-document-status-complete";
+    return pillStyles.positive;
   }
   if (status === "outdated") {
-    return "donor-document-status donor-document-status-outdated";
+    return pillStyles.negative;
   }
-  return "donor-document-status donor-document-status-pending";
+  return pillStyles.pending;
 }
 
 export function DonorListingForm({
@@ -238,7 +240,6 @@ export function DonorListingForm({
   const complianceReady = Boolean(listingId) && templates.length > 0;
   const documentsComplete = complianceReady && templates.every((template) => template.document.status === "completed");
   const canSubmit = Object.keys(listingErrors).length === 0 && documentsComplete && !isUploadingImage && !isSubmitting;
-  const progress = ((currentStep + 1) / FORM_STEPS.length) * 100;
 
   async function getAccessToken() {
     const { data, error } = await supabase.auth.getSession();
@@ -653,403 +654,379 @@ export function DonorListingForm({
     }
   }
 
-  function getFieldClassName(name: ListingFieldName) {
-    return fieldErrors[name] ? "auth-field auth-field-invalid" : "auth-field";
-  }
+
+  const draftStatusMessage =
+    saveMessage ?? (mode === "create" && !listingId ? "Draft will start saving after your first entry." : "Draft saved.");
+  const saveTone = saveState === "saving" ? pillStyles.pending : saveState === "error" ? pillStyles.negative : saveState === "saved" ? pillStyles.positive : pillStyles.neutral;
 
   return (
     <>
-      <div className="donor-form-shell">
-        <header className="donor-form-header">
-          <div className="donor-form-header-topbar">
-            <span className={`donor-draft-status donor-draft-status-${saveState}`}>
-              <span aria-hidden="true">{saveState === "error" ? "!" : "✓"}</span>
-              {saveMessage ?? (mode === "create" && !listingId ? "Draft will start saving after your first entry." : "Draft saved.")}
+      <div className={styles.shell}>
+        <header className={styles.header}>
+          <div className={styles.headerTop}>
+            <span
+              className={cx(pillStyles.pill, saveTone, saveState === "saving" && styles.saveSaving)}
+              data-save-state={saveState}
+              role="status"
+            >
+              {saveState === "saved" ? (
+                <span aria-hidden="true" className={styles.saveCheck}>✓</span>
+              ) : saveState === "error" ? (
+                <span aria-hidden="true" className={styles.saveCheck}>!</span>
+              ) : (
+                <span className={cx(pillStyles.dot, styles.saveDot)} aria-hidden="true" />
+              )}
+              {draftStatusMessage}
             </span>
-          </div>
-          <div className="donor-form-header-row">
-            <h1>
-              {mode === "create"
-                ? "Prepare the equipment listing for admin review"
-                : isRejectedListing
-                  ? "Revise and resubmit the donor listing"
-                  : "Update the donor listing"}
-            </h1>
-            <Link href="/donor" className="button button-primary donor-header-link">
+            <ButtonLink href="/donor" variant="ghost">
               Back to donor dashboard
-            </Link>
+            </ButtonLink>
           </div>
+          <h1 className={styles.title}>
+            {mode === "create"
+              ? "Prepare the equipment listing for admin review"
+              : isRejectedListing
+                ? "Revise and resubmit the donor listing"
+                : "Update the donor listing"}
+          </h1>
           {isRejectedListing ? (
-            <p className="listing-detail-note">
+            <Notice tone="warning">
               This listing was rejected during admin review. Update the submission details below, then resubmit the same
               listing for another review pass.
-            </p>
+            </Notice>
           ) : null}
         </header>
 
-        <div className="donor-form-progress" aria-label="Listing progress">
-          <div className="donor-form-progress-steps">
-            {FORM_STEPS.map((step, stepIndex) => {
-              const isActive = stepIndex === currentStep;
-              const isComplete = stepIndex < currentStep;
-              return (
+        <ol className={styles.progress} aria-label="Listing progress">
+          {FORM_STEPS.map((step, stepIndex) => {
+            const isActive = stepIndex === currentStep;
+            const isComplete = stepIndex < currentStep;
+            return (
+              <li key={step.key} className={styles.progressItem}>
                 <button
-                  key={step.key}
                   type="button"
-                  className={`donor-form-progress-step ${isComplete ? "donor-form-progress-step-complete" : ""} ${isActive ? "donor-form-progress-step-active" : ""}`}
+                  data-step-pill
+                  aria-current={isActive ? "step" : undefined}
+                  className={cx(styles.pill, isComplete && styles.pillComplete, isActive && styles.pillActive)}
                   onClick={() => attemptStepChange(stepIndex)}
                 >
-                  <span className="donor-form-progress-index">{step.number}</span>
-                  <span className="donor-form-progress-label">{step.title}</span>
+                  <span className={styles.index} aria-hidden="true">{isComplete ? "✓" : step.number}</span>
+                  <span className={styles.label}>{step.title}</span>
                 </button>
-              );
-            })}
-          </div>
-          <div className="donor-form-progress-track" aria-hidden="true">
-            <div className="donor-form-progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
+                {stepIndex < FORM_STEPS.length - 1 ? (
+                  <svg viewBox="0 0 120 24" preserveAspectRatio="none" className={styles.connector} aria-hidden="true">
+                    <path d="M0 12 H120" fill="none" stroke="#10C79A" strokeWidth="2" strokeDasharray="8 8" className={styles.connectorDash} />
+                  </svg>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
 
-        <form className="donor-form" onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
           {FORM_STEPS.map((step, stepIndex) => (
-            <section
-              key={step.key}
-              className={`donor-form-step-panel ${stepIndex === currentStep ? "" : "donor-form-step-panel-hidden"}`}
-            >
-              <div className="donor-form-step-header">
-                <span className="donor-form-step-icon">0{step.number}</span>
-                <div>
-                  <h2>{step.panelTitle}</h2>
-                  <p>{step.description}</p>
+            <div key={step.key} className={cx(styles.panel, stepIndex !== currentStep && styles.panelHidden)}>
+              <section data-step-card className={styles.stepCard}>
+                <div className={styles.stepHeader}>
+                  <Eyebrow>Step 0{step.number}</Eyebrow>
+                  <h2 className={styles.stepTitle}>{step.panelTitle}</h2>
+                  <p className={styles.stepLead}>{step.description}</p>
                 </div>
-              </div>
 
-              {step.key === "details" ? (
-                <div className="auth-field-grid">
-                  <div className={getFieldClassName("title")}>
-                    <label htmlFor="listing-title">Equipment title</label>
-                    <input
-                      id="listing-title"
-                      value={draft.title}
-                      onChange={(event) => updateDraft("title", event.target.value)}
-                      placeholder="PCR machine, Leica microscope, centrifuge..."
-                    />
-                    {fieldErrors.title ? <span className="auth-field-error">{fieldErrors.title}</span> : null}
-                  </div>
-                  <div className={getFieldClassName("category")}>
-                    <label htmlFor="listing-category">Category</label>
-                    <input
-                      id="listing-category"
-                      value={draft.category}
-                      onChange={(event) => updateDraft("category", event.target.value)}
-                      placeholder="Molecular biology, imaging, clinical diagnostics..."
-                    />
-                    {fieldErrors.category ? <span className="auth-field-error">{fieldErrors.category}</span> : null}
-                  </div>
-                  <div className={getFieldClassName("condition")}>
-                    <label htmlFor="listing-condition">Condition</label>
-                    <input
-                      id="listing-condition"
-                      value={draft.condition}
-                      onChange={(event) => updateDraft("condition", event.target.value)}
-                      placeholder="Used, like new, needs calibration..."
-                    />
-                    {fieldErrors.condition ? <span className="auth-field-error">{fieldErrors.condition}</span> : null}
-                  </div>
-                  <div className={getFieldClassName("quantity")}>
-                    <label htmlFor="listing-quantity">Quantity</label>
-                    <input
-                      id="listing-quantity"
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={draft.quantity}
-                      onChange={(event) => updateDraft("quantity", Number(event.target.value || 0))}
-                      placeholder="1"
-                    />
-                    {fieldErrors.quantity ? <span className="auth-field-error">{fieldErrors.quantity}</span> : null}
-                  </div>
-                  <div className={getFieldClassName("availability_window")}>
-                    <label htmlFor="listing-window">Availability window</label>
-                    <input
-                      id="listing-window"
-                      value={draft.availability_window}
-                      onChange={(event) => updateDraft("availability_window", event.target.value)}
-                      placeholder="Available now, pickup by May 15, end of semester..."
-                    />
-                    {fieldErrors.availability_window ? <span className="auth-field-error">{fieldErrors.availability_window}</span> : null}
-                  </div>
-                  <div>
-                    <label htmlFor="listing-expires-at">Expiration date (optional)</label>
-                    <input
-                      id="listing-expires-at"
-                      type="date"
-                      value={draft.expires_at ? draft.expires_at.slice(0, 10) : ""}
-                      onChange={(event) => updateDraft("expires_at", event.target.value ? event.target.value : null)}
-                    />
-                  </div>
-                  <div className={getFieldClassName("working_status")}>
-                    <label htmlFor="listing-working-status">Working status</label>
-                    <input
-                      id="listing-working-status"
-                      value={draft.working_status}
-                      onChange={(event) => updateDraft("working_status", event.target.value)}
-                      placeholder="Fully functional, powers on but untested, for parts..."
-                    />
-                    {fieldErrors.working_status ? <span className="auth-field-error">{fieldErrors.working_status}</span> : null}
-                  </div>
-                  <div className={`${getFieldClassName("description")} auth-field-span-full`}>
-                    <label htmlFor="listing-description">Description</label>
-                    <textarea
-                      id="listing-description"
-                      rows={6}
-                      value={draft.description}
-                      onChange={(event) => updateDraft("description", event.target.value)}
-                      placeholder="Include manufacturer, model number, age, known issues, included accessories, and anything a recipient should know before requesting it."
-                    />
-                    {fieldErrors.description ? <span className="auth-field-error">{fieldErrors.description}</span> : null}
-                  </div>
-                </div>
-              ) : null}
+                {step.key === "details" ? (
+                  <FieldGrid>
+                    <Field label="Equipment title" htmlFor="listing-title" error={fieldErrors.title}>
+                      <Input
+                        id="listing-title"
+                        value={draft.title}
+                        onChange={(event) => updateDraft("title", event.target.value)}
+                        placeholder="PCR machine, Leica microscope, centrifuge..."
+                      />
+                    </Field>
+                    <Field label="Category" htmlFor="listing-category" error={fieldErrors.category}>
+                      <Input
+                        id="listing-category"
+                        value={draft.category}
+                        onChange={(event) => updateDraft("category", event.target.value)}
+                        placeholder="Molecular biology, imaging, clinical diagnostics..."
+                      />
+                    </Field>
+                    <Field label="Condition" htmlFor="listing-condition" error={fieldErrors.condition}>
+                      <Input
+                        id="listing-condition"
+                        value={draft.condition}
+                        onChange={(event) => updateDraft("condition", event.target.value)}
+                        placeholder="Used, like new, needs calibration..."
+                      />
+                    </Field>
+                    <Field label="Quantity" htmlFor="listing-quantity" error={fieldErrors.quantity}>
+                      <Input
+                        id="listing-quantity"
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={draft.quantity}
+                        onChange={(event) => updateDraft("quantity", Number(event.target.value || 0))}
+                        placeholder="1"
+                      />
+                    </Field>
+                    <Field label="Availability window" htmlFor="listing-window" error={fieldErrors.availability_window}>
+                      <Input
+                        id="listing-window"
+                        value={draft.availability_window}
+                        onChange={(event) => updateDraft("availability_window", event.target.value)}
+                        placeholder="Available now, pickup by May 15, end of semester..."
+                      />
+                    </Field>
+                    <Field label="Expiration date (optional)" htmlFor="listing-expires-at">
+                      <Input
+                        id="listing-expires-at"
+                        type="date"
+                        value={draft.expires_at ? draft.expires_at.slice(0, 10) : ""}
+                        onChange={(event) => updateDraft("expires_at", event.target.value ? event.target.value : null)}
+                      />
+                    </Field>
+                    <Field label="Working status" htmlFor="listing-working-status" error={fieldErrors.working_status}>
+                      <Input
+                        id="listing-working-status"
+                        value={draft.working_status}
+                        onChange={(event) => updateDraft("working_status", event.target.value)}
+                        placeholder="Fully functional, powers on but untested, for parts..."
+                      />
+                    </Field>
+                    <Field label="Description" htmlFor="listing-description" error={fieldErrors.description} span="full">
+                      <Textarea
+                        id="listing-description"
+                        rows={6}
+                        value={draft.description}
+                        onChange={(event) => updateDraft("description", event.target.value)}
+                        placeholder="Include manufacturer, model number, age, known issues, included accessories, and anything a recipient should know before requesting it."
+                      />
+                    </Field>
+                  </FieldGrid>
+                ) : null}
 
-              {step.key === "visuals" ? (
-                <div className="donor-form-upload-block">
-                  <label className="donor-form-upload" htmlFor="listing-image">
-                    <div className="donor-form-upload-copy">
-                      <strong>Upload listing image</strong>
-                      <p>Use a clear photo that shows the equipment condition and any included accessories.</p>
-                    </div>
-                    <input id="listing-image" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleImageSelected} />
-                    <p className="donor-form-upload-file">
-                      {isUploadingImage
-                        ? "Uploading image..."
-                        : selectedImageName
-                          ? `Selected file: ${selectedImageName}`
-                          : "PNG, JPG, and other standard image formats are supported."}
-                    </p>
-                  </label>
-                  {fieldErrors.photo_urls ? <span className="auth-field-error">{fieldErrors.photo_urls}</span> : null}
-                  {uploadError ? <p className="auth-notice auth-notice-error">{uploadError}</p> : null}
-                  {draft.photo_urls[0] ? (
-                    <div className="donor-form-preview">
-                      <div className="review-modal-image donor-form-preview-frame">
-                        <Image src={draft.photo_urls[0]} alt={draft.title || "Draft listing image"} fill sizes="(max-width: 980px) 100vw, 50vw" className="listing-card-image" />
+                {step.key === "visuals" ? (
+                  <div className={styles.stack}>
+                    <label className={styles.upload} htmlFor="listing-image">
+                      <Avatar initials="+" variant="ink" size="lg" />
+                      <div className={styles.uploadCopy}>
+                        <strong>Upload listing image</strong>
+                        <p>Use a clear photo that shows the equipment condition and any included accessories.</p>
+                        <p className={styles.uploadFile}>
+                          {isUploadingImage
+                            ? "Uploading image..."
+                            : selectedImageName
+                              ? `Selected file: ${selectedImageName}`
+                              : "PNG, JPG, and other standard image formats are supported."}
+                        </p>
                       </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {step.key === "logistics" ? (
-                <>
-                  <div className="donor-form-logistics-note">
-                    <span aria-hidden="true">i</span>
-                    <div>Include anything the admin reviewer or recipient institution would need to know about pickup, moving constraints, or documentation that travels with the equipment.</div>
+                      <input id="listing-image" className="sr-only" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleImageSelected} />
+                    </label>
+                    {fieldErrors.photo_urls ? <Notice tone="error">{fieldErrors.photo_urls}</Notice> : null}
+                    {uploadError ? <Notice tone="error">{uploadError}</Notice> : null}
+                    {draft.photo_urls[0] ? (
+                      <div className={styles.preview}>
+                        <Image src={draft.photo_urls[0]} alt={draft.title || "Draft listing image"} fill sizes="(max-width: 980px) 100vw, 520px" className={styles.previewImage} />
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="auth-field-grid">
-                    <div className={getFieldClassName("location")}>
-                      <label htmlFor="listing-location">Pickup location</label>
-                      <input
-                        id="listing-location"
-                        value={draft.location}
-                        onChange={(event) => updateDraft("location", event.target.value)}
-                        placeholder="Yale School of Medicine, New Haven, CT"
-                      />
-                      {fieldErrors.location ? <span className="auth-field-error">{fieldErrors.location}</span> : null}
-                    </div>
-                    <div className={getFieldClassName("delivery_mode")}>
-                      <label htmlFor="listing-delivery-mode">Delivery mode</label>
-                      <select id="listing-delivery-mode" value={draft.delivery_mode} onChange={(event) => updateDraft("delivery_mode", event.target.value)}>
-                        <option value="pickup_only">Pickup only</option>
-                        <option value="shipment_possible">Shipment possible</option>
-                      </select>
-                      {fieldErrors.delivery_mode ? <span className="auth-field-error">{fieldErrors.delivery_mode}</span> : null}
-                    </div>
-                    <div className={getFieldClassName("dimensions_weight")}>
-                      <label htmlFor="listing-dimensions">Dimensions and weight</label>
-                      <input
-                        id="listing-dimensions"
-                        value={draft.dimensions_weight}
-                        onChange={(event) => updateDraft("dimensions_weight", event.target.value)}
-                        placeholder='24" x 18" x 20", approximately 45 lbs'
-                      />
-                      {fieldErrors.dimensions_weight ? <span className="auth-field-error">{fieldErrors.dimensions_weight}</span> : null}
-                    </div>
-                    <div className={getFieldClassName("handling_requirements")}>
-                      <label htmlFor="listing-handling">Handling requirements</label>
-                      <input
-                        id="listing-handling"
-                        value={draft.handling_requirements}
-                        onChange={(event) => updateDraft("handling_requirements", event.target.value)}
-                        placeholder="Two-person lift, keep upright, cold storage needed..."
-                      />
-                      {fieldErrors.handling_requirements ? <span className="auth-field-error">{fieldErrors.handling_requirements}</span> : null}
-                    </div>
-                    <div className={getFieldClassName("documentation_included")}>
-                      <label htmlFor="listing-docs">Documentation included</label>
-                      <input
-                        id="listing-docs"
-                        value={draft.documentation_included}
-                        onChange={(event) => updateDraft("documentation_included", event.target.value)}
-                        placeholder="User manual, maintenance log, calibration records..."
-                      />
-                      {fieldErrors.documentation_included ? <span className="auth-field-error">{fieldErrors.documentation_included}</span> : null}
-                    </div>
-                    <div className={`${getFieldClassName("special_handling_flags")} auth-field-span-full`}>
-                      <label htmlFor="listing-special-flags">Special handling flags</label>
-                      <textarea
-                        id="listing-special-flags"
-                        rows={4}
-                        value={draft.special_handling_flags}
-                        onChange={(event) => updateDraft("special_handling_flags", event.target.value)}
-                        placeholder="List decontamination status, missing parts, biohazard clearance, export restrictions, or any other special review notes."
-                      />
-                      {fieldErrors.special_handling_flags ? <span className="auth-field-error">{fieldErrors.special_handling_flags}</span> : null}
-                    </div>
-                  </div>
-                </>
-              ) : null}
+                ) : null}
 
-              {step.key === "compliance" ? (
-                <>
-                  {complianceReady ? (
-                    <div className="donor-compliance-stack">
-                      {templates.map((template) => (
-                        <article
-                          key={template.form_type}
-                          className={`donor-compliance-card ${template.document.status === "completed" ? "donor-compliance-card-complete" : "donor-compliance-card-invalid"}`}
-                        >
-                          <div className="donor-compliance-card-row">
-                            <div className="donor-compliance-card-header">
-                              <h3>{template.title}</h3>
-                              <span className={getDocumentStatusClass(template.document.status)}>{getDocumentStatusLabel(template.document.status)}</span>
+                {step.key === "logistics" ? (
+                  <div className={styles.stack}>
+                    <div className={styles.note}>
+                      <span className={styles.noteIcon} aria-hidden="true">i</span>
+                      <div>Include anything the admin reviewer or recipient institution would need to know about pickup, moving constraints, or documentation that travels with the equipment.</div>
+                    </div>
+                    <FieldGrid>
+                      <Field label="Pickup location" htmlFor="listing-location" error={fieldErrors.location}>
+                        <Input
+                          id="listing-location"
+                          value={draft.location}
+                          onChange={(event) => updateDraft("location", event.target.value)}
+                          placeholder="Yale School of Medicine, New Haven, CT"
+                        />
+                      </Field>
+                      <Field label="Delivery mode" htmlFor="listing-delivery-mode" error={fieldErrors.delivery_mode}>
+                        <Select id="listing-delivery-mode" value={draft.delivery_mode} onChange={(event) => updateDraft("delivery_mode", event.target.value)}>
+                          <option value="pickup_only">Pickup only</option>
+                          <option value="shipment_possible">Shipment possible</option>
+                        </Select>
+                      </Field>
+                      <Field label="Dimensions and weight" htmlFor="listing-dimensions" error={fieldErrors.dimensions_weight}>
+                        <Input
+                          id="listing-dimensions"
+                          value={draft.dimensions_weight}
+                          onChange={(event) => updateDraft("dimensions_weight", event.target.value)}
+                          placeholder='24" x 18" x 20", approximately 45 lbs'
+                        />
+                      </Field>
+                      <Field label="Handling requirements" htmlFor="listing-handling" error={fieldErrors.handling_requirements}>
+                        <Input
+                          id="listing-handling"
+                          value={draft.handling_requirements}
+                          onChange={(event) => updateDraft("handling_requirements", event.target.value)}
+                          placeholder="Two-person lift, keep upright, cold storage needed..."
+                        />
+                      </Field>
+                      <Field label="Documentation included" htmlFor="listing-docs" error={fieldErrors.documentation_included}>
+                        <Input
+                          id="listing-docs"
+                          value={draft.documentation_included}
+                          onChange={(event) => updateDraft("documentation_included", event.target.value)}
+                          placeholder="User manual, maintenance log, calibration records..."
+                        />
+                      </Field>
+                      <Field label="Special handling flags" htmlFor="listing-special-flags" error={fieldErrors.special_handling_flags} span="full">
+                        <Textarea
+                          id="listing-special-flags"
+                          rows={4}
+                          value={draft.special_handling_flags}
+                          onChange={(event) => updateDraft("special_handling_flags", event.target.value)}
+                          placeholder="List decontamination status, missing parts, biohazard clearance, export restrictions, or any other special review notes."
+                        />
+                      </Field>
+                    </FieldGrid>
+                  </div>
+                ) : null}
+
+                {step.key === "compliance" ? (
+                  <>
+                    {complianceReady ? (
+                      <div className={styles.complianceStack}>
+                        {templates.map((template) => (
+                          <article
+                            key={template.form_type}
+                            className={cx("donor-compliance-card", styles.complianceCard, template.document.status === "completed" && "donor-compliance-card-complete", template.document.status === "completed" && styles.complianceComplete)}
+                          >
+                            <div className={styles.complianceRow}>
+                              <div className={styles.complianceHead}>
+                                <h3>{template.title}</h3>
+                                <span className={cx(pillStyles.pill, getDocumentStatusTone(template.document.status))}>
+                                  <span className={pillStyles.dot} aria-hidden="true" />
+                                  {getDocumentStatusLabel(template.document.status)}
+                                </span>
+                              </div>
+                              <Button variant="secondary" onClick={() => openDocumentModal(template)}>
+                                {template.document.status === "not_started" ? "Open PDF form" : "Replace PDF"}
+                              </Button>
                             </div>
-                            <button type="button" className="button button-secondary" onClick={() => openDocumentModal(template)}>
-                              {template.document.status === "not_started" ? "Open PDF form" : "Replace PDF"}
-                            </button>
-                          </div>
 
-                          <div className="donor-document-meta">
-                            {template.document.completed_by_name ? (
-                              <span>
-                                Completed by {template.document.completed_by_name}
-                                {template.document.completed_at ? ` on ${new Date(template.document.completed_at).toLocaleDateString()}` : ""}
-                              </span>
-                            ) : null}
-                            {template.document.preview_url ? (
-                              <a href={template.document.preview_url} target="_blank" rel="noreferrer" className="button button-outline donor-document-preview-link">
-                                Preview PDF
-                              </a>
-                            ) : null}
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="auth-notice">
-                      Start the form by filling out at least one field. LabLink will create the draft first, then load the compliance PDFs here.
-                    </div>
-                  )}
-                </>
-              ) : null}
+                            <div className={styles.docMeta}>
+                              {template.document.completed_by_name ? (
+                                <span>
+                                  Completed by {template.document.completed_by_name}
+                                  {template.document.completed_at ? ` on ${new Date(template.document.completed_at).toLocaleDateString()}` : ""}
+                                </span>
+                              ) : null}
+                              {template.document.preview_url ? (
+                                <ButtonLink href={template.document.preview_url} target="_blank" rel="noreferrer" variant="ghost" size="sm">
+                                  Preview PDF
+                                </ButtonLink>
+                              ) : null}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <Notice tone="info">
+                        Start the form by filling out at least one field. LabLink will create the draft first, then load the compliance PDFs here.
+                      </Notice>
+                    )}
+                  </>
+                ) : null}
+              </section>
 
-              <div className="donor-form-actions">
-                <span className="donor-form-actions-note">
+              <div className={styles.actionBar}>
+                <p className={styles.actionNote}>
                   {mode === "create" && !listingId
                     ? "The listing stays private until you submit it. LabLink will start the draft after your first entry."
                     : "The listing stays private until you submit it. Draft changes save automatically while you work."}
-                </span>
-                <div className="donor-form-actions-buttons">
+                </p>
+                <div className={styles.actionButtons}>
                   {currentStep > 0 ? (
-                    <button type="button" className="button button-outline donor-form-secondary-action" onClick={() => attemptStepChange(currentStep - 1)}>
+                    <Button variant="secondary" className="donor-form-secondary-action" onClick={() => attemptStepChange(currentStep - 1)}>
                       Back
-                    </button>
+                    </Button>
                   ) : null}
                   {currentStep < FORM_STEPS.length - 1 ? (
-                    <button type="button" className="button button-primary donor-form-primary-action" onClick={() => attemptStepChange(currentStep + 1)}>
+                    <Button arrow className="donor-form-primary-action" onClick={() => attemptStepChange(currentStep + 1)}>
                       Continue
-                    </button>
+                    </Button>
                   ) : (
-                    <button type="submit" className="button button-primary donor-form-primary-action" disabled={!canSubmit}>
+                    <Button type="submit" arrow className="donor-form-primary-action" disabled={!canSubmit}>
                       {isSubmitting ? "Submitting..." : isRejectedListing ? "Resubmit for admin review" : "Submit for admin review"}
-                    </button>
+                    </Button>
                   )}
                 </div>
-                {formError ? <p className="auth-notice auth-notice-error">{formError}</p> : null}
-                {submitError ? <p className="auth-notice auth-notice-error">{submitError}</p> : null}
               </div>
-            </section>
+              {formError ? <Notice tone="error">{formError}</Notice> : null}
+              {submitError ? <Notice tone="error">{submitError}</Notice> : null}
+            </div>
           ))}
         </form>
       </div>
 
-      {activeTemplate ? (
-        <div className="review-modal-overlay" role="presentation" onClick={closeDocumentModal}>
-          <section className="review-modal-card review-modal-card-wide donor-document-modal" role="dialog" aria-modal="true" aria-labelledby={`document-modal-${activeTemplate.form_type}`} onClick={(event) => event.stopPropagation()}>
-            <div className="review-modal-header">
-              <div>
-                <span className="eyebrow">Compliance PDF</span>
-                <h2 id={`document-modal-${activeTemplate.form_type}`}>{activeTemplate.title}</h2>
+      <Modal
+        open={Boolean(activeTemplate)}
+        onClose={closeDocumentModal}
+        eyebrow="Compliance PDF"
+        title={activeTemplate?.title ?? "Compliance PDF"}
+        wide
+      >
+        {activeTemplate ? (
+          <div className={styles.modalLayout}>
+            <div className={styles.modalCopy}>
+              <iframe title={`${activeTemplate.title} blank template`} src={activeTemplate.blank_pdf_url} className={styles.iframe} />
+              <div className={styles.linkRow}>
+                <ButtonLink href={activeTemplate.blank_pdf_url} target="_blank" rel="noreferrer" variant="secondary" size="sm">
+                  Open in new tab
+                </ButtonLink>
+                <ButtonLink href={activeTemplate.blank_pdf_url} download variant="secondary" size="sm">
+                  Download blank PDF
+                </ButtonLink>
               </div>
-              <button type="button" className="button button-outline" onClick={closeDocumentModal}>
-                Close
-              </button>
+              {activeTemplate.document.preview_url ? (
+                <div className={styles.savedBlock}>
+                  <Eyebrow>Current saved PDF</Eyebrow>
+                  <iframe title={`${activeTemplate.title} saved copy`} src={activeTemplate.document.preview_url} className={cx(styles.iframe, styles.iframeSaved)} />
+                </div>
+              ) : null}
             </div>
 
-            <div className="donor-document-modal-layout">
-              <div className="donor-document-modal-copy">
-                <iframe title={`${activeTemplate.title} blank template`} src={activeTemplate.blank_pdf_url} className="donor-document-preview" />
-                <div className="donor-document-link-row">
-                  <a className="button button-outline" href={activeTemplate.blank_pdf_url} target="_blank" rel="noreferrer">
-                    Open in new tab
-                  </a>
-                  <a className="button button-outline" href={activeTemplate.blank_pdf_url} download>
-                    Download blank PDF
-                  </a>
-                </div>
-                {activeTemplate.document.preview_url ? (
-                  <div className="donor-document-preview-shell">
-                    <span className="eyebrow eyebrow-subtle">Current saved PDF</span>
-                    <iframe title={`${activeTemplate.title} saved copy`} src={activeTemplate.document.preview_url} className="donor-document-preview donor-document-preview-saved" />
-                  </div>
-                ) : null}
+            <div className={styles.modalForm}>
+              <div className={styles.uploadPanel}>
+                <strong>Upload completed PDF</strong>
+                <p>Choose the edited PDF you just saved from your PDF viewer. LabLink will validate the required fields and store that exact file.</p>
+                <input ref={pdfUploadInputRef} type="file" accept="application/pdf,.pdf" onChange={handleCompletedPdfSelected} />
+                <p className={styles.uploadFile}>
+                  {isSavingDocument ? "Validating and saving uploaded PDF..." : selectedPdfName ? `Selected file: ${selectedPdfName}` : "Only completed PDF files are accepted."}
+                </p>
               </div>
 
-              <div className="donor-document-modal-form">
-                <div className="donor-document-upload-panel">
-                  <strong>Upload completed PDF</strong>
-                  <p>Choose the edited PDF you just saved from your PDF viewer. LabLink will validate the required fields and store that exact file.</p>
-                  <input ref={pdfUploadInputRef} type="file" accept="application/pdf,.pdf" onChange={handleCompletedPdfSelected} />
-                  <p className="donor-form-upload-file">
-                    {isSavingDocument ? "Validating and saving uploaded PDF..." : selectedPdfName ? `Selected file: ${selectedPdfName}` : "Only completed PDF files are accepted."}
-                  </p>
-                </div>
+              {activeTemplate.document.completed_by_name ? (
+                <Notice tone="success">
+                  Current saved PDF: {activeTemplate.document.file_name ?? "completed form.pdf"}
+                </Notice>
+              ) : null}
 
-                {activeTemplate.document.completed_by_name ? (
-                  <div className="donor-document-upload-success">
-                    Current saved PDF: {activeTemplate.document.file_name ?? "completed form.pdf"}
-                  </div>
-                ) : null}
-
-                <div className="donor-document-modal-actions">
-                  <button type="button" className="button button-outline" onClick={closeDocumentModal} disabled={isSavingDocument}>
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={closeDocumentModal}
-                    disabled={isSavingDocument || (!hasUploadedCurrentPdf && activeTemplate.document.status !== "completed")}
-                  >
-                    Done
-                  </button>
-                </div>
-                {documentError ? <p className="auth-notice auth-notice-error">{documentError}</p> : null}
+              <div className={styles.modalActions}>
+                <Button variant="secondary" onClick={closeDocumentModal} disabled={isSavingDocument}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={closeDocumentModal}
+                  disabled={isSavingDocument || (!hasUploadedCurrentPdf && activeTemplate.document.status !== "completed")}
+                >
+                  Done
+                </Button>
               </div>
+              {documentError ? <Notice tone="error">{documentError}</Notice> : null}
             </div>
-          </section>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+      </Modal>
     </>
   );
 }
