@@ -102,6 +102,9 @@
   .sheet { display: none; }
 }
 
+/* Off the homepage the pill holds the menu button + Sign in; keep Sign in on one line. */
+.nav:not(.navHomeSignedOut) .navSignIn { white-space: nowrap; }
+
 /* The signed-out homepage keeps the export's full pill at every width. */
 .navHomeSignedOut .desktopLinks { display: contents; }
 .navHomeSignedOut .menuButton { display: none; }

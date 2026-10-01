@@ -20,6 +20,7 @@
 .cardHeader { margin-bottom: 28px; }
 .cardLead { margin: 10px 0 0; font-size: 16px; color: var(--ll-muted); }
 .form { display: grid; gap: 18px; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .switch { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--ll-line); display: grid; justify-items: center; gap: 12px; text-align: center; font-size: 15px; color: var(--ll-muted); }
 .switch p { margin: 0; }
 .messages { display: grid; gap: 12px; margin-top: 18px; }
@@ -28,4 +29,7 @@
   .frame { grid-template-columns: 1fr; }
   .aside { min-height: 0; }
   .asideLead, .features { display: none; }
+}
+@media (max-width: 640px) {
+  .pair { grid-template-columns: 1fr; }
 }

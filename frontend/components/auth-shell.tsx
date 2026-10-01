@@ -7,7 +7,7 @@ import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { AuthSplit } from "@/components/auth/auth-split";
 import styles from "@/components/auth/auth-split.module.css";
 import { StatusPill } from "@/components/status-pill";
-import { Button, ButtonLink, Checkbox, EmptyState, Eyebrow, Field, FieldGrid, Input, Notice, Select, Textarea } from "@/components/ui";
+import { Button, ButtonLink, Checkbox, EmptyState, Eyebrow, Field, Input, Notice, Select, Textarea } from "@/components/ui";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AuthenticatedUser, OnboardingCreate, OnboardingResponse, Role } from "@/lib/types";
 
@@ -585,7 +585,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
             />
           </Field>
 
-          <FieldGrid>
+          <div className={styles.pair}>
             <Field label="Password" htmlFor="sign-up-password">
               <Input
                 id="sign-up-password"
@@ -611,9 +611,9 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
                 required
               />
             </Field>
-          </FieldGrid>
+          </div>
 
-          <FieldGrid>
+          <div className={styles.pair}>
             <Field label="Institution Type" htmlFor="role">
               <Select id="role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
                 {roleOptions.map((option) => (
@@ -634,7 +634,7 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
                 required
               />
             </Field>
-          </FieldGrid>
+          </div>
 
           <Field label="Institution Description" htmlFor="institution-description">
             <Textarea

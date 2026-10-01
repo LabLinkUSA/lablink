@@ -20,10 +20,19 @@ test("sign-in contract selectors resolve", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Welcome");
 });
 
-test("sign-up two-column rows collapse on mobile", async ({ page, isMobile }) => {
-  test.skip(!isMobile, "mobile only");
+test("sign-up pairs are two-column on desktop and collapse on mobile", async ({ page, isMobile }) => {
   await page.goto("/auth/sign-up");
-  const password = await page.getByLabel(/^password/i).boundingBox();
-  const confirm = await page.getByLabel(/confirm/i).boundingBox();
-  expect(confirm!.y).toBeGreaterThan(password!.y);
+  for (const [a, b] of [
+    ["#sign-up-password", "#confirm-password"],
+    ["#role", "#institution-location"],
+  ]) {
+    const first = await page.locator(a).boundingBox();
+    const second = await page.locator(b).boundingBox();
+    if (isMobile) {
+      expect(second!.y).toBeGreaterThan(first!.y);
+    } else {
+      expect(second!.y).toBeCloseTo(first!.y, 0);
+      expect(second!.x).toBeGreaterThan(first!.x);
+    }
+  }
 });
