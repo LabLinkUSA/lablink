@@ -1,17 +1,9 @@
 "use client";
 
-import { Playfair_Display } from "next/font/google";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import styles from "./home-page-redesign.module.css";
-
-const playfair = Playfair_Display({
-  subsets: ["latin", "latin-ext", "cyrillic", "vietnamese"],
-  weight: ["500", "600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-playfair",
-});
 
 const fieldPhotos = [
   { src: "/home-photo-bethesda-exterior.jpg", alt: "Outside Hospital Bethesda", caption: "Hospital Bethesda — Quetzaltenango" },
@@ -305,7 +297,7 @@ export function HomePageRedesign() {
   };
 
   return (
-    <div ref={rootRef} className={`${styles.home} ${playfair.variable}`}>
+    <div ref={rootRef} className={styles.home}>
       <div className={styles.progressTrack}>
         <div data-progress="" className={styles.progressBar} />
       </div>

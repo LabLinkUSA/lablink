@@ -4,7 +4,7 @@
   --playfair: var(--font-playfair), Georgia, serif;
   background: #14302a;
   color: #1e3b30;
-  font-family: "DM Sans", Helvetica, Arial, sans-serif;
+  font-family: var(--font-dm-sans), Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
 }

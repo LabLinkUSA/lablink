@@ -1,0 +1,54 @@
+:root {
+  --ll-ink: #14302a;
+  --ll-ink-deep: #0f2621;
+  --ll-text: #1e3b30;
+  --ll-muted: #3d5148;
+  --ll-mint: #10c79a;
+  --ll-mint-text: #0ba982;
+  --ll-mint-hover: #5fe0bc;
+  --ll-canvas: #eef4f1;
+  --ll-surface: #ffffff;
+  --ll-surface-hover: #ddefe7;
+  --ll-line: rgba(20, 48, 42, 0.08);
+  --ll-line-strong: rgba(20, 48, 42, 0.3);
+  --ll-glass: rgba(20, 48, 42, 0.55);
+  --ll-shadow-hover: 0 30px 60px -30px rgba(20, 48, 42, 0.45);
+  --ll-shadow-modal: 0 40px 80px -30px rgba(20, 48, 42, 0.45);
+  --ll-display: var(--font-playfair), Georgia, serif;
+  --ll-body: var(--font-dm-sans), Helvetica, Arial, sans-serif;
+  --ll-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ll-nav-offset: 96px;
+  --ll-container: 1240px;
+  --ll-gutter: clamp(20px, 5vw, 72px);
+
+  /* Legacy variables remapped so un-migrated rules share the new palette. */
+  --font-body: var(--ll-body);
+  --font-display: var(--ll-display);
+  --forest: var(--ll-ink);
+  --mid: var(--ll-ink);
+  --mint: var(--ll-mint);
+  --light: var(--ll-canvas);
+  --background: var(--ll-canvas);
+  --background-soft: var(--ll-canvas);
+  --surface: var(--ll-surface);
+  --surface-muted: var(--ll-surface-hover);
+  --text: var(--ll-text);
+  --muted: var(--ll-muted);
+  --muted-soft: var(--ll-muted);
+  --primary: var(--ll-ink);
+  --primary-container: var(--ll-ink);
+  --primary-strong: var(--ll-ink);
+  --primary-soft: rgba(16, 199, 154, 0.1);
+  --secondary: var(--ll-mint);
+  --secondary-container: rgba(16, 199, 154, 0.14);
+  --secondary-text: var(--ll-ink);
+  --line: var(--ll-line);
+  --line-strong: var(--ll-line-strong);
+}
+
+body.app-body {
+  background: var(--ll-canvas);
+  color: var(--ll-text);
+  font-family: var(--ll-body);
+  -webkit-font-smoothing: antialiased;
+}
