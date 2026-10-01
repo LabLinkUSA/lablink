@@ -31,7 +31,7 @@
 @media (max-width: 760px) {
   .search { min-width: calc(100vw - 2 * var(--ll-gutter)); }
   .search input { width: 100%; }
-  .filterBar { border-radius: 20px; overflow-x: auto; }
-  .categoryWrap { position: static; }
-  .popover { position: fixed; top: calc(var(--ll-nav-offset) + 76px); left: 16px; right: 16px; }
+  .filterBar { flex-wrap: wrap; border-radius: 20px; backdrop-filter: none; background: var(--ll-canvas); }
+  .pillRow { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+  .popover { max-width: calc(100vw - 2 * var(--ll-gutter) - 20px); }
 }

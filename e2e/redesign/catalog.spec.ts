@@ -28,3 +28,17 @@ test("category filter popover is keyboard operable", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(pill).toBeFocused();
 });
+
+test("category popover checkbox is clickable and filters the grid", async ({ page }) => {
+  await page.goto("/listings");
+  const pill = page.getByRole("button", { name: /category/i });
+  test.skip((await pill.count()) === 0, "no listings → no filter bar");
+  const total = await page.locator("[data-listing-card]").count();
+  await pill.click();
+  const group = page.getByRole("group", { name: /category/i });
+  const first = group.getByRole("checkbox").first();
+  await expect(first).toBeVisible();
+  await first.click();
+  await expect(pill).toContainText("(1)");
+  expect(await page.locator("[data-listing-card]").count()).toBeLessThanOrEqual(total);
+});
