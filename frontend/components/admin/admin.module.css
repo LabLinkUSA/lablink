@@ -1,0 +1,78 @@
+/* Table cells */
+.rowTitle { display: block; font-weight: 700; color: var(--ll-ink); }
+.linkish { font-size: 14px; font-weight: 700; color: var(--ll-mint-text); white-space: nowrap; }
+.unavailable { font-size: 14px; font-weight: 600; color: var(--ll-muted); white-space: nowrap; }
+.sectionNotice { margin-top: 16px; }
+
+/* Duplicate institutions */
+.duplicates { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: 20px; }
+.duplicateGroup { display: grid; gap: 18px; align-content: start; }
+.duplicateHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.duplicateName { margin: 0; font-family: var(--ll-display); font-size: 24px; font-weight: 600; line-height: 1.2; color: var(--ll-ink); overflow-wrap: anywhere; }
+.duplicateList { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.duplicateItem { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: var(--ll-canvas); }
+.duplicateText { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.duplicateMeta { display: block; margin-top: 2px; font-size: 13px; color: var(--ll-muted); }
+.duplicateFoot { display: flex; justify-content: flex-end; }
+.duplicatesFooter { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--ll-muted); }
+
+/* Modal content */
+.stack { display: grid; gap: 20px; min-width: 0; align-content: start; }
+.topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.toplineLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ll-mint-text); }
+.bodyText { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ll-text); }
+.subsection { display: grid; gap: 14px; }
+.subheading { margin: 0; font-family: var(--ll-display); font-size: 22px; font-weight: 600; line-height: 1.25; color: var(--ll-ink); }
+
+/* Fact tiles (copied from listing-detail .fact*) */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.fact { padding: 20px; border-radius: 16px; background: var(--ll-surface); border: 1px solid var(--ll-line); min-width: 0; }
+.factLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ll-mint-text); }
+.factValue { margin-top: 8px; font-family: var(--ll-display); font-size: 22px; font-weight: 600; line-height: 1.25; color: var(--ll-ink); overflow-wrap: anywhere; }
+
+/* Listing review layout */
+.reviewLayout { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: start; }
+.reviewImage { position: relative; aspect-ratio: 4 / 3; border-radius: 24px; overflow: hidden; background: var(--ll-canvas); }
+.reviewImageImg { object-fit: cover; }
+.reviewImageEmpty { display: grid; place-items: center; height: 100%; font-size: 14px; font-weight: 700; color: var(--ll-muted); }
+@media (min-width: 900px) { .reviewImage { position: sticky; top: 0; } }
+@media (max-width: 899px) { .reviewLayout { grid-template-columns: minmax(0, 1fr); } }
+
+.specGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px 24px; margin: 0; }
+.specGrid dt { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ll-muted); }
+.specGrid dd { margin: 4px 0 0; font-size: 15px; line-height: 1.5; color: var(--ll-text); overflow-wrap: anywhere; }
+
+/* Compliance documents */
+.documents { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px; }
+.documentCard { display: grid; gap: 14px; align-content: start; padding: 20px; }
+.documentHead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.documentTitle { margin: 0; font-family: var(--ll-display); font-size: 18px; font-weight: 600; color: var(--ll-ink); }
+.documentMeta { margin: 4px 0 0; font-size: 13px; color: var(--ll-muted); }
+.documentPreview { display: block; width: 100%; height: 260px; border: 1px solid var(--ll-line); border-radius: 16px; background: var(--ll-canvas); }
+.documentPreviewEmpty { display: grid; place-items: center; height: 160px; border-radius: 16px; background: var(--ll-canvas); font-size: 14px; font-weight: 600; color: var(--ll-muted); }
+.documentActions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Status form + confirm */
+.form { display: grid; gap: 18px; padding-top: 20px; border-top: 1px solid var(--ll-line); }
+.formActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.confirm { display: grid; gap: 12px; padding: 22px; border-radius: 16px; border: 1px solid rgba(196, 64, 52, 0.3); background: rgba(196, 64, 52, 0.06); }
+.confirmEyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8c2a20; }
+
+/* Recipient selection */
+.requestList { display: grid; gap: 14px; }
+.requestCard { display: grid; gap: 8px; padding: 20px; border-radius: 16px; background: var(--ll-canvas); }
+.requestTop { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.requestProgram { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ll-mint-text); }
+.requestUse { margin: 0; font-family: var(--ll-display); font-size: 22px; font-weight: 600; color: var(--ll-ink); }
+.requestMeta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ll-muted); }
+
+/* Merge options */
+.mergeOptions { display: grid; gap: 12px; }
+.mergeOption { position: relative; display: grid; gap: 6px; padding: 18px 20px; border-radius: 16px; border: 2px solid var(--ll-line); background: var(--ll-surface); cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.mergeOption:hover { border-color: var(--ll-line-strong); }
+.mergeOption:has(input:focus-visible) { box-shadow: 0 0 0 4px rgba(16, 199, 154, 0.25); }
+.mergeOptionSelected, .mergeOptionSelected:hover { border-color: var(--ll-mint); background: rgba(16, 199, 154, 0.06); }
+.mergeName { font-family: var(--ll-display); font-size: 20px; font-weight: 600; color: var(--ll-ink); }
+.mergeTags { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
+.mergeRole { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ll-muted); }
+.mergeOptionSelected .mergeRole { color: var(--ll-mint-text); }
