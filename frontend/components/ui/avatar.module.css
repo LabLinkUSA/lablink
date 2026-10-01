@@ -1,0 +1,5 @@
+.avatar { display: inline-grid; place-items: center; flex: none; border-radius: 50%; font-family: var(--ll-display); font-weight: 700; }
+.md { width: 44px; height: 44px; font-size: 15px; }
+.lg { width: 60px; height: 60px; font-size: 18px; }
+.ink { background: var(--ll-ink); color: var(--ll-mint); }
+.dashed { border: 2px dashed rgba(20, 48, 42, 0.5); color: var(--ll-ink); }

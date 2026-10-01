@@ -1,0 +1,6 @@
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.positive { background: rgba(16, 199, 154, 0.14); color: #0b6e55; }
+.pending { background: rgba(214, 163, 40, 0.16); color: #6b4f0a; }
+.neutral { background: rgba(20, 48, 42, 0.08); color: var(--ll-ink); }
+.negative { background: rgba(196, 64, 52, 0.12); color: #8c2a20; }

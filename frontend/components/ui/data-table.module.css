@@ -1,0 +1,17 @@
+.shell { border-radius: 24px; background: var(--ll-surface); border: 1px solid var(--ll-line); overflow: hidden; }
+.scroll { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.table th { padding: 16px 20px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ll-muted); border-bottom: 1px solid var(--ll-line); white-space: nowrap; }
+.table td { padding: 16px 20px; border-bottom: 1px solid var(--ll-line); vertical-align: middle; color: var(--ll-text); }
+.table tbody tr:last-child td { border-bottom: 0; }
+.row { transition: background 0.2s; }
+.rowClickable { cursor: pointer; }
+.rowClickable:hover, .rowClickable:focus-visible { background: var(--ll-surface-hover); outline: none; }
+.rowMuted { opacity: 0.6; }
+.cellRight { text-align: right !important; }
+.titleCell { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.thumb { width: 52px; height: 52px; flex: none; border-radius: 14px; object-fit: cover; background: var(--ll-canvas); }
+.thumbEmpty { display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--ll-muted); }
+.subtitle { display: block; margin-top: 2px; font-size: 13px; color: var(--ll-muted); }
+.emptyCell { padding: 0 !important; }
+.footer { padding: 14px 20px; border-top: 1px solid var(--ll-line); font-size: 13px; color: var(--ll-muted); }

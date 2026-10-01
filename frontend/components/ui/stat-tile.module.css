@@ -1,0 +1,12 @@
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.tile { padding: 28px; border-radius: 24px; min-width: 0; }
+.white { background: var(--ll-surface); border: 1px solid var(--ll-line); color: var(--ll-ink); }
+.ink { background: var(--ll-ink); color: #ffffff; }
+.mint { background: var(--ll-mint); color: var(--ll-ink); }
+.value { font-family: var(--ll-display); font-size: clamp(36px, 4vw, 56px); font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.label { margin-top: 14px; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ll-mint-text); }
+.ink .label { color: var(--ll-mint); }
+.mint .label { color: var(--ll-ink); opacity: 0.75; }
+.sublabel { margin-top: 6px; font-size: 14px; color: var(--ll-muted); }
+.ink .sublabel { color: rgba(255, 255, 255, 0.7); }
+.mint .sublabel { color: rgba(20, 48, 42, 0.8); }

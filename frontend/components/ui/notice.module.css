@@ -1,0 +1,5 @@
+.notice { padding: 14px 18px; border-radius: 16px; font-size: 15px; line-height: 1.5; border: 1px solid transparent; }
+.success { background: rgba(16, 199, 154, 0.12); border-color: rgba(16, 199, 154, 0.35); color: #0b5e49; }
+.error { background: rgba(196, 64, 52, 0.1); border-color: rgba(196, 64, 52, 0.3); color: #8c2a20; }
+.warning { background: rgba(214, 163, 40, 0.14); border-color: rgba(214, 163, 40, 0.4); color: #6b4f0a; }
+.info { background: var(--ll-surface); border-color: var(--ll-line); color: var(--ll-muted); }
