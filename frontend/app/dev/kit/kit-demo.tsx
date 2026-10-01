@@ -13,6 +13,7 @@ const LONG = "Ultra-low-temperature freezer with redundant compressor and an ext
 export function KitDemo() {
   const [open, setOpen] = useState(false);
   const [closeCount, setCloseCount] = useState(0);
+  const [lockedOpen, setLockedOpen] = useState(false);
   return (
     <div style={{ maxWidth: 1240, margin: "0 auto", padding: "120px clamp(20px,5vw,72px)", display: "grid", gap: 40 }}>
       <PageHeader variant="public" eyebrow="Kit" title={<>Design <Highlight>kit</Highlight></>} lead={LONG} />
@@ -23,6 +24,7 @@ export function KitDemo() {
         <Button variant="danger">Danger</Button>
         <ButtonLink href="/" variant="ghost">Ghost link</ButtonLink>
         <Button onClick={() => setOpen(true)}>Open modal</Button>
+        <Button onClick={() => setLockedOpen(true)}>Open locked modal</Button>
       </div>
       <Eyebrow variant="badge">Yale-founded · Nonprofit</Eyebrow>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -45,6 +47,9 @@ export function KitDemo() {
       <div style={{ height: "120vh" }} />
       <Reveal data-testid="kit-reveal-below-fold"><Card tone="mint">Revealed content</Card></Reveal>
       <p data-testid="kit-modal-close-count">{closeCount}</p>
+      <Modal open={lockedOpen} dismissible={false} onClose={() => setLockedOpen(false)} title="Locked modal">
+        <Button onClick={() => setLockedOpen(false)}>Unlock and close</Button>
+      </Modal>
       <Modal open={open} onClose={() => {
           setOpen(false);
           setCloseCount((n) => n + 1);

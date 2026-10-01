@@ -21,11 +21,12 @@
 .pillActive { background: var(--ll-surface); border-color: var(--ll-mint); }
 .pillActive .index { background: var(--ll-mint); border-color: var(--ll-mint); color: var(--ll-ink); }
 .pillComplete .index { background: var(--ll-ink); border-color: var(--ll-ink); color: var(--ll-mint); }
-.connector { flex: 1 1 0; width: 0; min-width: 12px; height: 24px; display: block; }
+.connector { flex: 1 1 0; width: 0; min-width: 12px; height: 24px; display: block; color: var(--ll-mint); }
 .connectorDash { animation: dash 1.2s linear infinite; }
 @keyframes dash { to { stroke-dashoffset: -40; } }
 
 /* Step card */
+.form { display: grid; gap: 20px; min-width: 0; }
 .panel { display: grid; gap: 20px; }
 .panelHidden { display: none; }
 .stepCard { display: grid; gap: 28px; padding: clamp(24px, 4vw, 40px); border-radius: 24px; background: var(--ll-surface); border: 1px solid var(--ll-line); min-width: 0; }

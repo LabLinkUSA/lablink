@@ -12,6 +12,7 @@ export function Modal({
   title,
   eyebrow,
   wide = false,
+  dismissible = true,
   footer,
   className,
   children,
@@ -21,6 +22,7 @@ export function Modal({
   title: ReactNode;
   eyebrow?: ReactNode;
   wide?: boolean;
+  dismissible?: boolean;
   footer?: ReactNode;
   className?: string;
   children: ReactNode;
@@ -38,7 +40,7 @@ export function Modal({
     } else if (!open && dialog.open) {
       dialog.close();
     }
-  }, [open]);
+  });
 
   return (
     <dialog
@@ -49,8 +51,11 @@ export function Modal({
         onClose();
         returnFocus.current?.focus();
       }}
+      onCancel={(event) => {
+        if (!dismissible) event.preventDefault();
+      }}
       onClick={(event) => {
-        if (event.target === ref.current) ref.current?.close();
+        if (dismissible && event.target === ref.current) ref.current?.close();
       }}
     >
       <div className={styles.card}>
@@ -59,7 +64,7 @@ export function Modal({
             {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
             <h2 id={titleId} className={styles.title}>{title}</h2>
           </div>
-          <button type="button" className={styles.close} onClick={() => ref.current?.close()} aria-label="Close">
+          <button type="button" className={styles.close} onClick={() => ref.current?.close()} disabled={!dismissible} aria-label="Close">
             ×
           </button>
         </header>

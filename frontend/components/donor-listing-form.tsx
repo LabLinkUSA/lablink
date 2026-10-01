@@ -715,7 +715,7 @@ export function DonorListingForm({
                 </button>
                 {stepIndex < FORM_STEPS.length - 1 ? (
                   <svg viewBox="0 0 120 24" preserveAspectRatio="none" className={styles.connector} aria-hidden="true">
-                    <path d="M0 12 H120" fill="none" stroke="#10C79A" strokeWidth="2" strokeDasharray="8 8" className={styles.connectorDash} />
+                    <path d="M0 12 H120" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="8 8" className={styles.connectorDash} />
                   </svg>
                 ) : null}
               </li>
@@ -723,7 +723,7 @@ export function DonorListingForm({
           })}
         </ol>
 
-        <form onSubmit={handleSubmit}>
+        <form className={styles.form} onSubmit={handleSubmit}>
           {FORM_STEPS.map((step, stepIndex) => (
             <div key={step.key} className={cx(styles.panel, stepIndex !== currentStep && styles.panelHidden)}>
               <section data-step-card className={styles.stepCard}>
@@ -938,38 +938,39 @@ export function DonorListingForm({
                 ) : null}
               </section>
 
-              <div className={styles.actionBar}>
-                <p className={styles.actionNote}>
-                  {mode === "create" && !listingId
-                    ? "The listing stays private until you submit it. LabLink will start the draft after your first entry."
-                    : "The listing stays private until you submit it. Draft changes save automatically while you work."}
-                </p>
-                <div className={styles.actionButtons}>
-                  {currentStep > 0 ? (
-                    <Button variant="secondary" className="donor-form-secondary-action" onClick={() => attemptStepChange(currentStep - 1)}>
-                      Back
-                    </Button>
-                  ) : null}
-                  {currentStep < FORM_STEPS.length - 1 ? (
-                    <Button arrow className="donor-form-primary-action" onClick={() => attemptStepChange(currentStep + 1)}>
-                      Continue
-                    </Button>
-                  ) : (
-                    <Button type="submit" arrow className="donor-form-primary-action" disabled={!canSubmit}>
-                      {isSubmitting ? "Submitting..." : isRejectedListing ? "Resubmit for admin review" : "Submit for admin review"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {formError ? <Notice tone="error">{formError}</Notice> : null}
-              {submitError ? <Notice tone="error">{submitError}</Notice> : null}
             </div>
           ))}
+          {formError ? <Notice tone="error">{formError}</Notice> : null}
+          {submitError ? <Notice tone="error">{submitError}</Notice> : null}
+          <div className={styles.actionBar}>
+            <p className={styles.actionNote}>
+              {mode === "create" && !listingId
+                ? "The listing stays private until you submit it. LabLink will start the draft after your first entry."
+                : "The listing stays private until you submit it. Draft changes save automatically while you work."}
+            </p>
+            <div className={styles.actionButtons}>
+              {currentStep > 0 ? (
+                <Button variant="secondary" className="donor-form-secondary-action" onClick={() => attemptStepChange(currentStep - 1)}>
+                  Back
+                </Button>
+              ) : null}
+              {currentStep < FORM_STEPS.length - 1 ? (
+                <Button arrow className="donor-form-primary-action" onClick={() => attemptStepChange(currentStep + 1)}>
+                  Continue
+                </Button>
+              ) : (
+                <Button type="submit" arrow className="donor-form-primary-action" disabled={!canSubmit}>
+                  {isSubmitting ? "Submitting..." : isRejectedListing ? "Resubmit for admin review" : "Submit for admin review"}
+                </Button>
+              )}
+            </div>
+          </div>
         </form>
       </div>
 
       <Modal
         open={Boolean(activeTemplate)}
+        dismissible={!isSavingDocument}
         onClose={closeDocumentModal}
         eyebrow="Compliance PDF"
         title={activeTemplate?.title ?? "Compliance PDF"}

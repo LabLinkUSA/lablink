@@ -55,6 +55,17 @@ test.describe("ui kit", () => {
     await expect(trigger).toBeFocused();
   });
 
+  test("non-dismissible modal ignores Escape and disables close", async ({ page }) => {
+    await page.getByRole("button", { name: "Open locked modal" }).click();
+    const dialog = page.getByRole("dialog", { name: "Locked modal" });
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
+    await dialog.getByRole("button", { name: "Unlock and close" }).click();
+    await expect(dialog).toBeHidden();
+  });
+
   test("empty data table renders its empty state", async ({ page }) => {
     await expect(page.getByText("Nothing here yet")).toBeVisible();
   });
