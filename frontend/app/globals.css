@@ -975,8 +975,7 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
 
 .hero-actions,
 .page-actions,
-.detail-actions,
-.auth-actions {
+.detail-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.85rem;
@@ -1012,7 +1011,6 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
 .callout,
 .auth-card,
 .empty-state,
-.auth-panel,
 .catalog-summary {
   padding: 1.35rem 1.4rem;
 }
@@ -1199,9 +1197,7 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
 .message-row h3,
 .callout h2,
 .detail-sidebar h2,
-.detail-section h2,
-.auth-panel h1,
-.auth-panel h2 {
+.detail-section h2 {
   margin: 0;
   letter-spacing: -0.035em;
 }
@@ -1212,13 +1208,11 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
 .list-row h3,
 .message-row h3,
 .detail-sidebar h2,
-.detail-section h2,
-.auth-panel h2 {
+.detail-section h2 {
   font-size: 1.15rem;
 }
 
-.callout h2,
-.auth-panel h1 {
+.callout h2 {
   font-size: clamp(1.6rem, 3vw, 2.4rem);
   line-height: 1.02;
 }
@@ -1226,8 +1220,7 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
 .feature-card p,
 .timeline-card p,
 .callout p,
-.auth-card p,
-.auth-panel p {
+.auth-card p {
   margin: 0.6rem 0 0;
 }
 
@@ -2247,29 +2240,9 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
   gap: 1rem;
 }
 
-.auth-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
-  gap: 1rem;
-  align-items: start;
-}
 
-.auth-layout-single {
-  grid-template-columns: minmax(0, 640px);
-  justify-content: start;
-}
 
-.auth-panel {
-  border: 1px solid rgba(188, 202, 196, 0.7);
-  border-radius: 1.6rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(243, 244, 245, 0.9));
-  box-shadow: var(--shadow-medium);
-}
 
-.auth-form {
-  display: grid;
-  gap: 1rem;
-}
 
 .auth-field-grid {
   display: grid;
@@ -2340,9 +2313,6 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
   background: rgba(243, 244, 245, 0.75);
 }
 
-.auth-submit {
-  width: 100%;
-}
 
 .auth-inline-link-row {
   display: flex;
@@ -4094,7 +4064,6 @@ a .message-row {
 .two-column-grid,
 .detail-grid,
 .auth-grid,
-.auth-layout,
 .metric-grid,
 .catalog-summary-grid {
     grid-template-columns: 1fr;
@@ -4476,7 +4445,6 @@ input[type="radio"] {
 .empty-state,
 .detail-content,
 .catalog-summary,
-.auth-panel,
 .auth-state-card,
 .review-modal-card,
 .review-modal-section,

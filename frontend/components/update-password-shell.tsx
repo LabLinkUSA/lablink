@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { CenteredCard } from "@/components/auth/centered-card";
+import { Button, ButtonLink, Field, Input, Notice, PageHeader } from "@/components/ui";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const supabase = createSupabaseBrowserClient();
@@ -127,78 +128,63 @@ export function UpdatePasswordShell() {
   const showRecoveryError = !isCheckingRecovery && !isRecoveryReady;
 
   return (
-    <section className="page-section">
-      <div className="shell">
-        <div className="page-header">
-          <div>
-            <span className="eyebrow">Password reset</span>
-            <h1>Choose a new password.</h1>
-            <p>
-              Use the secure recovery session from your reset email to set a fresh password for your LabLink account.
-            </p>
+    <CenteredCard>
+      <PageHeader
+        variant="operate"
+        eyebrow="Password reset"
+        title="Choose a new password."
+        lead="Use the secure recovery session from your reset email to set a fresh password for your LabLink account."
+      />
+
+      {isCheckingRecovery ? (
+        <Notice tone="info">Checking your reset link...</Notice>
+      ) : showRecoveryError ? (
+        <>
+          <Notice tone="error">{error ?? "This reset link is invalid, expired, or has already been used."}</Notice>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            <ButtonLink href="/auth/forgot-password">Request a new reset link</ButtonLink>
+            <ButtonLink href="/auth" variant="secondary">
+              Back to sign in
+            </ButtonLink>
+            <ButtonLink href="/auth/sign-up" variant="ghost">
+              Create account
+            </ButtonLink>
           </div>
-        </div>
+        </>
+      ) : (
+        <>
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 20 }}>
+            <Field label="New password" htmlFor="new-password" required>
+              <Input
+                id="new-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
+            </Field>
+            <Field label="Confirm new password" htmlFor="confirm-password" required>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
+            </Field>
+            <Button type="submit" block size="lg" disabled={isPending}>
+              {isPending ? "Updating password..." : "Update password"}
+            </Button>
+          </form>
 
-        <div className="auth-layout auth-layout-single">
-          <section className="auth-panel">
-            {isCheckingRecovery ? (
-              <p className="auth-notice auth-notice-success">Checking your reset link...</p>
-            ) : showRecoveryError ? (
-              <>
-                <p className="auth-notice auth-notice-error">
-                  {error ?? "This reset link is invalid, expired, or has already been used."}
-                </p>
-                <div className="auth-actions">
-                  <Link href="/auth/forgot-password" className="button button-primary">
-                    Request a new reset link
-                  </Link>
-                  <Link href="/auth" className="button button-outline">
-                    Back to sign in
-                  </Link>
-                  <Link href="/auth/sign-up" className="button button-secondary">
-                    Create account
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <form className="auth-form" onSubmit={handleSubmit}>
-                  <div className="auth-field">
-                    <label htmlFor="new-password">New password</label>
-                    <input
-                      id="new-password"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      autoComplete="new-password"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                  <div className="auth-field">
-                    <label htmlFor="confirm-password">Confirm new password</label>
-                    <input
-                      id="confirm-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                      autoComplete="new-password"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                  <button type="submit" className="button button-primary auth-submit" disabled={isPending}>
-                    {isPending ? "Updating password..." : "Update password"}
-                  </button>
-                </form>
-
-                {notice ? <p className="auth-notice auth-notice-success">{notice}</p> : null}
-                {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
-              </>
-            )}
-          </section>
-        </div>
-      </div>
-    </section>
+          {notice ? <Notice tone="success">{notice}</Notice> : null}
+          {error ? <Notice tone="error">{error}</Notice> : null}
+        </>
+      )}
+    </CenteredCard>
   );
 }

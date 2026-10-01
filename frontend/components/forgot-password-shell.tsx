@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { startTransition, useState } from "react";
 
+import { CenteredCard } from "@/components/auth/centered-card";
+import { Button, ButtonLink, Field, Input, Notice, PageHeader } from "@/components/ui";
 import { createSupabaseBrowserClient, getBrowserRedirectUrl } from "@/lib/supabase/browser";
 
 const supabase = createSupabaseBrowserClient();
@@ -42,53 +43,42 @@ export function ForgotPasswordShell() {
   }
 
   return (
-    <section className="page-section">
-      <div className="shell">
-        <div className="page-header">
-          <div>
-            <span className="eyebrow">Password reset</span>
-            <h1>Request a secure reset link.</h1>
-            <p>
-              Enter the email address tied to your LabLink account. If it exists, LabLink will send a password reset
-              link to that inbox.
-            </p>
-          </div>
-        </div>
+    <CenteredCard>
+      <PageHeader
+        variant="operate"
+        eyebrow="Password reset"
+        title="Request a secure reset link."
+        lead="Enter the email address tied to your LabLink account. If it exists, LabLink will send a password reset link to that inbox."
+      />
 
-        <div className="auth-layout auth-layout-single">
-          <section className="auth-panel">
-            <form className="auth-form" onSubmit={handleSubmit}>
-              <div className="auth-field">
-                <label htmlFor="reset-email">Email</label>
-                <input
-                  id="reset-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  autoComplete="email"
-                  required
-                />
-              </div>
+      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 20 }}>
+        <Field label="Email" htmlFor="reset-email" required>
+          <Input
+            id="reset-email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            required
+          />
+        </Field>
 
-              <button type="submit" className="button button-primary auth-submit" disabled={isPending}>
-                {isPending ? "Sending reset link..." : "Send reset link"}
-              </button>
-            </form>
+        <Button type="submit" block size="lg" disabled={isPending}>
+          {isPending ? "Sending reset link..." : "Send reset link"}
+        </Button>
+      </form>
 
-            {notice ? <p className="auth-notice auth-notice-success">{notice}</p> : null}
-            {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
+      {notice ? <Notice tone="success">{notice}</Notice> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
 
-            <div className="auth-actions">
-              <Link href="/auth" className="button button-outline">
-                Back to sign in
-              </Link>
-              <Link href="/auth/sign-up" className="button button-secondary">
-                Create account
-              </Link>
-            </div>
-          </section>
-        </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <ButtonLink href="/auth" variant="secondary">
+          Back to sign in
+        </ButtonLink>
+        <ButtonLink href="/auth/sign-up" variant="ghost">
+          Create account
+        </ButtonLink>
       </div>
-    </section>
+    </CenteredCard>
   );
 }
