@@ -171,10 +171,6 @@ h4 {
   padding-top: var(--ll-nav-offset);
 }
 
-body.app-body:has(.auth-screen-root) .site-main {
-  padding-top: 0;
-}
-
 body.app-body:has(.home-redesign-page) .site-main {
   padding-top: 0;
   overflow-x: clip;

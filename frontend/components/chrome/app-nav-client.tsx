@@ -9,7 +9,7 @@ import { cx } from "@/components/ui/cx";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 import styles from "./app-nav.module.css";
-import type { NavLink, NavModel } from "./nav-model";
+import { activeHref, type NavLink, type NavModel } from "./nav-model";
 
 function useEscape(active: boolean, onEscape: () => void) {
   useEffect(() => {
@@ -36,6 +36,7 @@ export function AppNavClient({ model }: { model: NavModel }) {
   const items: NavLink[] = signedOutHome ? model.homeLinks : model.links;
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const accountButton = useRef<HTMLButtonElement>(null);
   const accountRoot = useRef<HTMLDivElement>(null);
@@ -63,12 +64,19 @@ export function AppNavClient({ model }: { model: NavModel }) {
   }, [accountOpen]);
 
   async function signOut() {
-    await createSupabaseBrowserClient().auth.signOut({ scope: "local" });
-    window.location.replace("/");
+    setSigningOut(true);
+    try {
+      const { error } = await createSupabaseBrowserClient().auth.signOut({ scope: "local" });
+      if (error) throw error;
+      window.location.replace("/");
+    } catch {
+      setSigningOut(false);
+    }
   }
 
+  const activeLink = activeHref(pathname, items);
   const linkList = items.map((item) => {
-    const active = !item.href.startsWith("#") && (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href));
+    const active = item.href === activeLink;
     return (
       <a
         key={`${item.label}-${item.href}`}
@@ -115,8 +123,8 @@ export function AppNavClient({ model }: { model: NavModel }) {
                   <Link role="menuitem" href={model.profile.dashboardHref} className={styles.accountItem}>
                     Dashboard
                   </Link>
-                  <button role="menuitem" type="button" className={styles.accountItem} onClick={signOut}>
-                    Log out
+                  <button role="menuitem" type="button" className={styles.accountItem} onClick={signOut} disabled={signingOut}>
+                    {signingOut ? "Logging out..." : "Log out"}
                   </button>
                 </div>
               ) : null}

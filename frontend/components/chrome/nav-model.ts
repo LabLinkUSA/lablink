@@ -71,3 +71,13 @@ export function buildNavModel(profile: AuthenticatedUser | null): NavModel {
       : null,
   };
 }
+
+export function activeHref(pathname: string, links: NavLink[]): string | null {
+  let best: string | null = null;
+  for (const { href } of links) {
+    if (href.startsWith("#")) continue;
+    const matches = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+    if (matches && (best === null || href.length > best.length)) best = href;
+  }
+  return best;
+}
