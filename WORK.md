@@ -34,6 +34,7 @@ Spec: `docs/superpowers/specs/2026-09-30-app-wide-redesign-design.md`
 | `1f57c4a` | feat: redesign donor request board |
 | `cdcae1e` | feat: split and redesign admin dashboard sections and review modals |
 | `77563b9` | chore: remove legacy styles, add DESIGN.md, finalize app-wide redesign |
+| `5e0ee87` | fix: restore dev kit fixture and kit spec, align DESIGN.md and legacy colors |
 
 **Frontend changes:** Every route (auth, password pages, catalog, listing detail, donor/recipient/admin dashboards, donor wizard, request board) rebuilt on the homepage design system. New tokens in `app/tokens.css`, shared UI kit in `components/ui/` (Button, Card, Field, Modal, DataTable, StatusPill, Reveal, ...), `components/chrome/` (auth-aware floating nav + footer), `components/dashboard/` (ink-rail dashboard shell), `components/auth/`, plus per-page CSS modules. Fonts via `next/font` (Playfair Display + DM Sans). Client components that imported server-only `lib/api.ts` now use a browser-session API module, which also fixed `next build`. Cleanup: `globals.css` cut from 5,646 to 210 lines (resets, `.shell`, `.site-main`, `.sr-only`, homepage page rules, reduced-motion only), legacy palette variables and global form-control theming removed, kit fixture `/dev/kit` removed, audit fixes from web-interface-guidelines (image dimensions + lazy loading, ellipsis typography, `spellCheck` on email fields, `touch-action`, modal `overscroll-behavior`). `DESIGN.md` documents the system.
 **Backend / DB changes:** none.
