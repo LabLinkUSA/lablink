@@ -2087,57 +2087,6 @@ body.app-body:has(.home-redesign-page) .site-header {
   color: var(--muted);
 }
 
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 1.9rem;
-  padding: 0 0.75rem;
-  border-radius: 999px;
-  background: rgba(61, 73, 69, 0.08);
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.status-live,
-.status-verified,
-.status-completed,
-.status-fulfilled,
-.status-approved_matched,
-.status-active {
-  background: rgba(151, 248, 59, 0.22);
-  color: var(--secondary-text);
-}
-
-.status-admin_review,
-.status-submitted,
-.status-pending_request,
-.status-listing_under_review,
-.status-pending_admin_approval,
-.status-pending_verification,
-.status-match_in_progress {
-  background: rgba(255, 203, 114, 0.24);
-  color: #7b4f00;
-}
-
-.status-matched_reserved,
-.status-locked,
-.status-restricted,
-.status-removed_by_admin,
-.status-removed_by_donor {
-  background: rgba(0, 100, 131, 0.12);
-  color: var(--info);
-}
-
-.status-rejected,
-.status-rejected_cancelled {
-  background: rgba(186, 26, 26, 0.12);
-  color: #9f1f1f;
-}
-
 .metric-grid {
   margin-bottom: 1.5rem;
 }
@@ -5538,7 +5487,6 @@ input[type="radio"] {
 .section-label,
 .hero-label,
 .timeline-step,
-.status-pill,
 .auth-screen-badge,
 .auth-screen-field label,
 .auth-screen-field-row label,
@@ -5579,8 +5527,7 @@ input[type="radio"] {
 .auth-screen-badge,
 .eyebrow,
 .catalog-condition-tag,
-.ops-condition-badge,
-.status-pill {
+.ops-condition-badge {
   border-radius: 0.25rem;
 }
 

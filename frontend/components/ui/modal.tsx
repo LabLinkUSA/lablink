@@ -50,7 +50,7 @@ export function Modal({
         returnFocus.current?.focus();
       }}
       onClick={(event) => {
-        if (event.target === ref.current) onClose();
+        if (event.target === ref.current) ref.current?.close();
       }}
     >
       <div className={styles.card}>
@@ -59,7 +59,7 @@ export function Modal({
             {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
             <h2 id={titleId} className={styles.title}>{title}</h2>
           </div>
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
+          <button type="button" className={styles.close} onClick={() => ref.current?.close()} aria-label="Close">
             ×
           </button>
         </header>

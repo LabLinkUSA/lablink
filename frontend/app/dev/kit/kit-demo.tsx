@@ -12,6 +12,7 @@ const LONG = "Ultra-low-temperature freezer with redundant compressor and an ext
 
 export function KitDemo() {
   const [open, setOpen] = useState(false);
+  const [closeCount, setCloseCount] = useState(0);
   return (
     <div style={{ maxWidth: 1240, margin: "0 auto", padding: "120px clamp(20px,5vw,72px)", display: "grid", gap: 40 }}>
       <PageHeader variant="public" eyebrow="Kit" title={<>Design <Highlight>kit</Highlight></>} lead={LONG} />
@@ -25,7 +26,7 @@ export function KitDemo() {
       </div>
       <Eyebrow variant="badge">Yale-founded · Nonprofit</Eyebrow>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {["live", "admin_review", "matched_reserved", "rejected_cancelled"].map((s) => <StatusPill key={s} status={s} />)}
+        {["live", "admin_review", "matched_reserved", "rejected_cancelled", "removed_by_admin"].map((s) => <StatusPill key={s} status={s} />)}
       </div>
       <StatRow>
         <StatTile value="12" label="Pending approvals" sublabel="Across institutions" />
@@ -43,7 +44,11 @@ export function KitDemo() {
       <DataTable head={["Equipment", "Status", "Action"]} isEmpty empty={<EmptyState variant="empty" title="Nothing here yet" />} />
       <div style={{ height: "120vh" }} />
       <Reveal data-testid="kit-reveal-below-fold"><Card tone="mint">Revealed content</Card></Reveal>
-      <Modal open={open} onClose={() => setOpen(false)} title="Kit modal" eyebrow="Review">
+      <p data-testid="kit-modal-close-count">{closeCount}</p>
+      <Modal open={open} onClose={() => {
+          setOpen(false);
+          setCloseCount((n) => n + 1);
+        }} title="Kit modal" eyebrow="Review">
         <p>{LONG}</p>
       </Modal>
     </div>

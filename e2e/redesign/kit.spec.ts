@@ -20,10 +20,24 @@ test.describe("ui kit", () => {
     await expect(page.locator(".status-pill.status-rejected_cancelled")).toHaveAttribute("data-tone", "negative");
   });
 
+  test("pill uses kit styling over legacy rules", async ({ page }) => {
+    const pill = page.locator(".status-pill.status-removed_by_admin");
+    await expect(pill).toHaveCSS("border-radius", "999px");
+    await expect(pill).toHaveCSS("background-color", "rgba(196, 64, 52, 0.12)");
+  });
+
+  test("modal close button calls onClose exactly once", async ({ page }) => {
+    await page.getByRole("button", { name: "Open modal" }).click();
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page.getByTestId("kit-modal-close-count")).toHaveText("1");
+  });
+
   test("field error is announced", async ({ page }) => {
     const input = page.locator("#kit-error-input");
     await expect(input).toHaveAttribute("aria-invalid", "true");
     await expect(input).toHaveAttribute("aria-describedby", "kit-error-input-error");
+    await expect(input).toHaveCSS("border-top-color", "rgb(140, 42, 32)");
     await expect(page.locator("#kit-error-input-error")).toHaveText("This field is required.");
   });
 

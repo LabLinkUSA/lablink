@@ -23,8 +23,11 @@ export function Field({
 }) {
   const describedBy = [hint ? `${htmlFor}-hint` : null, error ? `${htmlFor}-error` : null].filter(Boolean).join(" ") || undefined;
   const control = Children.only(children);
-  const wired = isValidElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean }>(control)
-    ? cloneElement(control, { "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })
+  const wired = isValidElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean; invalid?: boolean }>(control)
+    ? cloneElement(control, {
+        "aria-describedby": [control.props["aria-describedby"], describedBy].filter(Boolean).join(" ") || undefined,
+        ...(error ? { "aria-invalid": true, invalid: true } : {}),
+      })
     : control;
 
   return (
@@ -45,19 +48,19 @@ export function FieldGrid({ children }: { children: ReactNode }) {
 }
 
 export function Input({ invalid, className, ...rest }: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
-  return <input {...rest} className={cx(styles.control, invalid && styles.invalid, className)} />;
+  return <input {...rest} aria-invalid={invalid || rest["aria-invalid"] || undefined} className={cx(styles.control, invalid && styles.invalid, className)} />;
 }
 
 export function Select({ invalid, className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
   return (
-    <select {...rest} className={cx(styles.control, styles.select, invalid && styles.invalid, className)}>
+    <select {...rest} aria-invalid={invalid || rest["aria-invalid"] || undefined} className={cx(styles.control, styles.select, invalid && styles.invalid, className)}>
       {children}
     </select>
   );
 }
 
 export function Textarea({ invalid, className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement> & { invalid?: boolean }) {
-  return <textarea {...rest} className={cx(styles.control, styles.textarea, invalid && styles.invalid, className)} />;
+  return <textarea {...rest} aria-invalid={invalid || rest["aria-invalid"] || undefined} className={cx(styles.control, styles.textarea, invalid && styles.invalid, className)} />;
 }
 
 export function Checkbox({ label, className, ...rest }: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode }) {
