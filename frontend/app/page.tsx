@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
+
 import { HomePageRedesign } from "@/components/home-page-redesign";
 import { getCurrentProfile } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
+
+export const metadata: Metadata = {
+  title: "LabLink — Surplus equipment. Real impact.",
+};
 
 export default async function HomePage() {
   const profile = await getCurrentProfile();

@@ -121,3 +121,12 @@ This project uses the Superpowers skill suite:
 4. **Finish** (`superpowers:finishing-a-development-branch`) — review and integrate
 
 Always update `PROGRESS.md` and `WORK.md` after completing a feature.
+
+## Design Handoff (Claude Design → Repo)
+Frontend redesigns are made in a claude.ai/design project. It is a regular design project, not a design system, so `DesignSync` cannot reach it — handoff is by manual HTML export.
+- **Exports live in `docs/design/<name>/`** (e.g. `docs/design/homepage-redesign/`). Each new export overwrites the folder's contents.
+- **Optional `HANDOFF.md`** in the same folder holds the handoff prompt / design intent (placeholders, interactivity, purpose of sections).
+- **Each export is committed on its own**, separate from code: `design: <name> export vN`.
+- **On "design updated":** `git diff` the export folder against the previous export commit and port only the changed parts into `frontend/`. Do not rebuild the page from scratch.
+- **Source of truth:** Claude Design owns visuals; the repo owns behavior (auth-aware nav, data fetching, RBAC). Sync is one-way (design → code) — engineering-driven changes are not reflected back into the design.
+- **Translate, don't copy:** port the exported HTML/CSS into Next.js conventions (async server components, `"use client"` only for interactive widgets, CSS modules like `home-page-redesign.module.css`). Never ship exported HTML directly.

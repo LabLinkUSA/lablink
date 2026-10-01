@@ -192,13 +192,13 @@ body.app-body:has(.home-redesign-page) .site-main {
 }
 
 body.app-body:has(.home-redesign-page) {
-  background: var(--forest);
-  scrollbar-color: rgba(2, 195, 154, 0.72) var(--forest);
+  background: #14302a;
+  scrollbar-color: rgba(2, 195, 154, 0.72) #14302a;
 }
 
 html:has(body.app-body .home-redesign-page) {
-  background: var(--forest);
-  scrollbar-color: rgba(2, 195, 154, 0.72) var(--forest);
+  background: #14302a;
+  scrollbar-color: rgba(2, 195, 154, 0.72) #14302a;
 }
 
 html:has(body.app-body .home-redesign-page)::-webkit-scrollbar {
@@ -206,11 +206,11 @@ html:has(body.app-body .home-redesign-page)::-webkit-scrollbar {
 }
 
 html:has(body.app-body .home-redesign-page)::-webkit-scrollbar-track {
-  background: var(--forest);
+  background: #14302a;
 }
 
 html:has(body.app-body .home-redesign-page)::-webkit-scrollbar-thumb {
-  border: 3px solid var(--forest);
+  border: 3px solid #14302a;
   border-radius: 999px;
   background: rgba(2, 195, 154, 0.72);
 }
@@ -220,18 +220,17 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar {
 }
 
 body.app-body:has(.home-redesign-page)::-webkit-scrollbar-track {
-  background: var(--forest);
+  background: #14302a;
 }
 
 body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
-  border: 3px solid var(--forest);
+  border: 3px solid #14302a;
   border-radius: 999px;
   background: rgba(2, 195, 154, 0.72);
 }
 
 body.app-body:has(.home-redesign-page) .site-header {
-  width: 100vw;
-  max-width: 100vw;
+  display: none;
 }
 
 .home-redesign-page {
