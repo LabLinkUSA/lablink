@@ -9,6 +9,7 @@ _Nothing in progress._
 
 ### Session — 2026-09-30 (App-Wide Redesign)
 Spec: `docs/superpowers/specs/2026-09-30-app-wide-redesign-design.md`
+Plan: `docs/superpowers/plans/2026-09-30-app-wide-redesign.md`
 
 | Commit | Summary |
 |---|---|
@@ -35,10 +36,15 @@ Spec: `docs/superpowers/specs/2026-09-30-app-wide-redesign-design.md`
 | `cdcae1e` | feat: split and redesign admin dashboard sections and review modals |
 | `77563b9` | chore: remove legacy styles, add DESIGN.md, finalize app-wide redesign |
 | `5e0ee87` | fix: restore dev kit fixture and kit spec, align DESIGN.md and legacy colors |
+| `54043e9` | docs: record kit restore commit in WORK.md |
+| `2132b6d` | fix: final review — focus visibility, client nav links, catalog select width, modal focus restore, test and doc fixes |
 
 **Frontend changes:** Every route (auth, password pages, catalog, listing detail, donor/recipient/admin dashboards, donor wizard, request board) rebuilt on the homepage design system. New tokens in `app/tokens.css`, shared UI kit in `components/ui/` (Button, Card, Field, Modal, DataTable, StatusPill, Reveal, ...), `components/chrome/` (auth-aware floating nav + footer), `components/dashboard/` (ink-rail dashboard shell), `components/auth/`, plus per-page CSS modules. Fonts via `next/font` (Playfair Display + DM Sans). Client components that imported server-only `lib/api.ts` now use a browser-session API module, which also fixed `next build`. Cleanup: `globals.css` cut from 5,646 to 210 lines (resets, `.shell`, `.site-main`, `.sr-only`, homepage page rules, reduced-motion only), legacy palette variables and global form-control theming removed, kit fixture `/dev/kit` kept (404 in production), audit fixes from web-interface-guidelines (image dimensions + lazy loading, ellipsis typography, `spellCheck` on email fields, `touch-action`, modal `overscroll-behavior`). `DESIGN.md` documents the system.
 **Backend / DB changes:** none.
 **Tests:** Playwright redesign suite in `e2e/redesign/` (`e2e/redesign.config.ts`); authed tests need the backend and seeded accounts and skip without it.
+**Docs / process:** Homepage came from a Claude Design HTML export (`docs/design/homepage-redesign/export.html`), ported pixel-exact; design-handoff workflow documented in `CLAUDE.md`. Design skills installed in `.claude/skills/` (impeccable, web-design-guidelines). Executed via subagent-driven development (per-task review + final whole-branch review).
+**Shipped:** merged to `main` and pushed 2026-10-01; Vercel production deploy of `2132b6d` succeeded (lablinkusa.org).
+**Open decisions (user):** `--ll-mint-text` #0BA982 fails WCAG AA small text (2.99:1) — darkening in `tokens.css` is homepage-safe; homepage content hidden without JS and its motion ignores reduced-motion (not changed — no self-initiated homepage edits); authed redesign specs never run against a non-production backend; `e2e/donor-listing-lifecycle.spec.ts` uses wrong `#listing-*` ids (pre-existing).
 **Deferred (spec §7):** delete unused TSX (`ListingCard`, `ListingListRow`, `DashboardPanel`, unused `operations-dashboard-ui` exports, `app/admin/actions.ts`); known data issues (admin metric labels, board-section institution IDs, hardcoded request-board count, missing request-board verification check).
 
 ---
