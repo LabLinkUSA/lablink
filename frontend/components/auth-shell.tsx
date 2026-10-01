@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 
+import { AuthSplit } from "@/components/auth/auth-split";
+import styles from "@/components/auth/auth-split.module.css";
 import { StatusPill } from "@/components/status-pill";
+import { Button, ButtonLink, Checkbox, EmptyState, Eyebrow, Field, FieldGrid, Input, Notice, Select, Textarea } from "@/components/ui";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AuthenticatedUser, OnboardingCreate, OnboardingResponse, Role } from "@/lib/types";
 
@@ -25,9 +27,6 @@ const roleOptions: Array<{ value: Role; label: string }> = [
 
 const supabase = createSupabaseBrowserClient();
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
-const SIGN_IN_ART_IMAGE =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuD5SSUKltYoAHKaq2FyIyolZwQ9p0qWnf8sDV97MZ7WyvX8qsnE9Pjf_L2TqKw0pAyxhld01uyXmNYM4lwY7y99TKm4KVF-SJZOHNohGjqlcL2KsmDdWDopomQGq2hGsc7t1jgm4Jz1Z6klbNrzMDqFDIuJf0GufXOL2ak0GmdvlWqev_EWXlEK0w0ttcnChrfwRXGgTAZuU6ISpYPxvsZ-m9E5EK13GJJ-pNsZbYL1YdBeEorLCQZeP8g8v5ZCKo-rcWT5H3ps-GU";
-
 function isInvalidRefreshTokenMessage(message: string): boolean {
   return message.includes("Invalid Refresh Token") || message.includes("Refresh Token Not Found");
 }
@@ -444,281 +443,241 @@ export function AuthShell({ mode, initialNotice }: AuthShellProps) {
   const title = isSignIn ? "Welcome Back" : "Create your account";
   const subtitle = isSignIn ? "Access your clinical dashboard and equipment inventory." : "";
 
-  return (
-    <section className="auth-screen auth-screen-root">
-      <div className={`auth-screen-frame${isSignIn ? " auth-screen-frame-signin" : " auth-screen-frame-signup"}`}>
-        {isSignIn ? (
-          <div className="auth-screen-visual auth-screen-visual-signin">
-            <img
-              src={SIGN_IN_ART_IMAGE}
-              alt="Modern high-tech laboratory with clean white benches, microscope in soft focus, and teal colored scientific equipment lighting"
-              className="auth-screen-visual-image"
-            />
-            <div className="auth-screen-visual-overlay" />
-            <div className="auth-screen-visual-copy">
-              <div className="auth-screen-badge">Precision connected</div>
-              <h2>Powering the next generation of discovery.</h2>
-              <p>Manage your laboratory assets and donate critical equipment to research institutions worldwide.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="auth-screen-visual auth-screen-visual-signup">
-            <div>
-              <div className="auth-screen-brand">LabLink</div>
-              <h1>
-                Empowering Scientific <span>Collaboration.</span>
-              </h1>
-              <p>
-                Join the premier network for laboratory equipment redistribution. Connect with leading institutions to
-                ensure every instrument finds its purpose.
-              </p>
-            </div>
-            <div className="auth-screen-feature-list">
-              <article className="auth-screen-feature">
-                <div className="auth-screen-feature-icon">✓</div>
-                <div>
-                  <h3>Institutional Verification</h3>
-                  <p>Dedicated access for verified research and clinical facilities.</p>
-                </div>
-              </article>
-              <article className="auth-screen-feature">
-                <div className="auth-screen-feature-icon">↺</div>
-                <div>
-                  <h3>Sustainable Logistics</h3>
-                  <p>Reducing electronic waste through smart redistribution cycles.</p>
-                </div>
-              </article>
-            </div>
-          </div>
-        )}
+  const aside = isSignIn ? (
+    <>
+      <Eyebrow variant="badge">Yale-founded · Student-run · Nonprofit</Eyebrow>
+      <h2 className={styles.asideTitle}>
+        Welcome <em>back.</em>
+      </h2>
+      <p className={styles.asideLead}>
+        Manage your laboratory assets and donate critical equipment to research institutions worldwide.
+      </p>
+    </>
+  ) : (
+    <>
+      <Eyebrow variant="badge">Yale-founded · Student-run · Nonprofit</Eyebrow>
+      <h2 className={styles.asideTitle}>
+        Join the <em>LabLink network.</em>
+      </h2>
+      <div className={styles.features}>
+        <article className={styles.feature}>
+          <div className={styles.featureStep}>01 · Verify</div>
+          <h3>Institutional Verification</h3>
+          <p>Dedicated access for verified research and clinical facilities.</p>
+        </article>
+        <article className={styles.feature}>
+          <div className={styles.featureStep}>02 · Match</div>
+          <h3>Sustainable Logistics</h3>
+          <p>Reducing electronic waste through smart redistribution cycles.</p>
+        </article>
+      </div>
+    </>
+  );
 
-        <div className="auth-screen-panel">
-          <div className="auth-screen-panel-inner">
-            {isSignIn ? <div className="auth-screen-brand auth-screen-brand-panel">LabLink</div> : null}
-
-            <div className="auth-screen-header">
-              <h1>{title}</h1>
-              <p>{subtitle}</p>
-            </div>
-
-            {shouldHideSignedInState ? null : sessionUser ? (
-              <div className="auth-state-card">
-                <div className="list-row-topline">
-                  <strong>Signed in</strong>
-                  <StatusPill status="verified" />
-                </div>
-                <h2>{sessionUser.email}</h2>
-                <p>
-                  {sessionUser.role
-                    ? `Selected role: ${sessionUser.role.replaceAll("_", " ")}${sessionUser.institutionName ? ` for ${sessionUser.institutionName}.` : "."}`
-                    : "Your auth session is active, but your LabLink app profile may still need to be created."}
-                </p>
-                <div className="auth-actions">
-                  <button type="button" className="button button-primary" onClick={handleSignOut} disabled={isPending}>
-                    {isPending ? "Working..." : "Sign out"}
-                  </button>
-                  {sessionUser.role ? (
-                    <Link href={getDashboardHref(sessionUser.role as Role)} className="button button-outline">
-                      View dashboard
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-            ) : isSignIn ? (
-              <form className="auth-screen-form" onSubmit={handleSignInSubmit}>
-                <div className="auth-screen-field">
-                  <label htmlFor="sign-in-email">Work Email</label>
-                  <input
-                    id="sign-in-email"
-                    type="email"
-                    value={signInEmail}
-                    onChange={(event) => setSignInEmail(event.target.value)}
-                    autoComplete="email"
-                    placeholder="scientist@institution.edu"
-                    required
-                  />
-                </div>
-
-                <div className="auth-screen-field">
-                  <div className="auth-screen-field-row">
-                    <label htmlFor="sign-in-password">Password</label>
-                    <Link href="/auth/forgot-password" className="auth-screen-inline-link">
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <input
-                    id="sign-in-password"
-                    type="password"
-                    value={signInPassword}
-                    onChange={(event) => setSignInPassword(event.target.value)}
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    required
-                  />
-                </div>
-
-                <label className="auth-screen-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(event) => setRememberMe(event.target.checked)}
-                  />
-                  <span>Remember me on this workstation</span>
-                </label>
-
-                <button type="submit" className="auth-screen-primary-button" disabled={isPending}>
-                  {isPending ? "Signing in..." : "Sign In"}
-                  <span aria-hidden="true">→</span>
-                </button>
-              </form>
-            ) : (
-              <form className="auth-screen-form" onSubmit={handleSignUpSubmit}>
-                <div className="auth-screen-field">
-                  <label htmlFor="full-name">Full Name</label>
-                  <input
-                    id="full-name"
-                    type="text"
-                    value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
-                    autoComplete="name"
-                    placeholder="Dr. Julian Vane"
-                    required
-                  />
-                </div>
-
-                <div className="auth-screen-field">
-                  <label htmlFor="sign-up-email">Institutional Email</label>
-                  <input
-                    id="sign-up-email"
-                    type="email"
-                    value={signUpEmail}
-                    onChange={(event) => setSignUpEmail(event.target.value)}
-                    autoComplete="email"
-                    placeholder="j.vane@university.edu"
-                    required
-                  />
-                </div>
-
-                <div className="auth-screen-field">
-                  <label htmlFor="institution-name">Institution Name</label>
-                  <input
-                    id="institution-name"
-                    type="text"
-                    value={institutionName}
-                    onChange={(event) => setInstitutionName(event.target.value)}
-                    placeholder="Biomedical Research Center"
-                    required
-                  />
-                </div>
-
-                <div className="auth-screen-grid">
-                  <div className="auth-screen-field">
-                    <label htmlFor="sign-up-password">Password</label>
-                    <input
-                      id="sign-up-password"
-                      type="password"
-                      value={signUpPassword}
-                      onChange={(event) => setSignUpPassword(event.target.value)}
-                      autoComplete="new-password"
-                      placeholder="••••••••"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-
-                  <div className="auth-screen-field">
-                    <label htmlFor="confirm-password">Confirm Password</label>
-                    <input
-                      id="confirm-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                      autoComplete="new-password"
-                      placeholder="••••••••"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="auth-screen-grid">
-                  <div className="auth-screen-field">
-                    <label htmlFor="role">Institution Type</label>
-                    <select id="role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
-                      {roleOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="auth-screen-field">
-                    <label htmlFor="institution-location">Institution Location</label>
-                    <input
-                      id="institution-location"
-                      type="text"
-                      value={institutionLocation}
-                      onChange={(event) => setInstitutionLocation(event.target.value)}
-                      placeholder="City, State"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="auth-screen-field">
-                  <label htmlFor="institution-description">Institution Description</label>
-                  <textarea
-                    id="institution-description"
-                    value={institutionDescription}
-                    onChange={(event) => setInstitutionDescription(event.target.value)}
-                    placeholder="Who will use the equipment?"
-                    required
-                  />
-                </div>
-
-                <button type="submit" className="auth-screen-primary-button" disabled={isPending}>
-                  {isPending ? "Creating account..." : "Create Account"}
-                </button>
-              </form>
-            )}
-
-            {notice ? <p className="auth-notice auth-notice-success">{notice}</p> : null}
-            {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
-
-            <div className="auth-screen-switch">
-              {isSignIn ? (
-                <>
-                  <p>Don&apos;t have an account yet?</p>
-                  <Link href="/auth/sign-up" className="auth-screen-switch-link auth-screen-switch-link-pill">
-                    Create an account
-                  </Link>
-                </>
-              ) : (
-                <p>
-                  Already have an account?
-                  <Link href="/auth" className="auth-screen-switch-link">
-                    Sign in instead
-                  </Link>
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+  const card = (
+    <>
+      <div className={styles.cardHeader}>
+        <h1 className={styles.cardTitle}>{title}</h1>
+        {subtitle ? <p className={styles.cardLead}>{subtitle}</p> : null}
       </div>
 
-      <footer className="auth-screen-footer">
-        <div>
-          <span>LabLink</span>
-          <p>© 2024 LabLink Precision Systems. All rights reserved.</p>
+      {shouldHideSignedInState ? null : sessionUser ? (
+        <EmptyState
+          variant="gate"
+          eyebrow={<StatusPill status="verified" />}
+          title={sessionUser.email}
+          lead={
+            sessionUser.role
+              ? `Selected role: ${sessionUser.role.replaceAll("_", " ")}${sessionUser.institutionName ? ` for ${sessionUser.institutionName}.` : "."}`
+              : "Your auth session is active, but your LabLink app profile may still need to be created."
+          }
+          actions={
+            <>
+              <Button type="button" onClick={handleSignOut} disabled={isPending}>
+                {isPending ? "Working..." : "Sign out"}
+              </Button>
+              {sessionUser.role ? (
+                <ButtonLink href={getDashboardHref(sessionUser.role as Role)} variant="secondary">
+                  View dashboard
+                </ButtonLink>
+              ) : null}
+            </>
+          }
+        />
+      ) : isSignIn ? (
+        <form className={styles.form} onSubmit={handleSignInSubmit}>
+          <Field label="Work Email" htmlFor="sign-in-email">
+            <Input
+              id="sign-in-email"
+              type="email"
+              value={signInEmail}
+              onChange={(event) => setSignInEmail(event.target.value)}
+              autoComplete="email"
+              placeholder="scientist@institution.edu"
+              required
+            />
+          </Field>
+
+          <Field
+            label="Password"
+            htmlFor="sign-in-password"
+            hint={
+              <ButtonLink href="/auth/forgot-password" variant="ghost" size="sm">
+                Forgot password?
+              </ButtonLink>
+            }
+          >
+            <Input
+              id="sign-in-password"
+              type="password"
+              value={signInPassword}
+              onChange={(event) => setSignInPassword(event.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              required
+            />
+          </Field>
+
+          <Checkbox
+            checked={rememberMe}
+            onChange={(event) => setRememberMe(event.target.checked)}
+            label="Remember me on this workstation"
+          />
+
+          <Button type="submit" size="lg" block arrow className="auth-screen-primary-button" disabled={isPending}>
+            {isPending ? "Signing in…" : "Sign In"}
+          </Button>
+        </form>
+      ) : (
+        <form className={styles.form} onSubmit={handleSignUpSubmit}>
+          <Field label="Full Name" htmlFor="full-name">
+            <Input
+              id="full-name"
+              type="text"
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              autoComplete="name"
+              placeholder="Dr. Julian Vane"
+              required
+            />
+          </Field>
+
+          <Field label="Institutional Email" htmlFor="sign-up-email">
+            <Input
+              id="sign-up-email"
+              type="email"
+              value={signUpEmail}
+              onChange={(event) => setSignUpEmail(event.target.value)}
+              autoComplete="email"
+              placeholder="j.vane@university.edu"
+              required
+            />
+          </Field>
+
+          <Field label="Institution Name" htmlFor="institution-name">
+            <Input
+              id="institution-name"
+              type="text"
+              value={institutionName}
+              onChange={(event) => setInstitutionName(event.target.value)}
+              placeholder="Biomedical Research Center"
+              required
+            />
+          </Field>
+
+          <FieldGrid>
+            <Field label="Password" htmlFor="sign-up-password">
+              <Input
+                id="sign-up-password"
+                type="password"
+                value={signUpPassword}
+                onChange={(event) => setSignUpPassword(event.target.value)}
+                autoComplete="new-password"
+                placeholder="••••••••"
+                minLength={8}
+                required
+              />
+            </Field>
+
+            <Field label="Confirm Password" htmlFor="confirm-password">
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                autoComplete="new-password"
+                placeholder="••••••••"
+                minLength={8}
+                required
+              />
+            </Field>
+          </FieldGrid>
+
+          <FieldGrid>
+            <Field label="Institution Type" htmlFor="role">
+              <Select id="role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
+                {roleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Institution Location" htmlFor="institution-location">
+              <Input
+                id="institution-location"
+                type="text"
+                value={institutionLocation}
+                onChange={(event) => setInstitutionLocation(event.target.value)}
+                placeholder="City, State"
+                required
+              />
+            </Field>
+          </FieldGrid>
+
+          <Field label="Institution Description" htmlFor="institution-description">
+            <Textarea
+              id="institution-description"
+              value={institutionDescription}
+              onChange={(event) => setInstitutionDescription(event.target.value)}
+              placeholder="Who will use the equipment?"
+              required
+            />
+          </Field>
+
+          <Button type="submit" size="lg" block arrow className="auth-screen-primary-button" disabled={isPending}>
+            {isPending ? "Creating account…" : "Create Account"}
+          </Button>
+        </form>
+      )}
+
+      {notice || error ? (
+        <div className={styles.messages}>
+          {notice ? <Notice tone="success">{notice}</Notice> : null}
+          {error ? <Notice tone="error">{error}</Notice> : null}
         </div>
-        <div className="auth-screen-footer-links">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Security Standards</a>
-          <a href="#">Contact Support</a>
-        </div>
-      </footer>
-    </section>
+      ) : null}
+
+      <div className={styles.switch}>
+        {isSignIn ? (
+          <>
+            <p>Don&apos;t have an account yet?</p>
+            <ButtonLink href="/auth/sign-up" variant="secondary">
+              Create an account
+            </ButtonLink>
+          </>
+        ) : (
+          <>
+            <p>Already have an account?</p>
+            <ButtonLink href="/auth" variant="secondary">
+              Sign in instead
+            </ButtonLink>
+          </>
+        )}
+      </div>
+    </>
   );
+
+  return <AuthSplit aside={aside} card={card} />;
 }

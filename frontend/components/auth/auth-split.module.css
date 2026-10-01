@@ -1,0 +1,31 @@
+.page { padding: 24px var(--ll-gutter) clamp(64px, 8vw, 120px); }
+.frame { max-width: var(--ll-container); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.aside { position: relative; overflow: hidden; border-radius: 24px; background: var(--ll-ink); color: #ffffff; padding: clamp(32px, 4vw, 56px); display: flex; align-items: flex-end; min-height: 560px; }
+.asideContent { position: relative; z-index: 1; }
+.orbit { position: absolute; top: -18%; right: -22%; width: 520px; height: 520px; border-radius: 50%; border: 1px solid rgba(16, 199, 154, 0.35); animation: spin 40s linear infinite; }
+.orbitDot { position: absolute; top: 50%; left: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--ll-mint); box-shadow: 0 0 24px var(--ll-mint); }
+.orbitDashed { position: absolute; top: 4%; right: 2%; width: 300px; height: 300px; border-radius: 50%; border: 1px dashed rgba(16, 199, 154, 0.25); animation: spin 50s linear infinite reverse; }
+.card { border-radius: 24px; background: var(--ll-surface); border: 1px solid var(--ll-line); padding: clamp(28px, 3vw, 44px); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .orbit, .orbitDashed { animation: none; } }
+.asideTitle { margin: 24px 0 0; font-family: var(--ll-display); font-weight: 600; font-size: clamp(40px, 5vw, 72px); line-height: 1; letter-spacing: -0.02em; }
+.asideTitle em { font-style: italic; font-weight: 500; color: var(--ll-mint); }
+.asideLead { margin: 18px 0 0; max-width: 440px; font-size: 17px; line-height: 1.65; color: rgba(255, 255, 255, 0.72); }
+.features { display: grid; gap: 12px; margin-top: 32px; }
+.feature { border-radius: 20px; background: rgba(255, 255, 255, 0.06); padding: 20px; }
+.featureStep { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ll-mint); }
+.feature h3 { margin: 8px 0 6px; font-family: var(--ll-display); font-weight: 600; font-size: 22px; color: #ffffff; }
+.feature p { margin: 0; font-size: 15px; line-height: 1.55; color: rgba(255, 255, 255, 0.72); }
+.cardTitle { margin: 0; font-family: var(--ll-display); font-weight: 600; font-size: clamp(30px, 3vw, 40px); color: var(--ll-ink); }
+.cardHeader { margin-bottom: 28px; }
+.cardLead { margin: 10px 0 0; font-size: 16px; color: var(--ll-muted); }
+.form { display: grid; gap: 18px; }
+.switch { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--ll-line); display: grid; justify-items: center; gap: 12px; text-align: center; font-size: 15px; color: var(--ll-muted); }
+.switch p { margin: 0; }
+.messages { display: grid; gap: 12px; margin-top: 18px; }
+.stateMeta { margin: 8px 0 0; font-size: 15px; color: var(--ll-muted); }
+@media (max-width: 900px) {
+  .frame { grid-template-columns: 1fr; }
+  .aside { min-height: 0; }
+  .asideLead, .features { display: none; }
+}
