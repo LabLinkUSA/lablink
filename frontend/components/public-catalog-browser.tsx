@@ -4,9 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
+import { CategoryFilter } from "@/components/catalog/category-filter";
+import styles from "@/components/catalog/catalog.module.css";
+import { StatusPill } from "@/components/status-pill";
+import { ButtonLink, Card, cx, EmptyState, Highlight, PageHeader, Reveal, Select } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import type { Listing } from "@/lib/types";
-import { StatusPill } from "@/components/status-pill";
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
@@ -61,174 +64,132 @@ export function PublicCatalogBrowser({ listings }: { listings: Listing[] }) {
     return haystack.includes(query);
   });
 
-  function handleCategoryToggle(category: string) {
-    setSelectedCategories((current) =>
-      current.includes(category) ? current.filter((entry) => entry !== category) : [...current, category],
-    );
-  }
-
   return (
-    <div className="catalog-browser">
-      <aside className="catalog-sidebar">
-        <div className="catalog-filter-stack">
-          <div className="catalog-filter-heading">
-            <h2>Filters</h2>
-          </div>
-
-          <section className="catalog-filter-section">
-            <h3>Category</h3>
-            <div className="catalog-checkbox-list">
-              {categories.map((category) => (
-                <label key={category} className="catalog-checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(category)}
-                    onChange={() => handleCategoryToggle(category)}
-                  />
-                  <span>{category}</span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <section className="catalog-filter-section">
-            <h3>Condition</h3>
-            <div className="catalog-pill-row">
-              <button
-                type="button"
-                className={selectedCondition === "all" ? "catalog-pill catalog-pill-active" : "catalog-pill"}
-                onClick={() => setSelectedCondition("all")}
-              >
-                All
-              </button>
-              {conditions.map((condition) => (
-                <button
-                  key={condition}
-                  type="button"
-                  className={selectedCondition === condition ? "catalog-pill catalog-pill-active" : "catalog-pill"}
-                  onClick={() => setSelectedCondition(condition)}
-                >
-                  {condition}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="catalog-filter-section">
-            <h3>Location</h3>
-            <div className="catalog-select-wrap">
-              <select value={selectedLocation} onChange={(event) => setSelectedLocation(event.target.value)}>
-                <option value="all">All locations</option>
-                {locations.map((location) => (
-                  <option key={location} value={location}>
-                    {location}
-                  </option>
-                ))}
-              </select>
-              <span className="catalog-select-caret" aria-hidden="true">
-                ▾
-              </span>
-            </div>
-          </section>
-        </div>
-
-        <div className="catalog-impact-note">
-          <div className="catalog-impact-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M10.33 2.75a1.5 1.5 0 0 0-1.5 1.5v.5H7.5A1.75 1.75 0 0 0 5.75 6.5v10.25c0 .97.78 1.75 1.75 1.75h9A1.75 1.75 0 0 0 18.25 16.75V6.5a1.75 1.75 0 0 0-1.75-1.75h-1.33v-.5a1.5 1.5 0 0 0-1.5-1.5Zm0 2h3.34v1.17h-3.34Zm1.67 3.08a3.25 3.25 0 1 1 0 6.5 3.25 3.25 0 0 1 0-6.5Zm0 1.5a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5Z"
-                fill="currentColor"
+    <section className={styles.page}>
+      <div className={styles.container}>
+        <PageHeader
+          variant="public"
+          eyebrow="Equipment catalog"
+          title={
+            <>
+              Inventory <Highlight>Catalog</Highlight>
+            </>
+          }
+          lead={`Browsing ${filteredListings.length} item${filteredListings.length === 1 ? "" : "s"}`}
+          actions={
+            <label className={styles.search}>
+              <span className="sr-only">Search equipment</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by model, category, condition, or location..."
               />
-            </svg>
-          </div>
-          <p>
-            <strong>Impact Note</strong>
-            All equipment shown here has already passed the public listing threshold. Requests still route through
-            verified recipient workflows and admin oversight.
-          </p>
-        </div>
-      </aside>
+            </label>
+          }
+        />
 
-      <div className="catalog-main">
-        <div className="catalog-topbar">
-          <div>
-            <h1>Inventory Catalog</h1>
-            <p>
-              Browsing {filteredListings.length} item{filteredListings.length === 1 ? "" : "s"} matching your current
-              criteria.
-            </p>
+        <div className={styles.filterBar} role="toolbar" aria-label="Filters">
+          <div className={styles.pillRow}>
+            <button
+              type="button"
+              className={cx(styles.pill, selectedCondition === "all" && styles.pillActive)}
+              aria-pressed={selectedCondition === "all"}
+              onClick={() => setSelectedCondition("all")}
+            >
+              All
+            </button>
+            {conditions.map((condition) => (
+              <button
+                key={condition}
+                type="button"
+                className={cx(styles.pill, selectedCondition === condition && styles.pillActive)}
+                aria-pressed={selectedCondition === condition}
+                onClick={() => setSelectedCondition(condition)}
+              >
+                {condition}
+              </button>
+            ))}
           </div>
-          <div className="catalog-search-shell">
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by model, category, condition, or location..."
-              aria-label="Search public catalog"
-            />
-            <span className="catalog-search-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path
-                  d="M10.75 4.75a6 6 0 1 0 3.87 10.58l3.9 3.9 1.06-1.06-3.9-3.9a6 6 0 0 0-4.93-9.52Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </span>
-          </div>
+          <CategoryFilter options={categories} selected={selectedCategories} onChange={setSelectedCategories} />
+          <Select
+            aria-label="Location"
+            className={styles.locationSelect}
+            value={selectedLocation}
+            onChange={(event) => setSelectedLocation(event.target.value)}
+          >
+            <option value="all">All locations</option>
+            {locations.map((location) => (
+              <option key={location} value={location}>
+                {location}
+              </option>
+            ))}
+          </Select>
         </div>
 
-        {filteredListings.length > 0 ? (
-          <div className="catalog-card-grid">
-            {filteredListings.map((listing) => (
-              <article key={listing.id} className="catalog-card">
-                <div className="catalog-card-media">
-                  {listing.photo_urls[0] ? (
-                    <Image
-                      src={listing.photo_urls[0]}
-                      alt={listing.title}
-                      fill
-                      sizes="(max-width: 1100px) 100vw, 50vw"
-                      className="catalog-card-image"
-                    />
-                  ) : (
-                    <div className="catalog-card-empty">No image</div>
-                  )}
-                  <div className="catalog-card-status">
-                    <StatusPill status={listing.status} />
+        <div className={styles.grid}>
+          {filteredListings.map((listing, index) => {
+            const photo = listing.photo_urls[0];
+            return (
+              <Reveal as="div" key={listing.id} delay={(index % 4) * 0.06}>
+                <article data-listing-card className={styles.card}>
+                  <Link href={`/listings/${listing.id}`} className={styles.media}>
+                    {photo ? (
+                      <Image
+                        src={photo}
+                        alt={listing.title}
+                        fill
+                        sizes="(max-width: 760px) 100vw, 33vw"
+                        className={styles.image}
+                      />
+                    ) : (
+                      <span className={styles.mediaEmpty}>No photo</span>
+                    )}
+                    <span className={styles.statusCaption}>
+                      <StatusPill status={listing.status} />
+                    </span>
+                  </Link>
+                  <div className={styles.body}>
+                    <div className={styles.headingRow}>
+                      <h3 className={styles.title}>{listing.title}</h3>
+                      <span className={styles.condition}>{listing.condition}</span>
+                    </div>
+                    <p className={styles.description}>{listing.description}</p>
+                    <div className={styles.meta}>
+                      {listing.category} · {listing.location} · Posted {formatDate(listing.created_at)}
+                    </div>
                   </div>
-                </div>
-                <div className="catalog-card-body">
-                  <div className="catalog-card-heading">
-                    <h3>{listing.title}</h3>
-                    <span className="catalog-condition-tag">{listing.condition}</span>
-                  </div>
-                  <p>{listing.description}</p>
-                  <div className="catalog-card-meta">
-                    <span>{listing.category}</span>
-                    <span>{listing.location}</span>
-                    <span>Posted {formatDate(listing.created_at)}</span>
-                  </div>
-                  <div className="catalog-card-footer">
+                  <div className={styles.footer}>
                     <span>
                       {listing.status === "matched_reserved"
                         ? "Recipient selected"
                         : `${listing.request_count} active request(s)`}
                     </span>
-                    <Link href={`/listings/${listing.id}`} className="catalog-card-cta">
-                      View Listing
-                    </Link>
+                    <ButtonLink href={`/listings/${listing.id}`} variant="ink" size="sm" arrow>
+                      View
+                    </ButtonLink>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <h2>No listings match these filters</h2>
-            <p>Try clearing one or more filters, or search with a broader equipment term.</p>
-          </div>
-        )}
+                </article>
+              </Reveal>
+            );
+          })}
+          <Card tone="mint" className={styles.impact}>
+            <strong className={styles.impactTitle}>Impact Note</strong>
+            <p>
+              All equipment shown here has already passed the public listing threshold. Requests still route through
+              verified recipient workflows and admin oversight.
+            </p>
+          </Card>
+        </div>
+
+        {filteredListings.length === 0 ? (
+          <EmptyState
+            variant="empty"
+            title="No listings match these filters"
+            lead="Try clearing one or more filters, or search with a broader equipment term."
+          />
+        ) : null}
       </div>
-    </div>
+    </section>
   );
 }
