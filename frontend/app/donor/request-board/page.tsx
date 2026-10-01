@@ -1,4 +1,4 @@
-import { Avatar, ButtonLink, EmptyState } from "@/components/ui";
+import { Avatar, ButtonLink, EmptyState, Highlight, PageHeader } from "@/components/ui";
 import { RequestBoardBrowser } from "@/components/request-board-browser";
 import { getCurrentProfile } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
@@ -28,14 +28,16 @@ export default async function DonorRequestBoardPage() {
   return (
     <section className="page-section">
       <div className="shell">
-        <div className="page-header">
-          <span className="eyebrow">Donor workspace</span>
-          <h1>Recipient Request Board</h1>
-          <p className="page-intro">
-            Browse open equipment requests from recipient institutions. Respond by creating a linked listing to signal
-            your intent to donate.
-          </p>
-        </div>
+        <PageHeader
+          variant="operate"
+          eyebrow="Donor workspace"
+          title={
+            <>
+              Recipient <Highlight>Request Board</Highlight>
+            </>
+          }
+          lead="Browse open equipment requests from recipient institutions. Respond by creating a linked listing to signal your intent to donate."
+        />
         <RequestBoardBrowser />
       </div>
     </section>
