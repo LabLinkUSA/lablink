@@ -21,4 +21,5 @@ for (const [user, path] of [["donor", "/donor"], ["recipient", "/recipient"], ["
 test("signed-out /donor shows a gate card", async ({ page }) => {
   await page.goto("/donor");
   await expect(page.locator("[data-gate]")).toBeVisible();
+  await expect(page.locator("[data-gate] h1")).toHaveCount(1);
 });

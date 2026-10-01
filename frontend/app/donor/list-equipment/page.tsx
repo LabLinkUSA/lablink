@@ -42,6 +42,7 @@ export default async function DonorListEquipmentPage({
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Sign in required"
             title={<>Sign in with a donor lab account to create an equipment listing.</>}
             lead={<>LabLink only allows admin-verified donor institutions to submit listings for review.</>}
@@ -59,6 +60,7 @@ export default async function DonorListEquipmentPage({
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Donor access required"
             title={<>Only donor lab accounts can create equipment listings.</>}
             lead={<>Sign in with a donor account to submit a listing for admin review.</>}
@@ -79,6 +81,7 @@ export default async function DonorListEquipmentPage({
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Verification required"
             title={<>Your institution must be admin-verified before you can list equipment.</>}
             lead={<>Your donor account is connected to {profile.institution.name}, which is currently{" "} {profile.institution.verification_status.replaceAll("_", " ")}.</>}
@@ -120,6 +123,7 @@ export default async function DonorListEquipmentPage({
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Draft unavailable"
             title={<>We couldn&apos;t load the draft listing workflow.</>}
             lead={<>The draft listing or required PDF templates could not be loaded.</>}

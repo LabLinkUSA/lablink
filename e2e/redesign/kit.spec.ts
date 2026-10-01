@@ -20,6 +20,10 @@ test.describe("ui kit", () => {
     await expect(page.locator(".status-pill.status-rejected_cancelled")).toHaveAttribute("data-tone", "negative");
   });
 
+  test("stat tile count-up ends at its final value", async ({ page }) => {
+    await expect(page.locator("[data-stat-tile]").first().locator("div").first()).toHaveText("12", { timeout: 5000 });
+  });
+
   test("pill uses kit styling over legacy rules", async ({ page }) => {
     const pill = page.locator(".status-pill.status-removed_by_admin");
     await expect(pill).toHaveCSS("border-radius", "999px");
@@ -73,5 +77,13 @@ test("reveal content is visible without JavaScript", async ({ browser }) => {
   const page = await context.newPage();
   await page.goto("/dev/kit");
   await expect(page.getByTestId("kit-reveal-below-fold")).toHaveCSS("opacity", "1");
+  await context.close();
+});
+
+test("stat tile shows its final value immediately under reduced motion", async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto("/dev/kit");
+  await expect(page.locator("[data-stat-tile]").first().locator("div").first()).toHaveText("12", { timeout: 300 });
   await context.close();
 });

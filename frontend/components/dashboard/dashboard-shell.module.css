@@ -26,6 +26,7 @@
 @media (max-width: 1100px) {
   .shell, .collapsed { grid-template-columns: minmax(0, 1fr); }
   .rail { display: none; }
+  .section { scroll-margin-top: calc(var(--ll-nav-offset) + 72px); }
   .tabs { display: flex; gap: 8px; overflow-x: auto; position: sticky; top: var(--ll-nav-offset); z-index: 4; padding: 8px; border-radius: 999px; background: rgba(15, 38, 33, 0.92); backdrop-filter: blur(12px); }
   .tab { flex: none; min-height: 40px; padding: 8px 16px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.8); font: 600 14px var(--ll-body); white-space: nowrap; cursor: pointer; }
   .tabActive { background: var(--ll-mint); color: var(--ll-ink); }

@@ -32,6 +32,7 @@ export default async function RecipientPage() {
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Access limited"
             title={<>Recipient access is only available to recipient institution accounts.</>}
             lead={<>Your current profile is signed in as {profile.user.role.replaceAll("_", " ")}.</>}
@@ -53,6 +54,7 @@ export default async function RecipientPage() {
           <div className="shell">
             <EmptyState
               variant="gate"
+            headingLevel={1}
               eyebrow={accessState.eyebrow}
               title={<>{accessState.title}</>}
               lead={<>{accessState.description} Your recipient account is connected to {profile.institution.name}, which is currently {profile.institution.verification_status.replaceAll("_", " ")}.</>}
@@ -75,6 +77,7 @@ export default async function RecipientPage() {
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Recipient view"
             title={<>Your recipient dashboard is not ready yet.</>}
             lead={<>Finish onboarding and wait for institution verification before using recipient workflows.</>}

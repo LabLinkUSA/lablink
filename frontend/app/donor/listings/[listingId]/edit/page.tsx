@@ -18,6 +18,7 @@ export default async function EditDonorListingPage({ params }: { params: Promise
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Donor access required"
             title={<>Only donor lab accounts can edit equipment listings.</>}
             lead={<>Sign in with the donor account that owns this listing to continue.</>}
@@ -38,6 +39,7 @@ export default async function EditDonorListingPage({ params }: { params: Promise
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Verification required"
             title={<>Your institution must be admin-verified before you can edit listings.</>}
             lead={<>Once verification is complete, you can come back here to update your donor listings.</>}
@@ -57,6 +59,7 @@ export default async function EditDonorListingPage({ params }: { params: Promise
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Listing unavailable"
             title={<>We couldn&apos;t load that donor listing for editing.</>}
             lead={<>The listing may have been removed, or it may no longer belong to your institution.</>}
@@ -76,6 +79,7 @@ export default async function EditDonorListingPage({ params }: { params: Promise
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="PDF templates unavailable"
             title={<>We couldn&apos;t load the donor compliance PDFs.</>}
             lead={<>The listing cannot be edited until the required PDF templates are available.</>}

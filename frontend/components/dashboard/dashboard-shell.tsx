@@ -27,6 +27,7 @@ export function DashboardShell({
   sections: DashboardSection[];
 }) {
   const [activeSection, setActiveSection] = useState(sections[0]?.id ?? "");
+  const sectionKey = sections.map((section) => section.id).join("|");
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -40,8 +41,9 @@ export function DashboardShell({
   }, [isCollapsed]);
 
   useEffect(() => {
-    const observed = sections
-      .map((section) => document.getElementById(section.id))
+    const observed = sectionKey
+      .split("|")
+      .map((id) => document.getElementById(id))
       .filter((element): element is HTMLElement => Boolean(element));
 
     if (observed.length === 0) {
@@ -63,7 +65,7 @@ export function DashboardShell({
 
     observed.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
-  }, [sections]);
+  }, [sectionKey]);
 
   function scrollToSection(sectionId: string) {
     setActiveSection(sectionId);

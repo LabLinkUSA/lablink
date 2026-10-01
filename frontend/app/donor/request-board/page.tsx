@@ -13,6 +13,7 @@ export default async function DonorRequestBoardPage() {
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Donor access required"
             title={<>Sign in with a donor lab account to browse the request board.</>}
             lead={<>The request board shows open equipment requests from verified recipient institutions.</>}

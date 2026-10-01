@@ -11,6 +11,7 @@ export default async function AdminPage() {
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Access limited"
             title={<>Admin access is only available to LabLink operators.</>}
             lead={<>Your current profile is signed in as {profile.user.role.replaceAll("_", " ")}.</>}
@@ -27,6 +28,7 @@ export default async function AdminPage() {
         <div className="shell">
           <EmptyState
             variant="gate"
+            headingLevel={1}
             eyebrow="Admin view"
             title={<>Your admin dashboard is not available.</>}
             lead={<>Sign in with an admin account or continue using the public catalog and role-specific onboarding flows.</>}
