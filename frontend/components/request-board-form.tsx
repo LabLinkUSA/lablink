@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import styles from "@/components/recipient-dashboard.module.css";
+import { Button, Field, FieldGrid, Input, Notice, Textarea } from "@/components/ui";
 import { createRequestBoardPost } from "@/lib/api-client";
 import type { RequestBoardPostCreate } from "@/lib/types";
 
@@ -87,140 +89,93 @@ export function RequestBoardForm({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="board-post-form">
-      <div className="form-field">
-        <label htmlFor="board-title" className="form-label">
-          Title <span className="form-required">*</span>
-        </label>
-        <input
-          id="board-title"
-          name="title"
-          type="text"
-          className={`form-input${fieldErrors.title ? " form-input-error" : ""}`}
-          value={form.title}
-          onChange={handleChange}
-          placeholder="e.g. Centrifuge needed for biochemistry lab"
-          disabled={isSubmitting}
-        />
-        {fieldErrors.title && <p className="form-error">{fieldErrors.title}</p>}
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="board-category" className="form-label">
-          Category <span className="form-required">*</span>
-        </label>
-        <input
-          id="board-category"
-          name="category"
-          type="text"
-          className={`form-input${fieldErrors.category ? " form-input-error" : ""}`}
-          value={form.category}
-          onChange={handleChange}
-          placeholder="e.g. Centrifuges, Microscopes, PCR Equipment"
-          disabled={isSubmitting}
-        />
-        {fieldErrors.category && <p className="form-error">{fieldErrors.category}</p>}
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="board-description" className="form-label">
-          Description <span className="form-required">*</span>
-        </label>
-        <textarea
-          id="board-description"
-          name="description"
-          className={`form-input form-textarea${fieldErrors.description ? " form-input-error" : ""}`}
-          value={form.description}
-          onChange={handleChange}
-          placeholder="Describe the equipment you need, including any specifications or requirements."
-          rows={4}
-          disabled={isSubmitting}
-        />
-        {fieldErrors.description && <p className="form-error">{fieldErrors.description}</p>}
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="board-intended-use" className="form-label">
-          Intended Use <span className="form-required">*</span>
-        </label>
-        <textarea
-          id="board-intended-use"
-          name="intended_use"
-          className={`form-input form-textarea${fieldErrors.intended_use ? " form-input-error" : ""}`}
-          value={form.intended_use}
-          onChange={handleChange}
-          placeholder="How will this equipment be used? What research or program will benefit?"
-          rows={3}
-          disabled={isSubmitting}
-        />
-        {fieldErrors.intended_use && <p className="form-error">{fieldErrors.intended_use}</p>}
-      </div>
-
-      <div className="form-row">
-        <div className="form-field">
-          <label htmlFor="board-quantity" className="form-label">
-            Quantity Needed <span className="form-required">*</span>
-          </label>
-          <input
+    <form onSubmit={handleSubmit} noValidate className={styles.form}>
+      <FieldGrid>
+        <Field label="Title" htmlFor="board-title" error={fieldErrors.title} required span="full">
+          <Input
+            id="board-title"
+            name="title"
+            type="text"
+            value={form.title}
+            onChange={handleChange}
+            placeholder="e.g. Centrifuge needed for biochemistry lab"
+            disabled={isSubmitting}
+          />
+        </Field>
+        <Field label="Category" htmlFor="board-category" error={fieldErrors.category} required span="full">
+          <Input
+            id="board-category"
+            name="category"
+            type="text"
+            value={form.category}
+            onChange={handleChange}
+            placeholder="e.g. Centrifuges, Microscopes, PCR Equipment"
+            disabled={isSubmitting}
+          />
+        </Field>
+        <Field label="Description" htmlFor="board-description" error={fieldErrors.description} required span="full">
+          <Textarea
+            id="board-description"
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Describe the equipment you need, including any specifications or requirements."
+            rows={4}
+            disabled={isSubmitting}
+          />
+        </Field>
+        <Field label="Intended Use" htmlFor="board-intended-use" error={fieldErrors.intended_use} required span="full">
+          <Textarea
+            id="board-intended-use"
+            name="intended_use"
+            value={form.intended_use}
+            onChange={handleChange}
+            placeholder="How will this equipment be used? What research or program will benefit?"
+            rows={3}
+            disabled={isSubmitting}
+          />
+        </Field>
+        <Field label="Quantity Needed" htmlFor="board-quantity" error={fieldErrors.quantity_needed} required>
+          <Input
             id="board-quantity"
             name="quantity_needed"
             type="number"
             min={1}
             step={1}
-            className={`form-input${fieldErrors.quantity_needed ? " form-input-error" : ""}`}
             value={form.quantity_needed}
             onChange={handleChange}
             disabled={isSubmitting}
           />
-          {fieldErrors.quantity_needed && (
-            <p className="form-error">{fieldErrors.quantity_needed}</p>
-          )}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="board-needed-by" className="form-label">
-            Needed By <span className="form-required">*</span>
-          </label>
-          <input
+        </Field>
+        <Field label="Needed By" htmlFor="board-needed-by" error={fieldErrors.needed_by} required>
+          <Input
             id="board-needed-by"
             name="needed_by"
             type="date"
-            className={`form-input${fieldErrors.needed_by ? " form-input-error" : ""}`}
             value={form.needed_by}
             onChange={handleChange}
             disabled={isSubmitting}
           />
-          {fieldErrors.needed_by && <p className="form-error">{fieldErrors.needed_by}</p>}
-        </div>
-      </div>
+        </Field>
+        <Field label="Location" htmlFor="board-location" error={fieldErrors.location} required span="full">
+          <Input
+            id="board-location"
+            name="location"
+            type="text"
+            value={form.location}
+            onChange={handleChange}
+            placeholder="e.g. Boston, MA"
+            disabled={isSubmitting}
+          />
+        </Field>
+      </FieldGrid>
 
-      <div className="form-field">
-        <label htmlFor="board-location" className="form-label">
-          Location <span className="form-required">*</span>
-        </label>
-        <input
-          id="board-location"
-          name="location"
-          type="text"
-          className={`form-input${fieldErrors.location ? " form-input-error" : ""}`}
-          value={form.location}
-          onChange={handleChange}
-          placeholder="e.g. Boston, MA"
-          disabled={isSubmitting}
-        />
-        {fieldErrors.location && <p className="form-error">{fieldErrors.location}</p>}
-      </div>
+      {submitError ? <Notice tone="error">{submitError}</Notice> : null}
 
-      {submitError && <p className="form-error form-submit-error">{submitError}</p>}
-
-      <div className="form-actions">
-        <button
-          type="submit"
-          className="button button-primary"
-          disabled={isSubmitting}
-        >
+      <div className={styles.formActions}>
+        <Button type="submit" size="lg" disabled={isSubmitting}>
           {isSubmitting ? "Submitting…" : "Submit Request"}
-        </button>
+        </Button>
       </div>
     </form>
   );

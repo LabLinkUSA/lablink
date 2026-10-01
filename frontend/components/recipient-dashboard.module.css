@@ -1,0 +1,6 @@
+.formCard { margin-bottom: 20px; }
+.formHead { margin: 0 0 20px; font-family: var(--ll-display); font-size: 24px; font-weight: 600; color: var(--ll-ink); }
+.form { display: grid; gap: 20px; }
+.formActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.muted { font-size: 14px; font-weight: 600; color: var(--ll-muted); }
+.truncate { display: block; max-width: 42ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

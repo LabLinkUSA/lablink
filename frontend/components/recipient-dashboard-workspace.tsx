@@ -1,15 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { Highlight } from "@/components/ui";
+import styles from "@/components/recipient-dashboard.module.css";
+import { Button, ButtonLink, Card, Chip, cx, DataTable, EmptyState, Highlight, tableStyles } from "@/components/ui";
 import {
   OperationsMetricGrid,
   OperationsHeader,
-  OperationsTableSection,
 } from "@/components/operations-dashboard-ui";
 import { RequestBoardForm } from "@/components/request-board-form";
 import { StatusPill } from "@/components/status-pill";
@@ -95,49 +94,47 @@ export function RecipientDashboardWorkspace({
           count: dashboard.requests.length,
           icon: "requests",
           content: (
-            <OperationsTableSection
-              title="Request Reviews"
-              hideTitle
-              columns={["Request", "Status", ""]}
+            <DataTable
+              head={["Request", "Status", "Actions"]}
               footer={<span>Showing {dashboard.requests.length} recipient request(s)</span>}
+              isEmpty={dashboard.requests.length === 0}
+              empty={<EmptyState variant="empty" title="No requests yet." />}
             >
               {dashboard.requests.map((request) => (
-                <tr key={request.id} className="ops-table-row">
+                <tr key={request.id} className={tableStyles.row}>
                   <td>
-                    <div className="ops-equipment-cell">
-                      <div className="ops-equipment-media">
-                        {request.listing?.photo_urls[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={request.listing.photo_urls[0]} alt={request.listing.title} className="ops-equipment-image" />
-                        ) : (
-                          <div className="ops-equipment-empty">No image</div>
-                        )}
-                      </div>
+                    <div className={tableStyles.titleCell}>
+                      {request.listing?.photo_urls[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={request.listing.photo_urls[0]} alt={request.listing.title} className={tableStyles.thumb} />
+                      ) : (
+                        <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>—</span>
+                      )}
                       <div>
-                        <p className="ops-equipment-title">{request.listing?.title ?? request.program_or_department}</p>
-                        <p className="ops-equipment-subtitle">{request.intended_use}</p>
+                        <span>{request.listing?.title ?? request.program_or_department}</span>
+                        <span className={cx(tableStyles.subtitle, styles.truncate)}>{request.intended_use}</span>
                       </div>
                     </div>
                   </td>
                   <td>
                     <StatusPill status={getRecipientRequestDisplayStatus(request)} />
                   </td>
-                  <td className="ops-table-align-right">
+                  <td className={tableStyles.cellRight}>
                     {request.listing && isListingPubliclyViewable(request.listing.status) ? (
-                      <Link href={`/listings/${request.listing_id}`} className="button button-secondary">
+                      <ButtonLink href={`/listings/${request.listing_id}`} variant="secondary" size="sm">
                         View listing
-                      </Link>
+                      </ButtonLink>
                     ) : request.listing ? (
-                      <button type="button" className="button button-secondary" disabled aria-disabled="true">
+                      <Button variant="secondary" size="sm" disabled aria-disabled="true">
                         View listing
-                      </button>
+                      </Button>
                     ) : (
-                      <span className="ops-table-fallback">{titleCaseStatus(request.status)}</span>
+                      <span className={styles.muted}>{titleCaseStatus(request.status)}</span>
                     )}
                   </td>
                 </tr>
               ))}
-            </OperationsTableSection>
+            </DataTable>
           ),
         },
         {
@@ -146,132 +143,110 @@ export function RecipientDashboardWorkspace({
           count: dashboard.saved_listings.length,
           icon: "saved",
           content: (
-            <OperationsTableSection
-              title="Saved Listing Reviews"
-              hideTitle
-              columns={["Listing", "Status", "Condition", ""]}
+            <DataTable
+              head={["Listing", "Status", "Condition", "Actions"]}
               footer={<span>Showing {dashboard.saved_listings.length} saved listing(s)</span>}
+              isEmpty={dashboard.saved_listings.length === 0}
+              empty={<EmptyState variant="empty" title="No saved listings yet." />}
             >
-              {dashboard.saved_listings.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="ops-table-empty-cell">
-                    <div className="ops-empty-state">No saved listings yet.</div>
+              {dashboard.saved_listings.map((listing) => (
+                <tr key={listing.id} className={tableStyles.row}>
+                  <td>
+                    <div className={tableStyles.titleCell}>
+                      {listing.photo_urls[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={listing.photo_urls[0]} alt={listing.title} className={tableStyles.thumb} />
+                      ) : (
+                        <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>—</span>
+                      )}
+                      <div>
+                        <span>{listing.title}</span>
+                        <span className={tableStyles.subtitle}>{listing.location}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <StatusPill status={getSavedListingDisplayStatus(listing)} />
+                  </td>
+                  <td>
+                    <Chip>{titleCaseStatus(listing.condition)}</Chip>
+                  </td>
+                  <td className={tableStyles.cellRight}>
+                    {isListingPubliclyViewable(listing.status) ? (
+                      <ButtonLink href={`/listings/${listing.id}`} variant="secondary" size="sm">
+                        View listing
+                      </ButtonLink>
+                    ) : (
+                      <Button variant="secondary" size="sm" disabled aria-disabled="true">
+                        View listing
+                      </Button>
+                    )}
                   </td>
                 </tr>
-              ) : (
-                dashboard.saved_listings.map((listing) => (
-                  <tr key={listing.id} className="ops-table-row">
+              ))}
+            </DataTable>
+          ),
+        },
+        {
+          id: "recipient-request-board",
+          title: "Request Board",
+          count: dashboard.request_board_posts.length,
+          icon: "board",
+          action: (
+            <Button onClick={() => setShowNewPostForm((prev) => !prev)}>
+              {showNewPostForm ? "Cancel" : "New Request"}
+            </Button>
+          ),
+          content: (
+            <>
+              {showNewPostForm ? (
+                <Card className={styles.formCard}>
+                  <h3 className={styles.formHead}>New request</h3>
+                  <RequestBoardForm onSuccess={handleFormSuccess} />
+                </Card>
+              ) : null}
+              <DataTable
+                head={["Request", "Category", "Needed By", "Status", "Actions"]}
+                footer={<span>Showing {dashboard.request_board_posts.length} board post(s)</span>}
+                isEmpty={dashboard.request_board_posts.length === 0}
+                empty={<EmptyState variant="empty" title="No board posts yet. Use “New Request” to post a need." />}
+              >
+                {dashboard.request_board_posts.map((post) => (
+                  <tr key={post.id} className={tableStyles.row}>
                     <td>
-                      <div className="ops-equipment-cell">
-                        <div className="ops-equipment-media">
-                          {listing.photo_urls[0] ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={listing.photo_urls[0]} alt={listing.title} className="ops-equipment-image" />
-                          ) : (
-                            <div className="ops-equipment-empty">No image</div>
-                          )}
-                        </div>
-                        <div>
-                        <p className="ops-equipment-title">{listing.title}</p>
-                        <p className="ops-equipment-subtitle">{listing.location}</p>
-                        </div>
+                      <div>
+                        <span>{post.title}</span>
+                        <span className={cx(tableStyles.subtitle, styles.truncate)}>{post.intended_use}</span>
                       </div>
                     </td>
                     <td>
-                      <StatusPill status={getSavedListingDisplayStatus(listing)} />
+                      <Chip>{post.category}</Chip>
                     </td>
+                    <td>{post.needed_by}</td>
                     <td>
-                      <span className="ops-condition-badge">{titleCaseStatus(listing.condition)}</span>
+                      <StatusPill status={post.status} />
                     </td>
-                    <td className="ops-table-align-right">
-                      {isListingPubliclyViewable(listing.status) ? (
-                        <Link href={`/listings/${listing.id}`} className="button button-secondary">
-                          View listing
-                        </Link>
+                    <td className={tableStyles.cellRight}>
+                      {post.status === "open" ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={closingPostId === post.id}
+                          onClick={() => handleClosePost(post.id)}
+                        >
+                          {closingPostId === post.id ? "Closing…" : "Close"}
+                        </Button>
                       ) : (
-                        <button type="button" className="button button-secondary" disabled aria-disabled="true">
-                          View listing
-                        </button>
+                        <span className={styles.muted}>{titleCaseStatus(post.status)}</span>
                       )}
                     </td>
                   </tr>
-                ))
-              )}
-              </OperationsTableSection>
-            ),
-          },
-          {
-            id: "recipient-request-board",
-            title: "Request Board",
-            count: dashboard.request_board_posts.length,
-            icon: "board",
-            content: (
-              <OperationsTableSection
-                title="Request Board Posts"
-                columns={["Request", "Category", "Needed By", "Status", ""]}
-                action={
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() => setShowNewPostForm((prev) => !prev)}
-                  >
-                    {showNewPostForm ? "Cancel" : "New Request"}
-                  </button>
-                }
-                footer={<span>Showing {dashboard.request_board_posts.length} board post(s)</span>}
-              >
-                {showNewPostForm ? (
-                  <tr>
-                    <td colSpan={5} className="ops-table-empty-cell">
-                      <div className="ops-inline-form">
-                        <RequestBoardForm onSuccess={handleFormSuccess} />
-                      </div>
-                    </td>
-                  </tr>
-                ) : null}
-                {dashboard.request_board_posts.length === 0 && !showNewPostForm ? (
-                  <tr>
-                    <td colSpan={5} className="ops-table-empty-cell">
-                      <div className="ops-empty-state">No board posts yet. Use &ldquo;New Request&rdquo; to post a need.</div>
-                    </td>
-                  </tr>
-                ) : (
-                  dashboard.request_board_posts.map((post) => (
-                    <tr key={post.id} className="ops-table-row">
-                      <td>
-                        <p className="ops-equipment-title">{post.title}</p>
-                        <p className="ops-equipment-subtitle">{post.intended_use}</p>
-                      </td>
-                      <td>
-                        <span className="ops-condition-badge">{post.category}</span>
-                      </td>
-                      <td>
-                        <span className="ops-table-date">{post.needed_by}</span>
-                      </td>
-                      <td>
-                        <StatusPill status={post.status} />
-                      </td>
-                      <td className="ops-table-align-right">
-                        {post.status === "open" ? (
-                          <button
-                            type="button"
-                            className="button button-secondary"
-                            disabled={closingPostId === post.id}
-                            onClick={() => handleClosePost(post.id)}
-                          >
-                            {closingPostId === post.id ? "Closing…" : "Close"}
-                          </button>
-                        ) : (
-                          <span className="ops-table-fallback">{titleCaseStatus(post.status)}</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </OperationsTableSection>
-            ),
-          },
-        ]}
+                ))}
+              </DataTable>
+            </>
+          ),
+        },
+      ]}
     />
   );
 }
