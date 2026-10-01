@@ -24,7 +24,7 @@ Source of truth: `frontend/app/tokens.css` (tokens originate from the homepage, 
 | `--ll-line-strong` | `rgba(20,48,42,.3)` | outline buttons, inputs |
 | `--ll-glass` | `rgba(20,48,42,.55)` + `blur(12px)` | nav pill, overlays |
 
-**Status colors (new — the homepage has none; derived to sit inside the palette):**
+**Status colors (implemented in `frontend/components/ui/status-pill.module.css`) (new — the homepage has none; derived to sit inside the palette):**
 
 | Group | Statuses | Pill bg / text |
 |---|---|---|

@@ -42,6 +42,16 @@ export function Modal({
     }
   });
 
+  useEffect(() => {
+    const dialog = ref.current;
+    return () => {
+      const active = document.activeElement;
+      if (returnFocus.current?.isConnected && (!active || active === document.body || dialog?.contains(active))) {
+        returnFocus.current.focus();
+      }
+    };
+  }, []);
+
   return (
     <dialog
       ref={ref}

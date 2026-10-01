@@ -98,6 +98,7 @@ export function DashboardShell({
               className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`}
               onClick={() => scrollToSection(section.id)}
               aria-label={section.title}
+              aria-current={activeSection === section.id ? "true" : undefined}
               title={section.title}
             >
               <span className={styles.navIcon} aria-hidden="true">
@@ -118,6 +119,7 @@ export function DashboardShell({
               key={section.id}
               type="button"
               className={`${styles.tab} ${activeSection === section.id ? styles.tabActive : ""}`}
+              aria-current={activeSection === section.id ? "true" : undefined}
               onClick={() => scrollToSection(section.id)}
             >
               {section.title}

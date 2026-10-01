@@ -37,6 +37,14 @@ test.describe("ui kit", () => {
     await expect(page.getByTestId("kit-modal-close-count")).toHaveText("1");
   });
 
+  test("focused clickable table row shows a visible outline", async ({ page }) => {
+    const row = page.locator("[data-kit-clickable-row]");
+    await row.focus();
+    await expect(row).toBeFocused();
+    expect(await row.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
+    await expect(page.getByText("Nothing here yet")).toBeVisible();
+  });
+
   test("field error is announced", async ({ page }) => {
     const input = page.locator("#kit-error-input");
     await expect(input).toHaveAttribute("aria-invalid", "true");

@@ -77,16 +77,19 @@ export function AppNavClient({ model }: { model: NavModel }) {
   const activeLink = activeHref(pathname, items);
   const linkList = items.map((item) => {
     const active = item.href === activeLink;
+    const className = cx(styles.navLink, active && styles.navLinkActive);
+    const key = `${item.label}-${item.href}`;
+    if (item.href.startsWith("#")) {
+      return (
+        <a key={key} href={item.href} className={className} aria-current={active ? "page" : undefined} onClick={(event) => scrollToHash(event, item.href)}>
+          {item.label}
+        </a>
+      );
+    }
     return (
-      <a
-        key={`${item.label}-${item.href}`}
-        href={item.href}
-        className={cx(styles.navLink, active && styles.navLinkActive)}
-        aria-current={active ? "page" : undefined}
-        onClick={item.href.startsWith("#") ? (event) => scrollToHash(event, item.href) : undefined}
-      >
+      <Link key={key} href={item.href} className={className} aria-current={active ? "page" : undefined}>
         {item.label}
-      </a>
+      </Link>
     );
   });
 

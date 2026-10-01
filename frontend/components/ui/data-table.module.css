@@ -6,7 +6,8 @@
 .table tbody tr:last-child td { border-bottom: 0; }
 .row { transition: background 0.2s; }
 .rowClickable { cursor: pointer; }
-.rowClickable:hover, .rowClickable:focus-visible { background: var(--ll-surface-hover); outline: none; }
+.rowClickable:hover, .rowClickable:focus-visible { background: var(--ll-surface-hover); }
+.rowClickable:focus-visible { outline: 2px solid var(--ll-ink); outline-offset: -2px; }
 .rowMuted { opacity: 0.6; }
 .cellRight { text-align: right !important; }
 .titleCell { display: flex; align-items: center; gap: 14px; min-width: 0; }

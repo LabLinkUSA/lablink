@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { StatusPill } from "@/components/status-pill";
 import {
-  Avatar, Button, ButtonLink, Card, DataTable, EmptyState, Eyebrow, Field, FieldGrid,
+  Avatar, Button, ButtonLink, Card, DataTable, tableStyles, EmptyState, Eyebrow, Field, FieldGrid,
   Highlight, Input, Modal, Notice, PageHeader, Reveal, Select, StatRow, StatTile, Textarea,
 } from "@/components/ui";
 
@@ -44,6 +44,12 @@ export function KitDemo() {
       </FieldGrid>
       <Notice tone="warning">Editing material fields sends this listing back to review.</Notice>
       <DataTable head={["Equipment", "Status", "Action"]} isEmpty empty={<EmptyState variant="empty" title="Nothing here yet" />} />
+      <DataTable head={["Equipment", "Status"]}>
+        <tr className={`${tableStyles.row} ${tableStyles.rowClickable}`} tabIndex={0} data-kit-clickable-row>
+          <td>Centrifuge</td>
+          <td>Live</td>
+        </tr>
+      </DataTable>
       <div style={{ height: "120vh" }} />
       <Reveal data-testid="kit-reveal-below-fold"><Card tone="mint">Revealed content</Card></Reveal>
       <p data-testid="kit-modal-close-count">{closeCount}</p>
