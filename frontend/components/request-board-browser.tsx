@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { createListingFromBoardPost, getDonorRequestBoard } from "@/lib/api";
+import { createListingFromBoardPost, getDonorRequestBoard } from "@/lib/api-client";
 import type { RequestBoardPost } from "@/lib/types";
 
 function formatNeededBy(dateString: string): string {

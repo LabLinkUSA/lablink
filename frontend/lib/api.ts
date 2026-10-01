@@ -73,9 +73,6 @@ export async function getDonorDashboard(): Promise<DonorDashboardResponse | null
   return fetchAuthedJson<DonorDashboardResponse>("/donor/dashboard");
 }
 
-export async function getDonorRequestBoard(): Promise<RequestBoardPost[] | null> {
-  return fetchAuthedJson<RequestBoardPost[]>("/donor/request-board");
-}
 
 export async function createDonorListingDraft(): Promise<Listing | null> {
   return fetchAuthedJson<Listing>("/donor/listings/drafts", { method: "POST" });
@@ -116,15 +113,6 @@ export async function getRecipientRequestState(listingId: string): Promise<Recip
   return fetchAuthedJson<RecipientRequestStateResponse>(`/recipient/requests/${listingId}/state`);
 }
 
-export async function createRequestBoardPost(
-  payload: RequestBoardPostCreate
-): Promise<RequestBoardPost | null> {
-  return fetchAuthedJson<RequestBoardPost>("/recipient/request-board", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-}
 
 export async function getRecipientBoardPosts(): Promise<RequestBoardPost[] | null> {
   return fetchAuthedJson<RequestBoardPost[]>("/recipient/request-board");
@@ -143,14 +131,3 @@ export async function mergeInstitutions(primaryId: string, duplicateId: string):
   });
 }
 
-export async function closeBoardPost(postId: string): Promise<RequestBoardPost | null> {
-  return fetchAuthedJson<RequestBoardPost>(`/recipient/request-board/${postId}/close`, {
-    method: "POST",
-  });
-}
-
-export async function createListingFromBoardPost(postId: string): Promise<Listing | null> {
-  return fetchAuthedJson<Listing>(`/donor/request-board/${postId}/create-listing`, {
-    method: "POST",
-  });
-}

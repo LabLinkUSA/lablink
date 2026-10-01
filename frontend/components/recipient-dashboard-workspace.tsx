@@ -12,7 +12,7 @@ import {
 } from "@/components/operations-dashboard-ui";
 import { RequestBoardForm } from "@/components/request-board-form";
 import { StatusPill } from "@/components/status-pill";
-import { closeBoardPost } from "@/lib/api";
+import { closeBoardPost } from "@/lib/api-client";
 import { titleCaseStatus } from "@/lib/format";
 import type { ListingStatus, RecipientDashboardResponse } from "@/lib/types";
 

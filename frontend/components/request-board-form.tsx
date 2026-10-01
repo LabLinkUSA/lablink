@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { createRequestBoardPost } from "@/lib/api";
+import { createRequestBoardPost } from "@/lib/api-client";
 import type { RequestBoardPostCreate } from "@/lib/types";
 
 type FieldName = keyof RequestBoardPostCreate;
