@@ -1,0 +1,42 @@
+/* Moved verbatim from home-page-redesign.module.css (design export footer). */
+.footer {
+  background: #0f2621;
+  color: #ffffff;
+  font-family: var(--font-dm-sans), Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.footer img {
+  display: block;
+  max-width: 100%;
+}
+
+.logoImage {
+  height: 30px;
+  width: auto;
+}
+
+.footerInner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 44px clamp(20px, 5vw, 72px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.footerMeta {
+  margin-top: 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.footerNote {
+  margin: 0;
+  max-width: 440px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.55);
+}

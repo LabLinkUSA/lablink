@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { DM_Sans, Playfair_Display } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { AppFooter } from "@/components/chrome/app-footer";
+import { AppNav } from "@/components/chrome/app-nav";
 import { AuthStateSync } from "@/components/auth-state-sync";
 import { NotificationProvider } from "@/components/notification-center";
-import { SiteHeader } from "@/components/site-header";
 
 import "./globals.css";
 import "./tokens.css";
@@ -35,14 +36,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body className="app-body">
         <AuthStateSync />
         <NotificationProvider>
-          <SiteHeader />
+          <AppNav />
           <main className="site-main">{children}</main>
-          <footer className="footer">
-            <div className="shell">
-              LabLink v1 is a managed donation marketplace. Verified donor labs and recipient institutions move through
-              admin-reviewed workflows, not direct checkout.
-            </div>
-          </footer>
+          <AppFooter />
         </NotificationProvider>
       </body>
     </html>

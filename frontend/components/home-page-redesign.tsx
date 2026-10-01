@@ -122,7 +122,7 @@ export function HomePageRedesign() {
       el.style.transform = "none";
     };
 
-    // Anchor links scroll with an offset for the fixed header.
+    // In-page anchor links (the nav's own hash links are handled in AppNavClient).
     q<HTMLAnchorElement>('a[href^="#"]').forEach((a) =>
       listen(a, "click", (event) => {
         const target = document.querySelector(a.getAttribute("href") ?? "");
@@ -301,23 +301,6 @@ export function HomePageRedesign() {
       <div className={styles.progressTrack}>
         <div data-progress="" className={styles.progressBar} />
       </div>
-
-      <header className={styles.nav}>
-        <a href="/" className={styles.navLogo}>
-          <img src="/lablink-header-logo.png" alt="LabLink" className={styles.logoImage} />
-        </a>
-        <div className={styles.navPill}>
-          <a href="#mission" className={styles.navLink}>
-            Mission
-          </a>
-          <a href="#team" className={styles.navLink}>
-            Team
-          </a>
-          <a href="/auth" className={styles.navSignIn}>
-            Sign in
-          </a>
-        </div>
-      </header>
 
       <section data-hero="" className={styles.hero}>
         <div className={styles.heroOrb}>
@@ -587,19 +570,6 @@ export function HomePageRedesign() {
           </div>
         </div>
       </section>
-
-      <footer className={styles.footer}>
-        <div className={styles.footerInner}>
-          <div>
-            <img src="/lablink-header-logo.png" alt="LabLink" className={styles.logoImage} />
-            <div className={styles.footerMeta}>A Yale nonprofit · New Haven, CT · Founded 2024</div>
-          </div>
-          <p className={styles.footerNote}>
-            LabLink v1 is a managed donation marketplace. Verified donor labs and recipient institutions move through
-            admin-reviewed workflows, not direct checkout.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

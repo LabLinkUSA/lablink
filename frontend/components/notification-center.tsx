@@ -16,6 +16,8 @@ import { formatDateTime, formatNotificationDay } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { MarkNotificationsViewedResponse, Notification, NotificationListResponse } from "@/lib/types";
 
+import styles from "./notification-center.module.css";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const POLL_INTERVAL_MS = 30_000;
 const TOAST_LIFETIME_MS = 4_500;
@@ -189,9 +191,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   return (
     <NotificationCenterContext.Provider value={value}>
       {children}
-      <div className="notification-toast-stack" aria-live="polite" aria-atomic="false">
+      <div className={styles.toastStack} aria-live="polite" aria-atomic="false">
         {toasts.map((notification) => (
-          <Link key={notification.toastId} href={notification.cta_href} className="notification-toast">
+          <Link key={notification.toastId} href={notification.cta_href} className={styles.toast}>
             <strong>LabLink notification</strong>
             <span>{notification.message}</span>
             <small>{formatDateTime(notification.created_at)}</small>
@@ -257,10 +259,10 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="notification-bell" ref={rootRef}>
+    <div className={styles.bell} ref={rootRef}>
       <button
         type="button"
-        className="notification-bell-button"
+        className={styles.bellButton}
         onClick={handleToggle}
         aria-label="Notifications"
         aria-expanded={isOpen}
@@ -268,27 +270,27 @@ export function NotificationBell() {
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3.25a4.75 4.75 0 0 0-4.75 4.75v1.08c0 .95-.28 1.88-.81 2.66l-1.13 1.69a2.25 2.25 0 0 0 1.87 3.5h9.64a2.25 2.25 0 0 0 1.87-3.5l-1.13-1.69a4.76 4.76 0 0 1-.81-2.66V8A4.75 4.75 0 0 0 12 3.25m-2.47 15.5a2.5 2.5 0 0 0 4.94 0z" />
         </svg>
-        {unreadCount > 0 ? <span className="notification-badge">{unreadCount > 9 ? "9+" : unreadCount}</span> : null}
+        {unreadCount > 0 ? <span className={styles.badge}>{unreadCount > 9 ? "9+" : unreadCount}</span> : null}
       </button>
 
       {isOpen ? (
-        <div className="notification-panel" role="dialog" aria-label="Notifications">
-          <div className="notification-panel-header">
+        <div className={styles.panel} role="dialog" aria-label="Notifications">
+          <div className={styles.panelHeader}>
             <strong>Notifications</strong>
           </div>
           {groupedNotifications.length === 0 ? (
-            <p className="notification-empty">No notifications yet.</p>
+            <p className={styles.empty} data-empty="">No notifications yet.</p>
           ) : (
-            <div className="notification-groups">
+            <div className={styles.groups} data-has-items="">
               {groupedNotifications.map(([day, items]) => (
-                <section key={day} className="notification-group">
+                <section key={day} className={styles.group}>
                   <h3>{day}</h3>
-                  <div className="notification-list">
+                  <div className={styles.list}>
                     {items.map((notification) => (
                       <Link
                         key={notification.id}
                         href={notification.cta_href}
-                        className={`notification-item${notification.viewed_at ? "" : " notification-item-unread"}`}
+                        className={`${styles.item}${notification.viewed_at ? "" : ` ${styles.itemUnread}`}`}
                         onClick={() => {
                           void closePanel();
                         }}

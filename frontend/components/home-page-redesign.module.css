@@ -71,76 +71,6 @@
   transition: width 0.1s linear;
 }
 
-/* Nav */
-.nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 60;
-  padding: 22px clamp(20px, 4vw, 48px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  mix-blend-mode: normal;
-  animation: fadeIn 1s 0.3s both;
-}
-
-.navLogo {
-  display: flex;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(20, 48, 42, 0.55);
-  backdrop-filter: blur(12px);
-}
-
-.logoImage {
-  height: 30px;
-  width: auto;
-}
-
-.navPill {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px;
-  border-radius: 999px;
-  background: rgba(20, 48, 42, 0.55);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.navLink {
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-  transition: background 0.25s, color 0.25s;
-}
-
-.navLink:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-.navSignIn {
-  padding: 8px 18px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #14302a;
-  background: #10c79a;
-  transition: transform 0.25s, background 0.25s;
-}
-
-.navSignIn:hover {
-  background: #5fe0bc;
-  color: #14302a;
-  transform: scale(1.04);
-}
-
 /* Hero */
 .hero {
   position: relative;
@@ -1094,37 +1024,6 @@
 .ctaSecondary:hover {
   background: rgba(20, 48, 42, 0.06);
   color: #14302a;
-}
-
-/* Footer */
-.footer {
-  background: #0f2621;
-  color: #ffffff;
-}
-
-.footerInner {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 44px clamp(20px, 5vw, 72px);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-.footerMeta {
-  margin-top: 14px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.footerNote {
-  margin: 0;
-  max-width: 440px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Keyframes */
