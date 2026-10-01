@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { Avatar, ButtonLink, EmptyState } from "@/components/ui";
 import { RequestBoardBrowser } from "@/components/request-board-browser";
 import { getCurrentProfile } from "@/lib/api";
 import { redirectAdminToDashboard } from "@/lib/role-redirect";
@@ -11,15 +10,15 @@ export default async function DonorRequestBoardPage() {
   if (!profile || profile.user.role !== "donor_lab") {
     return (
       <section className="page-section">
-        <div className="shell empty-state">
-          <span className="eyebrow">Donor access required</span>
-          <h1>Sign in with a donor lab account to browse the request board.</h1>
-          <p>The request board shows open equipment requests from verified recipient institutions.</p>
-          <div className="page-actions">
-            <Link href="/auth" className="button button-primary">
-              Sign in / verify
-            </Link>
-          </div>
+        <div className="shell">
+          <EmptyState
+            variant="gate"
+            eyebrow="Donor access required"
+            title={<>Sign in with a donor lab account to browse the request board.</>}
+            lead={<>The request board shows open equipment requests from verified recipient institutions.</>}
+            icon={<Avatar initials="LL" size="lg" />}
+            actions={<ButtonLink href="/auth">Sign in / verify</ButtonLink>}
+          />
         </div>
       </section>
     );

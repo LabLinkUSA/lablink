@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { DashboardSidebarShell } from "@/components/dashboard-sidebar-shell";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { Highlight } from "@/components/ui";
 import {
   OperationsMetricGrid,
   OperationsHeader,
@@ -66,16 +67,23 @@ export function RecipientDashboardWorkspace({
   }
 
   return (
-    <DashboardSidebarShell
+    <DashboardShell
       brandSubtitle="Recipient workspace"
       header={
         <>
-          <OperationsHeader title="Recipient Dashboard" />
+          <OperationsHeader
+            eyebrow="Recipient workspace"
+            title={
+              <>
+                Recipient <Highlight>Dashboard</Highlight>
+              </>
+            }
+          />
           <OperationsMetricGrid
             items={[
-              { label: "Active Requests", value: activeRequests, tone: "tertiary", icon: "AR" },
-              { label: "Saved Listings", value: dashboard.saved_listings.length, tone: "primary", icon: "SL" },
-              { label: "Total Impact", value: totalImpact, tone: "secondary", icon: "TI" },
+              { label: "Active Requests", value: activeRequests },
+              { label: "Saved Listings", value: dashboard.saved_listings.length },
+              { label: "Total Impact", value: totalImpact },
             ]}
           />
         </>
@@ -84,14 +92,11 @@ export function RecipientDashboardWorkspace({
         {
           id: "recipient-requests",
           title: "Requested Items",
-          shortLabel: "Requests",
           count: dashboard.requests.length,
           icon: "requests",
-          tone: "primary",
           content: (
             <OperationsTableSection
               title="Request Reviews"
-              tone="primary"
               hideTitle
               columns={["Request", "Status", ""]}
               footer={<span>Showing {dashboard.requests.length} recipient request(s)</span>}
@@ -138,14 +143,11 @@ export function RecipientDashboardWorkspace({
         {
           id: "recipient-saved-listings",
           title: "Saved Listings",
-          shortLabel: "Saved",
           count: dashboard.saved_listings.length,
           icon: "saved",
-          tone: "secondary",
           content: (
             <OperationsTableSection
               title="Saved Listing Reviews"
-              tone="secondary"
               hideTitle
               columns={["Listing", "Status", "Condition", ""]}
               footer={<span>Showing {dashboard.saved_listings.length} saved listing(s)</span>}
@@ -201,14 +203,11 @@ export function RecipientDashboardWorkspace({
           {
             id: "recipient-request-board",
             title: "Request Board",
-            shortLabel: "Board",
             count: dashboard.request_board_posts.length,
             icon: "board",
-            tone: "tertiary",
             content: (
               <OperationsTableSection
                 title="Request Board Posts"
-                tone="tertiary"
                 columns={["Request", "Category", "Needed By", "Status", ""]}
                 action={
                   <button

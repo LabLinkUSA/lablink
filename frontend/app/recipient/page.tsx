@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { Avatar, ButtonLink, EmptyState, Notice } from "@/components/ui";
 import { RecipientDashboardWorkspace } from "@/components/recipient-dashboard-workspace";
 import { getCurrentProfile, getRecipientDashboard } from "@/lib/api";
 import { isApprovedRecipient } from "@/lib/access";
@@ -30,10 +29,14 @@ export default async function RecipientPage() {
   if (profile && profile.user.role !== "recipient_institution") {
     return (
       <section className="page-section">
-        <div className="shell empty-state">
-          <span className="eyebrow">Access limited</span>
-          <h1>Recipient access is only available to recipient institution accounts.</h1>
-          <p>Your current profile is signed in as {profile.user.role.replaceAll("_", " ")}.</p>
+        <div className="shell">
+          <EmptyState
+            variant="gate"
+            eyebrow="Access limited"
+            title={<>Recipient access is only available to recipient institution accounts.</>}
+            lead={<>Your current profile is signed in as {profile.user.role.replaceAll("_", " ")}.</>}
+            icon={<Avatar initials="LL" size="lg" />}
+          />
         </div>
       </section>
     );
@@ -47,25 +50,19 @@ export default async function RecipientPage() {
 
       return (
         <section className="page-section">
-          <div className="shell empty-state">
-            <span className="eyebrow">{accessState.eyebrow}</span>
-            <h1>{accessState.title}</h1>
-            <p>
-              {accessState.description} Your recipient account is connected to {profile.institution.name}, which is
-              currently {profile.institution.verification_status.replaceAll("_", " ")}.
-            </p>
-            <div className="auth-state-card">
-              <h2>Your LabLink information is still saved</h2>
-              <p>
-                Requests, saved listings, and institution details stay in place so access can resume once your
-                institution is verified.
-              </p>
-            </div>
-            <div className="page-actions">
-              <Link href="/listings" className="button button-secondary">
-                Browse equipment
-              </Link>
-            </div>
+          <div className="shell">
+            <EmptyState
+              variant="gate"
+              eyebrow={accessState.eyebrow}
+              title={<>{accessState.title}</>}
+              lead={<>{accessState.description} Your recipient account is connected to {profile.institution.name}, which is currently {profile.institution.verification_status.replaceAll("_", " ")}.</>}
+              icon={<Avatar initials="LL" size="lg" />}
+              actions={<ButtonLink href="/listings" variant="secondary">Browse equipment</ButtonLink>}
+            >
+              <Notice tone="info">
+                <strong>Your LabLink information is still saved</strong><br /> Requests, saved listings, and institution details stay in place so access can resume once your institution is verified. 
+              </Notice>
+            </EmptyState>
           </div>
         </section>
       );
@@ -75,10 +72,14 @@ export default async function RecipientPage() {
   if (!dashboard) {
     return (
       <section className="page-section">
-        <div className="shell empty-state">
-          <span className="eyebrow">Recipient view</span>
-          <h1>Your recipient dashboard is not ready yet.</h1>
-          <p>Finish onboarding and wait for institution verification before using recipient workflows.</p>
+        <div className="shell">
+          <EmptyState
+            variant="gate"
+            eyebrow="Recipient view"
+            title={<>Your recipient dashboard is not ready yet.</>}
+            lead={<>Finish onboarding and wait for institution verification before using recipient workflows.</>}
+            icon={<Avatar initials="LL" size="lg" />}
+          />
         </div>
       </section>
     );
@@ -92,14 +93,10 @@ export default async function RecipientPage() {
   ).length;
 
   return (
-    <section className="page-section admin-page-section">
-      <div className="admin-page-shell">
-        <RecipientDashboardWorkspace
-          dashboard={dashboard}
-          activeRequests={activeRequests}
-          totalImpact={totalImpact}
-        />
-      </div>
-    </section>
+    <RecipientDashboardWorkspace
+      dashboard={dashboard}
+      activeRequests={activeRequests}
+      totalImpact={totalImpact}
+    />
   );
 }

@@ -21,7 +21,7 @@ export function EmptyState({
   children?: ReactNode;
 }) {
   return (
-    <section className={cx(styles.state, styles[variant])}>
+    <section className={cx(styles.state, styles[variant])} data-gate={variant === "gate" ? "" : undefined}>
       {icon ? <div className={styles.icon}>{icon}</div> : null}
       {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
       <h2 className={styles.title}>{title}</h2>

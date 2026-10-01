@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { DashboardSidebarShell } from "@/components/dashboard-sidebar-shell";
+import { ButtonLink, Highlight } from "@/components/ui";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DonorListingActions } from "@/components/donor-listing-actions";
 import {
   OperationsMetricGrid,
@@ -46,23 +47,28 @@ export function DonorDashboardWorkspace({
 
   return (
     <>
-      <DashboardSidebarShell
+      <DashboardShell
         brandSubtitle="Donor workspace"
         header={
           <>
             <OperationsHeader
-              title="Donor Dashboard"
+              eyebrow="Donor workspace"
+              title={
+                <>
+                  Donor <Highlight>Dashboard</Highlight>
+                </>
+              }
               actions={
-                <Link href="/donor/list-equipment" className="button button-primary donor-dashboard-cta">
+                <ButtonLink href="/donor/list-equipment" className="donor-dashboard-cta">
                   + Donate Equipment
-                </Link>
+                </ButtonLink>
               }
             />
             <OperationsMetricGrid
               items={[
-                { label: "Pending Approvals", value: pendingApprovalCount, tone: "tertiary", icon: "PA" },
-                { label: "Total Donations", value: dashboard.impact_summary.total_items_donated, tone: "primary", icon: "TD" },
-                { label: "Successful Deliveries", value: successfulDeliveries, tone: "secondary", icon: "SD" },
+                { label: "Pending Approvals", value: pendingApprovalCount },
+                { label: "Total Donations", value: dashboard.impact_summary.total_items_donated },
+                { label: "Successful Deliveries", value: successfulDeliveries },
               ]}
             />
           </>
@@ -71,14 +77,11 @@ export function DonorDashboardWorkspace({
           {
             id: "donor-listings",
             title: "Equipment Submissions",
-            shortLabel: "Listings",
             count: dashboard.listings.length,
             icon: "listings",
-            tone: "primary",
             content: (
               <OperationsTableSection
                 title="Listing Reviews"
-                tone="primary"
                 hideTitle
                 columns={["Equipment", "Status", "Condition", ""]}
                 footer={<span>Showing {dashboard.listings.length} donor listing(s)</span>}
@@ -119,10 +122,8 @@ export function DonorDashboardWorkspace({
           {
             id: "donor-request-board",
             title: "Recipient Request Board",
-            shortLabel: "Board",
             count: 0,
             icon: "board",
-            tone: "tertiary",
             content: (
               <div className="ops-section-link-panel">
                 <p className="ops-section-link-panel-body">
@@ -138,14 +139,11 @@ export function DonorDashboardWorkspace({
           {
             id: "donor-incoming-requests",
             title: "Incoming Requests",
-            shortLabel: "Requests",
             count: groupedIncomingRequests.length,
             icon: "competition",
-            tone: "secondary",
             content: (
               <OperationsTableSection
                 title="Incoming Request Reviews"
-                tone="secondary"
                 hideTitle
                 columns={["Listing", "Requests", "Primary Status", "Notes"]}
                 footer={<span>Showing {groupedIncomingRequests.length} request group(s)</span>}

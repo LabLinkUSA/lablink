@@ -15,7 +15,7 @@ export function StatTile({
   sublabel?: string;
 }) {
   return (
-    <div className={cx(styles.tile, styles[tone])}>
+    <div className={cx(styles.tile, styles[tone])} data-stat-tile>
       <div className={styles.value}>{value}</div>
       <div className={styles.label}>{label}</div>
       {sublabel ? <div className={styles.sublabel}>{sublabel}</div> : null}

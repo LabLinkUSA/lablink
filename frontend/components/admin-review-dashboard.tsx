@@ -9,6 +9,8 @@ import {
   OperationsMetricGrid,
   OperationsTableSection,
 } from "@/components/operations-dashboard-ui";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { Highlight } from "@/components/ui";
 import { StatusPill } from "@/components/status-pill";
 import { formatDate } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -21,119 +23,12 @@ type AdminReviewDashboardProps = {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const supabase = createSupabaseBrowserClient();
 
-function LabLinkAdminIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 3.2 5.5 6.2v5.4c0 4.2 2.7 7.9 6.5 9.2 3.8-1.3 6.5-5 6.5-9.2V6.2Zm0 2.1 4.7 2.1v4.2c0 3.1-1.9 5.8-4.7 6.9-2.8-1.1-4.7-3.8-4.7-6.9V7.4Zm-2 3.2h4.1v1.4H10Zm0 3.1h4.8V13H10Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function CollapseRailIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M5.75 5.75h12.5A1.75 1.75 0 0 1 20 7.5v9a1.75 1.75 0 0 1-1.75 1.75H5.75A1.75 1.75 0 0 1 4 16.5v-9a1.75 1.75 0 0 1 1.75-1.75Zm0 1.5a.25.25 0 0 0-.25.25v9c0 .14.11.25.25.25H9.5v-9.5Zm5.25 9.5h7.25a.25.25 0 0 0 .25-.25v-9a.25.25 0 0 0-.25-.25H11Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function InstitutionQueueIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M5 19.25V7.4L12 4l7 3.4v11.85h-1.5V8.35L12 5.7 6.5 8.35v10.9Zm3.25-1.5h1.5v-2.5h-1.5Zm0-4h1.5v-2.5h-1.5Zm4 4h1.5v-2.5h-1.5Zm0-4h1.5v-2.5h-1.5Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function ListingQueueIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M6.5 4.75h11A1.75 1.75 0 0 1 19.25 6.5v11A1.75 1.75 0 0 1 17.5 19.25h-11A1.75 1.75 0 0 1 4.75 17.5v-11A1.75 1.75 0 0 1 6.5 4.75Zm0 1.5a.25.25 0 0 0-.25.25v11c0 .14.11.25.25.25h11a.25.25 0 0 0 .25-.25v-11a.25.25 0 0 0-.25-.25Zm2 2h7v1.5h-7Zm0 3.5h7v1.5h-7Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function CompetitionQueueIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M7 5.5a2.5 2.5 0 1 1-.01 5.01A2.5 2.5 0 0 1 7 5.5Zm10 8a2.5 2.5 0 1 1-.01 5.01A2.5 2.5 0 0 1 17 13.5Zm-8.45-4.2 6.9 5.4-.92 1.17-6.9-5.4Zm6.07-1.98.92 1.17-6.06 4.77-.93-1.18Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function DuplicateInstitutionsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v7a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 4 13.5Zm2.5-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1ZM8 17.5A2.5 2.5 0 0 0 10.5 20h7a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 17.5 8V9.5a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function RequestBoardIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4.75 6.5A1.75 1.75 0 0 1 6.5 4.75h11A1.75 1.75 0 0 1 19.25 6.5v3a1.75 1.75 0 0 1-1.75 1.75h-11A1.75 1.75 0 0 1 4.75 9.5Zm1.5 0v3c0 .14.11.25.25.25h11a.25.25 0 0 0 .25-.25v-3a.25.25 0 0 0-.25-.25h-11a.25.25 0 0 0-.25.25Zm-1.5 8A1.75 1.75 0 0 1 6.5 12.75h11a1.75 1.75 0 0 1 1.75 1.75v3a1.75 1.75 0 0 1-1.75 1.75h-11A1.75 1.75 0 0 1 4.75 17.5Zm1.5 0v3c0 .14.11.25.25.25h11a.25.25 0 0 0 .25-.25v-3a.25.25 0 0 0-.25-.25h-11a.25.25 0 0 0-.25.25Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
 const ADMIN_SECTION_ORDER = [
-  {
-    id: "institution-verification",
-    title: "Institution Verification",
-    shortLabel: "Institutions",
-    icon: InstitutionQueueIcon,
-    tone: "primary",
-  },
-  {
-    id: "listing-moderation",
-    title: "Listing Verification",
-    shortLabel: "Listings",
-    icon: ListingQueueIcon,
-    tone: "primary",
-  },
-  {
-    id: "request-competition",
-    title: "Recipient Selection",
-    shortLabel: "Competition",
-    icon: CompetitionQueueIcon,
-    tone: "secondary",
-  },
-  {
-    id: "request-board",
-    title: "Request Board",
-    shortLabel: "Board",
-    icon: RequestBoardIcon,
-    tone: "secondary",
-  },
-  {
-    id: "duplicate-institutions",
-    title: "Duplicate Institutions",
-    shortLabel: "Duplicates",
-    icon: DuplicateInstitutionsIcon,
-    tone: "tertiary",
-  },
+  { id: "institution-verification", title: "Institution Verification", icon: "shield" },
+  { id: "listing-moderation", title: "Listing Verification", icon: "listings" },
+  { id: "request-competition", title: "Recipient Selection", icon: "competition" },
+  { id: "request-board", title: "Request Board", icon: "board" },
+  { id: "duplicate-institutions", title: "Duplicate Institutions", icon: "duplicates" },
 ] as const;
 
 type AdminSectionId = (typeof ADMIN_SECTION_ORDER)[number]["id"];
@@ -150,8 +45,6 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   const [mergeConfirm, setMergeConfirm] = useState<{ group: DuplicateInstitutionGroup; primaryId: string; duplicateId: string } | null>(null);
   const [isMerging, setIsMerging] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<AdminSectionId>("institution-verification");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [institutionSearch, setInstitutionSearch] = useState("");
   const [institutionStatusFilter, setInstitutionStatusFilter] = useState("");
@@ -271,17 +164,6 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
   }, [dashboard.board_posts, boardSearch, boardStatusFilter, boardCategoryFilter]);
 
   useEffect(() => {
-    const storedValue = window.localStorage.getItem("lablink-admin-sidebar-collapsed");
-    if (storedValue === "true") {
-      setIsSidebarCollapsed(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("lablink-admin-sidebar-collapsed", String(isSidebarCollapsed));
-  }, [isSidebarCollapsed]);
-
-  useEffect(() => {
     void (async () => {
       try {
         const { data, error: sessionError } = await supabase.auth.getSession();
@@ -348,40 +230,6 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
     }
   }
 
-  useEffect(() => {
-    const sections = ADMIN_SECTION_ORDER.map((section) => document.getElementById(section.id)).filter(
-      (element): element is HTMLElement => Boolean(element),
-    );
-
-    if (sections.length === 0) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntries = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((left, right) => right.intersectionRatio - left.intersectionRatio);
-
-        if (visibleEntries[0]?.target.id) {
-          setActiveSection(visibleEntries[0].target.id as AdminSectionId);
-        }
-      },
-      {
-        rootMargin: "-20% 0px -55% 0px",
-        threshold: [0.15, 0.35, 0.55],
-      },
-    );
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
-
-  function scrollToSection(sectionId: AdminSectionId) {
-    setActiveSection(sectionId);
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   async function handleCloseBoardPost(postId: string) {
     setClosingPostId(postId);
     setBoardPostError(null);
@@ -433,98 +281,44 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
 
   return (
     <>
-      <div className={`admin-ops-shell ${isSidebarCollapsed ? "admin-ops-shell-collapsed" : ""}`}>
-        <aside
-          className={`admin-ops-nav ${isSidebarCollapsed ? "admin-ops-nav-collapsed" : ""}`}
-          aria-label="Admin dashboard sections"
-        >
-          <div className="admin-ops-nav-panel">
-            <div className="admin-ops-nav-chrome">
-              {!isSidebarCollapsed ? (
-                <div className="admin-ops-nav-brand">
-                  <span className="admin-ops-nav-brand-mark" aria-hidden="true">
-                    <LabLinkAdminIcon />
-                  </span>
-                  <div className="admin-ops-nav-brand-copy">
-                    <strong>LabLink</strong>
-                    <span>Admin workspace</span>
-                  </div>
-                </div>
-              ) : <div />}
-              <button
-                type="button"
-                className="admin-ops-nav-toggle"
-                onClick={() => setIsSidebarCollapsed((current) => !current)}
-                aria-label={isSidebarCollapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
-                title={isSidebarCollapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
-              >
-                <CollapseRailIcon />
-              </button>
-            </div>
-
-            <nav className="admin-ops-nav-list">
-              {ADMIN_SECTION_ORDER.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  className={`admin-ops-nav-button ${activeSection === section.id ? "admin-ops-nav-button-active" : ""}`}
-                  onClick={() => scrollToSection(section.id)}
-                  aria-label={section.title}
-                  title={section.title}
-                >
-                  <span className="admin-ops-nav-button-icon" aria-hidden="true">
-                    <section.icon />
-                  </span>
-                  {!isSidebarCollapsed ? (
-                    <span className="admin-ops-nav-button-body">
-                      <span className="admin-ops-nav-button-title">
-                        <span>{section.title}</span>
-                        <strong>{sectionCounts[section.id]}</strong>
-                      </span>
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </aside>
-
-        <div className="admin-ops-content">
-          <div className="admin-ops-content-header">
+      <DashboardShell
+        brandSubtitle="Admin workspace"
+        header={
+          <>
             <OperationsHeader
-              title="Admin Dashboard"
+              eyebrow="Admin workspace"
+              title={
+                <>
+                  Admin <Highlight>Dashboard</Highlight>
+                </>
+              }
             />
             <OperationsMetricGrid
               items={[
                 {
                   label: "Pending Approvals",
                   value: dashboard.pending_institutions.length + dashboard.listings_for_review.length,
-                  tone: "tertiary",
-                  icon: "PA",
                 },
                 {
                   label: "Total Donations",
                   value: dashboard.recent_actions.length,
-                  tone: "primary",
-                  icon: "TD",
                 },
                 {
                   label: "Successful Deliveries",
                   value: dashboard.active_threads.length,
-                  tone: "secondary",
-                  icon: "SD",
                 },
               ]}
             />
-          </div>
-
-          <section id="institution-verification" className="admin-ops-section" data-admin-section>
-            <div className="admin-ops-section-intro">
-              <h2>
-                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[0].tone}`} />
-                Institution Verification
-              </h2>
-            </div>
+          </>
+        }
+        sections={[
+          {
+            id: ADMIN_SECTION_ORDER[0].id,
+            title: ADMIN_SECTION_ORDER[0].title,
+            count: sectionCounts[ADMIN_SECTION_ORDER[0].id],
+            icon: ADMIN_SECTION_ORDER[0].icon,
+            content: (
+              <>
             <div className="admin-filter-bar">
               <input
                 type="search"
@@ -560,7 +354,6 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             </div>
             <OperationsTableSection
               title="Institution Reviews"
-              tone="primary"
               hideTitle
               columns={["Institution", "Location", "Status", ""]}
               footer={<span>Showing {filteredInstitutions.length} of {dashboard.pending_institutions.length} institution review item(s)</span>}
@@ -595,15 +388,16 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 ))
               )}
             </OperationsTableSection>
-          </section>
-
-          <section id="listing-moderation" className="admin-ops-section" data-admin-section>
-            <div className="admin-ops-section-intro">
-              <h2>
-                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[1].tone}`} />
-                Listing Verification
-              </h2>
-            </div>
+              </>
+            ),
+          },
+          {
+            id: ADMIN_SECTION_ORDER[1].id,
+            title: ADMIN_SECTION_ORDER[1].title,
+            count: sectionCounts[ADMIN_SECTION_ORDER[1].id],
+            icon: ADMIN_SECTION_ORDER[1].icon,
+            content: (
+              <>
             <div className="admin-filter-bar">
               <input
                 type="search"
@@ -639,7 +433,6 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             </div>
             <OperationsTableSection
               title="Listing Reviews"
-              tone="primary"
               hideTitle
               columns={["Equipment", "Institution", "Condition", "Status"]}
               footer={<span>Showing {filteredListings.length} of {dashboard.listings_for_review.length} listing review item(s)</span>}
@@ -684,15 +477,16 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 ))
               )}
             </OperationsTableSection>
-          </section>
-
-          <section id="request-competition" className="admin-ops-section" data-admin-section>
-            <div className="admin-ops-section-intro">
-              <h2>
-                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[2].tone}`} />
-                Recipient Selection
-              </h2>
-            </div>
+              </>
+            ),
+          },
+          {
+            id: ADMIN_SECTION_ORDER[2].id,
+            title: ADMIN_SECTION_ORDER[2].title,
+            count: sectionCounts[ADMIN_SECTION_ORDER[2].id],
+            icon: ADMIN_SECTION_ORDER[2].icon,
+            content: (
+              <>
             <div className="admin-filter-bar">
               <input
                 type="search"
@@ -704,7 +498,6 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             </div>
             <OperationsTableSection
               title="Recipient Selection"
-              tone="secondary"
               hideTitle
               columns={["Listing", "Recipients", "Primary Status", ""]}
               footer={<span>Showing {groupedCompetitionRequests.length} recipient selection item(s)</span>}
@@ -769,15 +562,16 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 })
               )}
             </OperationsTableSection>
-          </section>
-
-          <section id="request-board" className="admin-ops-section" data-admin-section>
-            <div className="admin-ops-section-intro">
-              <h2>
-                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[3].tone}`} />
-                Request Board
-              </h2>
-            </div>
+              </>
+            ),
+          },
+          {
+            id: ADMIN_SECTION_ORDER[3].id,
+            title: ADMIN_SECTION_ORDER[3].title,
+            count: sectionCounts[ADMIN_SECTION_ORDER[3].id],
+            icon: ADMIN_SECTION_ORDER[3].icon,
+            content: (
+              <>
             <div className="admin-filter-bar">
               <input
                 type="search"
@@ -811,7 +605,6 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
             </div>
             <OperationsTableSection
               title="Request Board"
-              tone="secondary"
               hideTitle
               columns={["Post", "Institution", "Equipment Type", "Status", ""]}
               footer={<span>Showing {filteredBoardPosts.length} of {dashboard.board_posts.length} board post(s)</span>}
@@ -855,18 +648,18 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
               )}
             </OperationsTableSection>
             {boardPostError ? <p className="auth-notice auth-notice-error">{boardPostError}</p> : null}
-          </section>
-
-          <section id="duplicate-institutions" className="admin-ops-section" data-admin-section>
-            <div className="admin-ops-section-intro">
-              <h2>
-                <span className={`ops-section-accent ops-section-accent-${ADMIN_SECTION_ORDER[4].tone}`} />
-                Duplicate Institutions
-              </h2>
-            </div>
+              </>
+            ),
+          },
+          {
+            id: ADMIN_SECTION_ORDER[4].id,
+            title: ADMIN_SECTION_ORDER[4].title,
+            count: sectionCounts[ADMIN_SECTION_ORDER[4].id],
+            icon: ADMIN_SECTION_ORDER[4].icon,
+            content: (
+              <>
             <OperationsTableSection
               title="Duplicate Institutions"
-              tone="tertiary"
               hideTitle
               columns={["Institution", "Location", "Status", ""]}
               footer={<span>Showing {duplicateGroups.length} duplicate group(s)</span>}
@@ -937,9 +730,11 @@ export function AdminReviewDashboard({ dashboard }: AdminReviewDashboardProps) {
                 ))
               )}
             </OperationsTableSection>
-          </section>
-        </div>
-      </div>
+              </>
+            ),
+          },
+        ]}
+      />
 
       {mergeConfirm ? (
         <div className="review-modal-overlay" role="presentation" onClick={() => { setMergeConfirm(null); setMergeError(null); }}>

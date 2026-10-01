@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
 
+import { DataTable, PageHeader, StatRow, StatTile } from "@/components/ui";
+
+import styles from "./operations-dashboard-ui.module.css";
+
 type MetricTone = "primary" | "secondary" | "tertiary";
 
 export function OperationsHeader({
@@ -9,21 +13,14 @@ export function OperationsHeader({
   actions,
 }: {
   eyebrow?: string;
-  title: string;
+  title: ReactNode;
   description?: string;
   actions?: ReactNode;
 }) {
-  return (
-    <header className="ops-header">
-      <div className="ops-header-copy">
-        {eyebrow ? <span className="ops-header-eyebrow">{eyebrow}</span> : null}
-        <h1>{title}</h1>
-        {description ? <p>{description}</p> : null}
-      </div>
-      {actions ? <div className="ops-header-actions">{actions}</div> : null}
-    </header>
-  );
+  return <PageHeader variant="operate" eyebrow={eyebrow} title={title} lead={description} actions={actions} />;
 }
+
+const METRIC_TONES = ["white", "ink", "mint"] as const;
 
 export function OperationsMetricGrid({
   items,
@@ -31,28 +28,21 @@ export function OperationsMetricGrid({
   items: Array<{
     label: string;
     value: number | string;
-    tone: MetricTone;
-    icon: string;
     note?: string;
   }>;
 }) {
   return (
-    <section className="ops-metric-grid">
-      {items.map((item) => (
-        <article key={item.label} className={`ops-metric-card ops-metric-card-${item.tone}`}>
-          <div className="ops-metric-topline">
-            <span className="ops-metric-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-            {item.note ? <span className="ops-metric-note">{item.note}</span> : null}
-          </div>
-          <div className="ops-metric-copy">
-            <h3>{item.label}</h3>
-            <strong>{item.value}</strong>
-          </div>
-        </article>
+    <StatRow>
+      {items.map((item, index) => (
+        <StatTile
+          key={item.label}
+          tone={METRIC_TONES[index % METRIC_TONES.length]}
+          value={item.value}
+          label={item.label}
+          sublabel={item.note}
+        />
       ))}
-    </section>
+    </StatRow>
   );
 }
 
@@ -68,7 +58,6 @@ export function OperationsLayout({
 
 export function OperationsTableSection({
   title,
-  tone,
   action,
   columns,
   children,
@@ -76,7 +65,6 @@ export function OperationsTableSection({
   hideTitle = false,
 }: {
   title: string;
-  tone: MetricTone;
   action?: ReactNode;
   columns: string[];
   children: ReactNode;
@@ -84,31 +72,16 @@ export function OperationsTableSection({
   hideTitle?: boolean;
 }) {
   return (
-    <section className="ops-section">
+    <section className={styles.tableSection}>
       {!hideTitle ? (
-        <div className="ops-section-head">
-          <h2>
-            <span className={`ops-section-accent ops-section-accent-${tone}`} />
-            {title}
-          </h2>
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle}>{title}</h2>
           {action}
         </div>
       ) : null}
-      <div className="ops-table-shell">
-        <table className="ops-table">
-          <thead>
-            <tr>
-              {columns.map((column, index) => (
-                <th key={column} className={index === columns.length - 1 ? "ops-table-align-right" : undefined}>
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>{children}</tbody>
-        </table>
-        {footer ? <div className="ops-table-footer">{footer}</div> : null}
-      </div>
+      <DataTable head={columns} footer={footer}>
+        {children}
+      </DataTable>
     </section>
   );
 }
