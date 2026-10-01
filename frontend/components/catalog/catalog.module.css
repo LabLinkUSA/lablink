@@ -16,7 +16,6 @@
 .body { padding: 22px 22px 0; display: grid; gap: 10px; flex: 1; align-content: start; }
 .headingRow { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .title { margin: 0; font-family: var(--ll-display); font-size: 22px; font-weight: 600; line-height: 1.2; color: var(--ll-ink); overflow-wrap: anywhere; }
-.condition { flex: none; padding: 4px 10px; border-radius: 10px; background: var(--ll-canvas); font-size: 12px; font-weight: 700; color: var(--ll-ink); }
 .description { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--ll-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .meta { font-size: 13px; color: var(--ll-muted); }
 .footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 22px 22px; font-size: 13px; font-weight: 600; color: var(--ll-ink); }

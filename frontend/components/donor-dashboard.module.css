@@ -1,0 +1,11 @@
+.boardPanel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; }
+.boardLine { margin: 0; max-width: 56ch; font-family: var(--ll-display); font-size: clamp(22px, 2.2vw, 28px); font-weight: 600; line-height: 1.25; color: var(--ll-ink); }
+.requestList { display: grid; gap: 14px; }
+.requestCard { display: grid; gap: 8px; padding: 20px; border-radius: 16px; background: var(--ll-canvas); }
+.requestTop { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.requestProgram { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ll-mint-text); }
+.requestUse { margin: 0; font-family: var(--ll-display); font-size: 22px; font-weight: 600; color: var(--ll-ink); }
+.requestText { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ll-text); }
+.requestMeta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ll-muted); }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.confirmText { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ll-text); }

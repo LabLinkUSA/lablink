@@ -1,6 +1,7 @@
 export { Avatar } from "./avatar";
 export { Button, ButtonLink, buttonClass, type ButtonSize, type ButtonVariant } from "./button";
 export { Card } from "./card";
+export { Chip } from "./chip";
 export { cx } from "./cx";
 export { DataTable, tableStyles } from "./data-table";
 export { EmptyState } from "./empty-state";

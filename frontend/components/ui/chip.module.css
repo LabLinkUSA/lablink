@@ -1,0 +1,1 @@
+.chip { display: inline-block; flex: none; padding: 4px 10px; border-radius: 10px; background: var(--ll-canvas); font-size: 12px; font-weight: 700; color: var(--ll-ink); }

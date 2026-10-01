@@ -1,15 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { ButtonLink, Highlight } from "@/components/ui";
+import styles from "@/components/donor-dashboard.module.css";
+import { ButtonLink, Card, Chip, cx, DataTable, EmptyState, Highlight, Modal, Notice, tableStyles } from "@/components/ui";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DonorListingActions } from "@/components/donor-listing-actions";
 import {
   OperationsMetricGrid,
   OperationsHeader,
-  OperationsTableSection,
 } from "@/components/operations-dashboard-ui";
 import { StatusPill } from "@/components/status-pill";
 import { titleCaseStatus } from "@/lib/format";
@@ -59,7 +58,7 @@ export function DonorDashboardWorkspace({
                 </>
               }
               actions={
-                <ButtonLink href="/donor/list-equipment" className="donor-dashboard-cta">
+                <ButtonLink href="/donor/list-equipment" className="donor-dashboard-cta" arrow>
                   + Donate Equipment
                 </ButtonLink>
               }
@@ -80,43 +79,35 @@ export function DonorDashboardWorkspace({
             count: dashboard.listings.length,
             icon: "listings",
             content: (
-              <OperationsTableSection
-                title="Listing Reviews"
-                hideTitle
-                columns={["Equipment", "Status", "Condition", ""]}
+              <DataTable
+                head={["Equipment", "Status", "Condition", "Actions"]}
                 footer={<span>Showing {dashboard.listings.length} donor listing(s)</span>}
               >
                 {dashboard.listings.map((listing) => (
-                  <tr key={listing.id} className="ops-table-row">
+                  <tr key={listing.id} className={tableStyles.row}>
                     <td>
-                      <div className="ops-equipment-cell">
-                        <div className="ops-equipment-media">
-                          {listing.photo_urls[0] ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={listing.photo_urls[0]} alt={listing.title} className="ops-equipment-image" />
-                          ) : (
-                            <div className="ops-equipment-empty">No image</div>
-                          )}
-                        </div>
-                        <div>
-                          <p className="ops-equipment-title">{listing.title}</p>
-                        </div>
+                      <div className={tableStyles.titleCell}>
+                        {listing.photo_urls[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={listing.photo_urls[0]} alt={listing.title} className={tableStyles.thumb} />
+                        ) : (
+                          <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>—</span>
+                        )}
+                        <span>{listing.title}</span>
                       </div>
                     </td>
                     <td>
                       <StatusPill status={listing.status} />
                     </td>
                     <td>
-                      <span className="ops-condition-badge">{titleCaseStatus(listing.condition)}</span>
+                      <Chip>{titleCaseStatus(listing.condition)}</Chip>
                     </td>
-                    <td className="ops-table-align-right">
-                      <div className="ops-table-actions">
-                        <DonorListingActions listingId={listing.id} status={listing.status} />
-                      </div>
+                    <td className={tableStyles.cellRight}>
+                      <DonorListingActions listingId={listing.id} status={listing.status} />
                     </td>
                   </tr>
                 ))}
-              </OperationsTableSection>
+              </DataTable>
             ),
           },
           {
@@ -125,15 +116,15 @@ export function DonorDashboardWorkspace({
             count: 0,
             icon: "board",
             content: (
-              <div className="ops-section-link-panel">
-                <p className="ops-section-link-panel-body">
+              <Card tone="mint" data-request-board-panel className={styles.boardPanel}>
+                <p className={styles.boardLine}>
                   Browse open equipment requests posted by recipient institutions and respond by creating a linked
                   listing.
                 </p>
-                <Link href="/donor/request-board" className="button button-primary">
+                <ButtonLink variant="ink" href="/donor/request-board" arrow>
                   Browse Request Board
-                </Link>
-              </div>
+                </ButtonLink>
+              </Card>
             ),
           },
           {
@@ -142,58 +133,51 @@ export function DonorDashboardWorkspace({
             count: groupedIncomingRequests.length,
             icon: "competition",
             content: (
-              <OperationsTableSection
-                title="Incoming Request Reviews"
-                hideTitle
-                columns={["Listing", "Requests", "Primary Status", "Notes"]}
+              <DataTable
+                head={["Listing", "Requests", "Primary Status", "Notes"]}
                 footer={<span>Showing {groupedIncomingRequests.length} request group(s)</span>}
+                isEmpty={groupedIncomingRequests.length === 0}
+                empty={<EmptyState variant="empty" title="No incoming requests yet." />}
               >
-                {groupedIncomingRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="ops-table-empty-cell">
-                      <div className="ops-empty-state">No incoming requests yet.</div>
-                    </td>
-                  </tr>
-                ) : (
-                  groupedIncomingRequests.map(([listingId, group]) => {
-                    const primaryRequest = group.requests[0];
-                    return (
-                      <tr
-                        key={listingId}
-                        className="ops-table-row ops-table-row-clickable"
-                        onClick={() => setSelectedIncomingListingId(listingId)}
-                      >
-                        <td>
-                          <div className="ops-equipment-cell">
-                            <div className="ops-equipment-media">
-                              {group.listing?.photo_urls[0] ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={group.listing.photo_urls[0]}
-                                  alt={group.listing.title}
-                                  className="ops-equipment-image"
-                                />
-                              ) : (
-                                <div className="ops-equipment-empty">No image</div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="ops-equipment-title">{group.listing?.title ?? "Request competition"}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td>{group.requests.length}</td>
-                        <td>
-                          <StatusPill status={primaryRequest?.status ?? "submitted"} />
-                        </td>
-                        <td className="ops-table-align-right">
-                          <span className="ops-table-fallback">Open request details</span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </OperationsTableSection>
+                {groupedIncomingRequests.map(([listingId, group]) => {
+                  const primaryRequest = group.requests[0];
+                  return (
+                    <tr
+                      key={listingId}
+                      className={cx(tableStyles.row, tableStyles.rowClickable, "ops-table-row-clickable")}
+                      tabIndex={0}
+                      onClick={() => setSelectedIncomingListingId(listingId)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedIncomingListingId(listingId);
+                        }
+                      }}
+                    >
+                      <td>
+                        <div className={tableStyles.titleCell}>
+                          {group.listing?.photo_urls[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={group.listing.photo_urls[0]}
+                              alt={group.listing.title}
+                              className={tableStyles.thumb}
+                            />
+                          ) : (
+                            <span className={cx(tableStyles.thumb, tableStyles.thumbEmpty)}>—</span>
+                          )}
+                          <span>{group.listing?.title ?? "Request competition"}</span>
+                        </div>
+                      </td>
+                      <td>{group.requests.length}</td>
+                      <td>
+                        <StatusPill status={primaryRequest?.status ?? "submitted"} />
+                      </td>
+                      <td className={tableStyles.cellRight}>Open request details</td>
+                    </tr>
+                  );
+                })}
+              </DataTable>
             ),
           },
         ]}
@@ -259,50 +243,32 @@ function DonorIncomingRequestsModal({
   }, [listingId]);
 
   return (
-    <div className="review-modal-overlay" role="presentation" onClick={onClose}>
-      <section
-        className="review-modal-card review-modal-card-wide"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`donor-incoming-${listingId}`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="review-modal-header">
-          <div>
-            <span className="eyebrow">Incoming requests</span>
-            <h2 id={`donor-incoming-${listingId}`}>{detail?.listing.title ?? "Loading listing..."}</h2>
-          </div>
-          <button type="button" className="button button-outline" onClick={onClose}>
-            Close
-          </button>
-        </div>
+    <Modal open onClose={onClose} wide eyebrow="Incoming requests" title={detail?.listing.title ?? "Loading listing..."}>
+      {isLoading ? <Notice tone="info">Loading incoming requests...</Notice> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
 
-        {isLoading ? <p className="auth-notice">Loading incoming requests...</p> : null}
-        {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
-
-        {detail ? (
-          <div className="list">
-            {detail.related_requests.length === 0 ? (
-              <div className="ops-empty-state">No incoming requests yet.</div>
-            ) : (
-              detail.related_requests.map((request) => (
-                <article key={request.id} className="list-row">
-                  <div className="list-row-topline">
-                    <strong>{request.program_or_department}</strong>
-                    <StatusPill status={request.status} />
-                  </div>
-                  <h3>{request.intended_use}</h3>
-                  <p>{request.storage_readiness}</p>
-                  <div className="list-row-meta">
-                    <span>{request.audience}</span>
-                    <span>{request.delivery_constraints}</span>
-                  </div>
-                </article>
-              ))
-            )}
+      {detail ? (
+        detail.related_requests.length === 0 ? (
+          <EmptyState variant="empty" title="No incoming requests yet." />
+        ) : (
+          <div className={styles.requestList}>
+            {detail.related_requests.map((request) => (
+              <article key={request.id} className={styles.requestCard}>
+                <div className={styles.requestTop}>
+                  <span className={styles.requestProgram}>{request.program_or_department}</span>
+                  <StatusPill status={request.status} />
+                </div>
+                <h3 className={styles.requestUse}>{request.intended_use}</h3>
+                <p className={styles.requestText}>{request.storage_readiness}</p>
+                <div className={styles.requestMeta}>
+                  <span>{request.audience}</span>
+                  <span>{request.delivery_constraints}</span>
+                </div>
+              </article>
+            ))}
           </div>
-        ) : null}
-      </section>
-    </div>
+        )
+      ) : null}
+    </Modal>
   );
 }

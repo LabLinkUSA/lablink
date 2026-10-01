@@ -1355,11 +1355,6 @@ body.app-body:has(.home-redesign-page)::-webkit-scrollbar-thumb {
   margin-top: 0.75rem;
 }
 
-.list-row-action-error {
-  width: 100%;
-  margin: 0;
-}
-
 .review-trigger {
   width: 100%;
   border: 0;

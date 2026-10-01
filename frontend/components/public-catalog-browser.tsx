@@ -7,7 +7,7 @@ import { useDeferredValue, useState } from "react";
 import { CategoryFilter } from "@/components/catalog/category-filter";
 import styles from "@/components/catalog/catalog.module.css";
 import { StatusPill } from "@/components/status-pill";
-import { ButtonLink, Card, cx, EmptyState, Highlight, PageHeader, Reveal, Select } from "@/components/ui";
+import { ButtonLink, Card, Chip, cx, EmptyState, Highlight, PageHeader, Reveal, Select } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import type { Listing } from "@/lib/types";
 
@@ -152,7 +152,7 @@ export function PublicCatalogBrowser({ listings }: { listings: Listing[] }) {
                   <div className={styles.body}>
                     <div className={styles.headingRow}>
                       <h3 className={styles.title}>{listing.title}</h3>
-                      <span className={styles.condition}>{listing.condition}</span>
+                      <Chip>{listing.condition}</Chip>
                     </div>
                     <p className={styles.description}>{listing.description}</p>
                     <div className={styles.meta}>
