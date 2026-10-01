@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 
 import { ListingRequestButton } from "@/components/listing-request-button";
 import { RecipientSaveListingButton } from "@/components/recipient-save-listing-button";
+import styles from "@/components/listing-detail/listing-detail.module.css";
 import { StatusPill } from "@/components/status-pill";
+import { Avatar, ButtonLink, Card, Eyebrow, buttonClass, cx } from "@/components/ui";
 import { isApprovedRecipient } from "@/lib/access";
 import { formatDate } from "@/lib/format";
 import { getCurrentProfile, getListingDetail, getRecipientRequestState, getRecipientSavedListingState } from "@/lib/api";
@@ -64,9 +66,9 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   ];
 
   return (
-    <section className="page-section listing-detail-page">
-      <div className="shell">
-        <nav className="listing-detail-breadcrumbs" aria-label="Breadcrumb">
+    <section className={styles.page}>
+      <div className={styles.container}>
+        <nav className={styles.crumbs} aria-label="Breadcrumb">
           <Link href="/listings">Equipment</Link>
           <span aria-hidden="true">/</span>
           <span>{detail.listing.category}</span>
@@ -74,66 +76,63 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           <span>{detail.listing.title}</span>
         </nav>
 
-        <div className="listing-detail-layout">
-          <div className="listing-detail-media-frame">
-            <div className="listing-detail-media">
+        <div className={styles.hero}>
+          <div className={styles.mediaWrap}>
+            <div data-detail-media className={styles.media}>
               {detail.listing.photo_urls[0] ? (
                 <Image
                   src={detail.listing.photo_urls[0]}
                   alt={detail.listing.title}
                   fill
-                  sizes="(max-width: 1100px) 100vw, 58vw"
-                  className="listing-card-image"
+                  sizes="(max-width: 1100px) 100vw, 50vw"
+                  className={styles.image}
                 />
               ) : (
-                <div className="listing-row-image-empty">No image</div>
+                <div className={styles.empty}>No image</div>
               )}
-              <div className="listing-detail-floating-badges">
-                <span className="listing-detail-badge listing-detail-badge-secondary">
-                  {detail.donor_institution.verification_status === "verified" ? "Verified donor" : donorVerification}
-                </span>
-              </div>
+              <span className={styles.chip}>
+                {detail.donor_institution.verification_status === "verified" ? "Verified donor" : donorVerification}
+              </span>
             </div>
+            {detail.listing.request_count > 0 ? (
+              <div className={styles.floatBadge}>
+                <div className={styles.floatValue}>{detail.listing.request_count}</div>
+                <div className={styles.floatLabel}>active request{detail.listing.request_count === 1 ? "" : "s"}</div>
+              </div>
+            ) : null}
           </div>
 
-          <div className="listing-detail-hero-content">
-            <section className="listing-detail-heading">
-              <div className="listing-detail-status-row">
-                <StatusPill status={detail.listing.status} />
-                <span className="eyebrow">{detail.listing.category}</span>
-              </div>
-              <h1>{detail.listing.title}</h1>
-              <div className="listing-detail-donor-row">
-                <div className="listing-detail-donor-avatar" aria-hidden="true">
-                  {donorInitials}
-                </div>
-                <div>
-                  <span>Donated by</span>
-                  <strong>{detail.donor_institution.name}</strong>
-                </div>
-              </div>
-              <p className="listing-detail-description listing-detail-description-compact">{detail.listing.description}</p>
-            </section>
+          <div className={styles.copy}>
+            <div className={styles.statusRow}>
+              <StatusPill status={detail.listing.status} />
+              <Eyebrow as="span">{detail.listing.category}</Eyebrow>
+            </div>
+            <h1 className={styles.title}>{detail.listing.title}</h1>
+            <div className={styles.donorRow}>
+              <Avatar initials={donorInitials} />
+              <span>
+                Donated by <strong>{detail.donor_institution.name}</strong>
+              </span>
+            </div>
+            <p className={styles.description}>{detail.listing.description}</p>
 
             {showRequestAction ? (
-              <section className="listing-detail-action-stack">
+              <div className={styles.actions}>
                 {isListingRequestable ? isVerifiedRecipient ? (
                   <ListingRequestButton listingId={detail.listing.id} initialRequested={requestState?.requested ?? false} />
                 ) : (
-                  <Link href={requestHref} className="button button-primary">
+                  <ButtonLink href={requestHref} size="lg" arrow>
                     Request item
-                  </Link>
+                  </ButtonLink>
                 ) : isMatchedReserved ? (
                   <span
-                    className={`button ${isMatchedRecipient ? "button-primary" : "listing-detail-status-tag-reserved"} listing-detail-status-tag`}
+                    className={buttonClass({ variant: isMatchedRecipient ? "primary" : "secondary", size: "lg" })}
                     aria-live="polite"
                   >
                     {isMatchedRecipient ? "You have been matched!" : "Reserved"}
                   </span>
                 ) : (
-                  <p className="listing-detail-note listing-detail-note-subtle">
-                    This listing is still visible in the public catalog, but a recipient has already been selected.
-                  </p>
+                  <p>This listing is still visible in the public catalog, but a recipient has already been selected.</p>
                 )}
                 {recipientCanSave ? (
                   <RecipientSaveListingButton
@@ -142,81 +141,67 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                     variant="full"
                   />
                 ) : null}
-              </section>
+              </div>
             ) : null}
           </div>
         </div>
 
-        <section className="listing-detail-facts">
-          <h2>Technical overview</h2>
-          <div className="listing-detail-facts-grid">
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Technical overview</h2>
+          <div className={styles.facts}>
             {coreFacts.map((fact) => (
-              <div key={fact.label}>
-                <span>{fact.label}</span>
-                <strong>{fact.value}</strong>
+              <div data-fact-tile key={fact.label} className={styles.fact}>
+                <div className={styles.factLabel}>{fact.label}</div>
+                <div className={styles.factValue}>{fact.value}</div>
               </div>
             ))}
           </div>
-        </section>
 
-        <section className="listing-detail-copy">
-          <h2>About this item</h2>
-          <p>{detail.listing.description}</p>
-        </section>
+          <div className={styles.context}>
+            <Card>
+              <h2 className={styles.cardTitle}>About this item</h2>
+              <p className={styles.body}>{detail.listing.description}</p>
+            </Card>
 
-        <div className="listing-detail-context-grid">
-          <article className="listing-detail-panel listing-detail-panel-muted">
-            <h2>Fulfillment details</h2>
-            <dl className="details-meta">
-              <div>
+            <Card tone="ink" className={styles.onInk}>
+              <h2 className={styles.cardTitle}>Fulfillment details</h2>
+              <dl className={styles.dl}>
                 <dt>Delivery mode</dt>
                 <dd>{deliveryMode}</dd>
-              </div>
-              <div>
                 <dt>Availability window</dt>
                 <dd>{detail.listing.availability_window}</dd>
-              </div>
-              <div>
                 <dt>Documentation</dt>
                 <dd>{documentationIncluded}</dd>
-              </div>
-              <div>
                 <dt>Special handling</dt>
                 <dd>{specialHandlingFlags}</dd>
-              </div>
-            </dl>
-            <p className="listing-detail-note">
-              <strong>Handling requirements:</strong> {handlingRequirements}
-            </p>
-            <p className="listing-detail-note listing-detail-note-subtle">
-              LabLink collects intended use, readiness, and logistics notes before an admin opens messaging or selects
-              a recipient.
-            </p>
-          </article>
+              </dl>
+              <p className={styles.note}>
+                <strong>Handling requirements:</strong> {handlingRequirements}
+              </p>
+              <p className={cx(styles.note, styles.noteSubtle)}>
+                LabLink collects intended use, readiness, and logistics notes before an admin opens messaging or selects
+                a recipient.
+              </p>
+            </Card>
 
-          <aside className="listing-detail-panel detail-sidebar listing-detail-panel-muted">
-            <h2>Donor institution</h2>
-            <p className="listing-detail-panel-lead">{detail.donor_institution.name}</p>
-            <dl className="details-meta">
-              <div>
+            <Card>
+              <h2 className={styles.cardTitle}>Donor institution</h2>
+              <p className={styles.lead}>{detail.donor_institution.name}</p>
+              <dl className={styles.dl}>
                 <dt>Verification status</dt>
                 <dd>{donorVerification}</dd>
-              </div>
-              <div>
                 <dt>Location</dt>
                 <dd>{detail.donor_institution.location}</dd>
-              </div>
-              <div>
                 <dt>Posted</dt>
                 <dd>{formatDate(detail.listing.created_at)}</dd>
-              </div>
-              <div>
                 <dt>Request activity</dt>
-                <dd>{detail.listing.request_count} active request{detail.listing.request_count === 1 ? "" : "s"}</dd>
-              </div>
-            </dl>
-          </aside>
-        </div>
+                <dd>
+                  {detail.listing.request_count} active request{detail.listing.request_count === 1 ? "" : "s"}
+                </dd>
+              </dl>
+            </Card>
+          </div>
+        </section>
       </div>
     </section>
   );

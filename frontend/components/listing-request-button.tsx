@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Button, Notice } from "@/components/ui";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
@@ -110,21 +111,22 @@ export function ListingRequestButton({
   return (
     <>
       <>
-        <button
-          type="button"
-          className="button button-primary"
-          onClick={handleRequest}
-          disabled={isSubmitting || requestState === "requested"}
-        >
-          {isSubmitting ? "Requesting..." : requestState === "requested" ? "Requested" : "Request"}
-        </button>
         {requestState === "requested" ? (
-          <button type="button" className="button button-outline" onClick={handleCancelRequest} disabled={isCancelling}>
+          <Button variant="ink" size="lg" disabled>
+            Requested
+          </Button>
+        ) : (
+          <Button size="lg" arrow={!isSubmitting} onClick={handleRequest} disabled={isSubmitting}>
+            {isSubmitting ? "Requesting..." : "Request"}
+          </Button>
+        )}
+        {requestState === "requested" ? (
+          <Button variant="secondary" size="lg" onClick={handleCancelRequest} disabled={isCancelling}>
             {isCancelling ? "Cancelling..." : "Cancel request"}
-          </button>
+          </Button>
         ) : null}
       </>
-      {error ? <p className="auth-notice auth-notice-error">{error}</p> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
     </>
   );
 }
