@@ -34,7 +34,7 @@ const teamItems = [
     initials: "SC",
     name: "Sebastian Cuervo",
     role: "Co-Head",
-    bio: "Yale undergraduate pursuing an MD-PhD. Researcher in the Garg Lab focused on pediatric brain tumors. EMT and clinical interpreter. First-generation Cambodian-Colombian American.",
+    bio: "Conceived LabLink's founding idea and helped secure its initial funding. Co-built its early leadership team and served as Spanish-language interpreter on the founding medical mission to Guatemala, which established our first international partnership.",
   },
   {
     initials: "DL",
