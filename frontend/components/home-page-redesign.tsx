@@ -27,7 +27,7 @@ const teamItems = [
   {
     initials: "JS",
     name: "Josh Shin",
-    role: "Founder",
+    role: "Co-Head",
     bio: "LabLink's operational backbone. Leads lab outreach, partner coordination, and logistics on the ground. Co-led the Guatemala volunteer medical trip that sparked LabLink's global mission.",
   },
   {
