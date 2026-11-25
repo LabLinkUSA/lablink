@@ -25,28 +25,34 @@ const impactItems = [
 
 const teamItems = [
   {
-    initials: "JS",
+    photo: "/team-josh-shin.jpg",
     name: "Josh Shin",
     role: "Co-Head",
     bio: "LabLink's operational backbone. Leads lab outreach, partner coordination, and logistics on the ground. Co-led the Guatemala volunteer medical trip that sparked LabLink's global mission.",
   },
   {
-    initials: "SC",
+    photo: "/team-sebastian-cuervo.jpg",
     name: "Sebastian Cuervo",
     role: "Co-Head",
     bio: "Conceived LabLink's founding idea and helped secure its initial funding. Co-built its early leadership team and served as Spanish-language interpreter on the founding medical mission to Guatemala, which established our first international partnership.",
   },
   {
-    initials: "DL",
+    photo: "/team-daniel-lee.jpg",
     name: "Daniel Lee",
     role: "Chief Technology Officer",
     bio: "Leads back-end development and the website platform. Builds the infrastructure that keeps equipment moving from donors to the schools and labs that need it most.",
   },
   {
-    initials: "AL",
-    name: "Ayden Lee",
+    photo: "/team-aydan-lee.jpg",
+    name: "Aydan Lee",
     role: "Chief Operating Officer",
     bio: "Drives outreach to schools, research labs, and hospitals. Builds the partnerships that connect surplus equipment with institutions that can put it to use.",
+  },
+  {
+    photo: "/team-alex-bai.jpg",
+    name: "Alex Bai",
+    role: "Chief Financial Officer",
+    bio: "Oversees LabLink's finances, from budgeting and fundraising to tracking the value of every donation. Keeps the organization accountable to the donors, partners, and communities it serves.",
   },
 ];
 
@@ -268,8 +274,9 @@ export function HomePageRedesign() {
       if (!spot) {
         return;
       }
+      const spotArea = spot.parentElement ?? card;
       listen(card, "mousemove", (event) => {
-        const r = card.getBoundingClientRect();
+        const r = spotArea.getBoundingClientRect();
         spot.style.left = `${event.clientX - r.left}px`;
         spot.style.top = `${event.clientY - r.top}px`;
         spot.style.opacity = "1";
@@ -512,18 +519,29 @@ export function HomePageRedesign() {
                 className={`${styles.teamCard} ${styles.reveal24}`}
                 style={{ transitionDelay: `${index * 0.06}s, ${index * 0.06}s, 0s` }}
               >
-                <span data-spot="" className={styles.teamSpot} />
-                <div className={styles.teamAvatar}>{member.initials}</div>
-                <div className={styles.teamName}>{member.name}</div>
-                <div className={styles.teamRole}>{member.role}</div>
-                <p className={styles.teamBio}>{member.bio}</p>
+                <div className={styles.teamPhotoFrame}>
+                  <img
+                    src={member.photo}
+                    alt={member.name}
+                    width={800}
+                    height={1000}
+                    loading="lazy"
+                    className={styles.teamPhoto}
+                  />
+                </div>
+                <div className={styles.teamBody}>
+                  <span data-spot="" className={styles.teamSpot} />
+                  <div className={styles.teamName}>{member.name}</div>
+                  <div className={styles.teamRole}>{member.role}</div>
+                  <p className={styles.teamBio}>{member.bio}</p>
+                </div>
               </div>
             ))}
             <a
               href="/auth"
               data-reveal=""
               className={`${styles.joinCard} ${styles.reveal24}`}
-              style={{ transitionDelay: ".24s, .24s, 0s" }}
+              style={{ transitionDelay: ".3s, .3s, 0s" }}
             >
               <div className={styles.joinAvatar}>+5</div>
               <div>
