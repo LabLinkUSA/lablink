@@ -1,3 +1,4 @@
+import { authCtaHref } from "@/lib/site-mode";
 import type { AuthenticatedUser, Role } from "@/lib/types";
 
 export type NavLink = { href: string; label: string };
@@ -45,7 +46,7 @@ function links(profile: AuthenticatedUser | null): NavLink[] {
   } else if (role === "recipient_institution") {
     items.push({ href: "/recipient", label: "Dashboard" });
   } else {
-    items.push({ href: "/auth", label: "Donate" });
+    items.push({ href: authCtaHref("Donating equipment"), label: "Donate" });
   }
   return items;
 }

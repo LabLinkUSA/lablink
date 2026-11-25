@@ -3,6 +3,8 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { authCtaHref } from "@/lib/site-mode";
+
 import styles from "./home-page-redesign.module.css";
 
 const fieldPhotos = [
@@ -345,10 +347,10 @@ export function HomePageRedesign() {
             under-resourced schools and hospitals across the U.S. and globally.
           </p>
           <div className={styles.heroActions}>
-            <a href="/auth" data-magnet="" className={styles.heroPrimary}>
+            <a href={authCtaHref("Donating equipment")} data-magnet="" className={styles.heroPrimary}>
               Donate equipment <span className={styles.heroPrimaryArrow}>→</span>
             </a>
-            <a href="/auth" data-magnet="" className={styles.heroSecondary}>
+            <a href={authCtaHref("Requesting equipment")} data-magnet="" className={styles.heroSecondary}>
               Request equipment
             </a>
           </div>
@@ -538,7 +540,7 @@ export function HomePageRedesign() {
               </div>
             ))}
             <a
-              href="/auth"
+              href={authCtaHref("Joining the volunteer team")}
               data-reveal=""
               className={`${styles.joinCard} ${styles.reveal24}`}
               style={{ transitionDelay: ".3s, .3s, 0s" }}
@@ -579,10 +581,10 @@ export function HomePageRedesign() {
             either side.
           </p>
           <div className={styles.ctaActions}>
-            <a href="/auth" data-magnet="" className={styles.ctaPrimary}>
+            <a href={authCtaHref("Donating equipment")} data-magnet="" className={styles.ctaPrimary}>
               I have equipment to donate
             </a>
-            <a href="/auth" data-magnet="" className={styles.ctaSecondary}>
+            <a href={authCtaHref("Requesting equipment")} data-magnet="" className={styles.ctaSecondary}>
               My institution needs equipment
             </a>
           </div>

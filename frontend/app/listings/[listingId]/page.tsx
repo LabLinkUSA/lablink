@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/status-pill";
 import { Avatar, ButtonLink, Card, Eyebrow, buttonClass, cx } from "@/components/ui";
 import { isApprovedRecipient } from "@/lib/access";
 import { formatDate } from "@/lib/format";
+import { authCtaHref } from "@/lib/site-mode";
 import { getCurrentProfile, getListingDetail, getRecipientRequestState, getRecipientSavedListingState } from "@/lib/api";
 
 function humanize(value: string) {
@@ -41,7 +42,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   const isMatchedReserved = detail.listing.status === "matched_reserved";
   const isVerifiedRecipient = isApprovedRecipient(profile);
   const isNonApprovedRecipient = profile?.user.role === "recipient_institution" && !isVerifiedRecipient;
-  const requestHref = isNonApprovedRecipient ? "/recipient" : "/auth";
+  const requestHref = isNonApprovedRecipient ? "/recipient" : authCtaHref(`Requesting equipment: ${detail.listing.title}`);
   const recipientCanSave = isVerifiedRecipient && (isListingRequestable || isMatchedReserved);
   const showRequestAction = profile?.user.role !== "admin" && profile?.user.role !== "donor_lab";
   const savedState = recipientCanSave ? await getRecipientSavedListingState(listingId) : null;

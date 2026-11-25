@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { NotificationBell } from "@/components/notification-center";
 import { cx } from "@/components/ui/cx";
+import { AUTH_ENABLED, contactHref } from "@/lib/site-mode";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 import styles from "./app-nav.module.css";
@@ -86,6 +87,13 @@ export function AppNavClient({ model }: { model: NavModel }) {
         </a>
       );
     }
+    if (item.href.startsWith("mailto:")) {
+      return (
+        <a key={key} href={item.href} className={className}>
+          {item.label}
+        </a>
+      );
+    }
     return (
       <Link key={key} href={item.href} className={className} aria-current={active ? "page" : undefined}>
         {item.label}
@@ -133,10 +141,14 @@ export function AppNavClient({ model }: { model: NavModel }) {
               ) : null}
             </div>
           </>
-        ) : (
+        ) : AUTH_ENABLED ? (
           <Link href="/auth" className={styles.navSignIn}>
             Sign in
           </Link>
+        ) : (
+          <a href={contactHref()} className={styles.navSignIn}>
+            Contact us
+          </a>
         )}
         {items.length > 0 ? (
           <button
