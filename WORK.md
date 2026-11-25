@@ -1,11 +1,27 @@
 # LabLink — Work Log
 
 ## Active Work
-_Nothing in progress._
+_Nothing in progress._ **Note:** sign-in/sign-up are paused on production (`AUTH_ENABLED = false` in `frontend/lib/site-mode.ts`) — the site is brochure-only until re-enabled.
 
 ---
 
 ## Completed Work
+
+### Session — 2026-11-25 (Homepage Content + Favicon)
+
+| Commit | Summary |
+|---|---|
+| `f11423c` | feat: add LabLink favicon and update equipment moved stat to $80K |
+| `918462f` | feat: redesign About Us team section with member photos, add Alex Bai, fix Aydan spelling |
+| `d976d73` | feat: temporarily pause sign-in/sign-up; route auth CTAs to lablinkusa@gmail.com |
+
+**Frontend changes:** Added `app/icon.png` (512×512) and `app/apple-icon.png` (180×180) — white chain-link mark from `public/lablink-header-logo.png` on ink `#14302a`; Next.js file conventions emit the `<link rel="icon">` / `apple-touch-icon` tags (site previously had no favicon, so Google showed a generic globe). `home-page-redesign.tsx` — hero "equipment moved" badge and impact "Equipment value" stat both $40K → $80K. About Us (`#team`) section rebuilt as photo cards: 4:5 portrait on top (`public/team-*.jpg`, 800×1000, 60–130 KB, cropped so heads align), name/role/bio below; hover photo zoom (disabled under reduced motion); spotlight now measured against the card body. Team: Josh Shin, Sebastian Cuervo (Co-Heads), Daniel Lee (CTO), Aydan Lee (COO — spelling fixed from "Ayden"), Alex Bai (CFO, new). Volunteer card still "+5".
+**Auth paused (temporary):** `lib/site-mode.ts` `AUTH_ENABLED = false`. While off: homepage CTAs, volunteer card, logged-out nav "Donate", and listing-detail "Request" open `mailto:lablinkusa@gmail.com` with a subject (`authCtaHref()`); nav "Sign in" becomes "Contact us"; `app/auth/layout.tsx` redirects every `/auth/*` route to `/`. No one (incl. admins) can sign in and password-reset links don't work. Set `AUTH_ENABLED = true` to restore — no other changes needed.
+**Backend / DB changes:** none.
+**Shipped:** all commits pushed to `main` 2026-11-25; production (lablinkusa.org) verified serving the icon and team photos.
+**Follow-ups (user):** Request indexing for the homepage in Google Search Console to speed up the favicon showing in results. Google's snippet for the site is pulled from the footer copy ("LabLink v1 is a managed donation marketplace…", `components/chrome/app-footer.tsx`) because the meta description is short — consider a fuller homepage description and updated footer copy. Alex Bai's bio is a general placeholder written for him; confirm wording with Alex.
+
+---
 
 ### Session — 2026-09-30 (App-Wide Redesign)
 Spec: `docs/superpowers/specs/2026-09-30-app-wide-redesign-design.md`

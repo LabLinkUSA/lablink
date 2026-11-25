@@ -109,3 +109,7 @@ Status key: ✅ Complete | 🔄 In Progress | ⬜ Not Started | 🚫 Out of Scop
 | Unit/integration tests (backend) | ✅ | Notification email tests present |
 | Mobile responsiveness | ✅ | Verified at 390px: signed-out routes swept, signed-in views verified per task via stubs (app-wide redesign) |
 | Design system (tokens + UI kit) | ✅ | `app/tokens.css`, `components/ui/`; see `DESIGN.md` |
+| Favicon / app icons | ✅ | `app/icon.png` + `app/apple-icon.png` (chain-link mark on ink); added 2026-11-25 |
+| Homepage About Us team section | ✅ | Photo cards for 5 members (`public/team-*.jpg`); updated 2026-11-25 |
+| Public auth pause (brochure mode) | 🔄 | Temporary: `AUTH_ENABLED = false` in `frontend/lib/site-mode.ts`; auth CTAs email lablinkusa@gmail.com, `/auth/*` redirects home |
+| SEO meta description / search snippet | ⬜ | Google uses footer copy as snippet; homepage description is short |
