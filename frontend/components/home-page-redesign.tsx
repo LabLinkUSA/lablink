@@ -287,10 +287,10 @@ export function HomePageRedesign() {
   }, []);
 
   const { k, im, pk } = counters;
-  const heroMoved = `$${Math.round(40 * k)}K`;
+  const heroMoved = `$${Math.round(80 * k)}K`;
   const pct = `${Math.round(46 * pk)}%`;
   const impactValues = {
-    moved: `$${Math.round(40 * im)}K`,
+    moved: `$${Math.round(80 * im)}K`,
     labs: `${Math.round(400 * im)}+`,
     schools: String(Math.round(3 * im)),
     bethesda: `$${Math.round(6 * im)}K`,
